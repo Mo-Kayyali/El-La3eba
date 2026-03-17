@@ -124,13 +124,17 @@ export class GameGateway
 
     // 1. Put the new socket into the room
     client.join(gameSessionId);
+    this.logger.log(
+      `User ${userId} joined game room ${gameSessionId} (socket ${client.id})`,
+    );
 
     // 2. NEW: Fetch the current state from Redis and give it to the client immediately!
     try {
       const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
       if (stateStr) {
-        // Send it ONLY to this specific client who just joined/reconnected
-        client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
+        // Send it ONLY to this specific client who just joined/reconnected.
+        // Frontend expects the raw game state object.
+        client.emit('gameStateUpdated', JSON.parse(stateStr));
       }
     } catch (err) {
       this.logger.error(

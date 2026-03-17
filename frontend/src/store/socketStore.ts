@@ -15,9 +15,26 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   connectSocket: (token) => {
     const currentSocket = get().socket;
 
-    // If we already have a socket and it's connected, do nothing
-    if (currentSocket?.connected) {
-      set({ isConnected: true });
+    // React Strict Mode (dev) runs effects twice. Guard hard against creating
+    // duplicate sockets: if we already have one, reuse it.
+    if (currentSocket) {
+      // Keep auth token up-to-date for reconnects.
+      (currentSocket as unknown as { auth?: unknown }).auth = { token };
+
+      if (currentSocket.connected) {
+        set({ isConnected: true });
+        return;
+      }
+
+      // If it's already in the process of connecting/reconnecting, do nothing.
+      if ((currentSocket as unknown as { active?: boolean }).active) return;
+
+      // Otherwise, attempt to reconnect without recreating the instance.
+      try {
+        currentSocket.connect();
+      } catch {
+        // If connect() throws for any reason, fall through and recreate below.
+      }
       return;
     }
 

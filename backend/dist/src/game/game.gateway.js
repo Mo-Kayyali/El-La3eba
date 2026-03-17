@@ -94,10 +94,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (!gameSessionId)
             return { status: 'error', message: 'gameSessionId required' };
         client.join(gameSessionId);
+        this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
         try {
             const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
             if (stateStr) {
-                client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
+                client.emit('gameStateUpdated', JSON.parse(stateStr));
             }
         }
         catch (err) {

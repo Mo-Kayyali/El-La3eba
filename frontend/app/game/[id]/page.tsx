@@ -91,13 +91,10 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!socket || !gameSessionId) return;
-    if (!isConnected && !socket.connected) return;
+    if (!isConnected) return;
 
+    // Join room as soon as the socket is connected (covers route transitions + hard refresh).
     socket.emit("joinGameRoom", { gameSessionId });
-  }, [gameSessionId, isConnected, socket]);
-
-  useEffect(() => {
-    if (!socket || !gameSessionId) return;
 
     const onGameStateUpdated = (payload: GameState) => {
       setGameState(payload ?? null);
@@ -123,7 +120,7 @@ export default function GamePage() {
       socket.off("nextRoundStarted", onNextRoundStarted);
       socket.off("matchOver", onMatchOver);
     };
-  }, [gameSessionId, socket]);
+  }, [gameSessionId, isConnected, socket]);
 
   const players = useMemo(() => gameState?.players ?? [], [gameState?.players]);
   const me = players.find((p) => toId(p?.id) === userId) ?? user ?? null;
