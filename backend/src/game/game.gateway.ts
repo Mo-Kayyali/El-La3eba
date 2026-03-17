@@ -13,11 +13,14 @@ import { JwtService } from '@nestjs/jwt';
 import { MatchmakingService } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server: Server;
+
+  private readonly logger = new Logger(GameGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
@@ -94,75 +97,114 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     return result;
   }
 
+  @SubscribeMessage('joinGameRoom')
+  async handleJoinGameRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    if (!gameSessionId) return { status: 'error', message: 'gameSessionId required' };
+
+    client.join(gameSessionId);
+    return { status: 'success', message: `Joined room ${gameSessionId}` };
+  }
+
   @SubscribeMessage('submitGuess')
   async handleSubmitGuess(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { gameSessionId: string; guessName: string },
   ) {
-    const userId = client.data?.user?.sub || client.data?.user?.userId;
-    if (!userId) return { status: 'error', message: 'Unauthorized' };
+    try {
+      this.logger.log(`Received guess from client ${client.id}: ${JSON.stringify(payload)}`);
 
-    const { gameSessionId, guessName } = payload;
-    if (!gameSessionId || !guessName) {
-      return { status: 'error', message: 'Missing gameSessionId or guessName' };
-    }
-
-    const key = `game:${gameSessionId}`;
-
-    // Use WATCH for optimistic locking to prevent race conditions
-    await this.redisClient.watch(key);
-    const stateStr = await this.redisClient.get(key);
-
-    if (!stateStr) {
-      await this.redisClient.unwatch();
-      return { status: 'error', message: 'Game session not found' };
-    }
-
-    const state = JSON.parse(stateStr);
-
-    if (state.currentTurn !== userId) {
-      await this.redisClient.unwatch();
-      return { status: 'error', message: 'Not your turn' };
-    }
-
-    // Check DB for player
-    const matchedPlayer = await this.gameService.guessPlayer(guessName);
-    const isCorrect = !!matchedPlayer;
-
-    if (isCorrect) {
-      if (state.guessedPlayers.includes(matchedPlayer.name)) {
-        await this.redisClient.unwatch();
-        return { status: 'error', message: 'Player already guessed this round' };
+      const userId = client.data?.user?.sub || client.data?.user?.userId;
+      if (!userId) {
+        this.logger.error(`Unauthorized access attempt by client ${client.id}`);
+        return { status: 'error', message: 'Unauthorized' };
       }
-      state.guessedPlayers.push(matchedPlayer.name);
-      state.scores[userId] += 1;
-    } else {
-      state.strikes[userId] += 1;
+
+      const { gameSessionId, guessName } = payload;
+      if (!gameSessionId || !guessName) {
+        this.logger.error(`Missing gameSessionId or guessName in payload`);
+        return { status: 'error', message: 'Missing gameSessionId or guessName' };
+      }
+
+      const key = `game:${gameSessionId}`;
+
+      // Use WATCH for optimistic locking to prevent race conditions
+      this.logger.log(`Starting Redis transaction for gameSessionId: ${gameSessionId}`);
+      await this.redisClient.watch(key);
+      const stateStr = await this.redisClient.get(key);
+
+      if (!stateStr) {
+        await this.redisClient.unwatch();
+        this.logger.error(`Game session not found: ${gameSessionId}`);
+        return { status: 'error', message: 'Game session not found' };
+      }
+
+      const state = JSON.parse(stateStr);
+
+      if (state.currentTurn !== userId) {
+        await this.redisClient.unwatch();
+        this.logger.error(`User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`);
+        return { status: 'error', message: 'Not your turn' };
+      }
+
+      // Check DB for player
+      this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
+      const matchedPlayer = await this.gameService.guessPlayer(guessName);
+      this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
+      const isCorrect = !!matchedPlayer;
+
+      if (isCorrect) {
+        if (state.guessedPlayers.includes(matchedPlayer.name)) {
+          await this.redisClient.unwatch();
+          this.logger.error(`Player ${matchedPlayer.name} already guessed this round by user ${userId}`);
+          return { status: 'error', message: 'Player already guessed this round' };
+        }
+        state.guessedPlayers.push(matchedPlayer.name);
+        state.scores[userId] += 1;
+      } else {
+        state.strikes[userId] += 1;
+      }
+
+      const otherPlayer = state.players.find((p: string) => p !== userId) || state.players[0];
+      state.currentTurn = otherPlayer;
+
+      // Execute transaction
+      this.logger.log(`Executing Redis transaction to update state`);
+      const multi = this.redisClient.multi();
+      multi.set(key, JSON.stringify(state));
+      const results = await multi.exec();
+
+      if (!results) {
+        this.logger.error(`Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`);
+        return { status: 'error', message: 'Concurrent modification, try again' };
+      }
+
+      this.logger.log(`Redis transaction successful for gameSessionId: ${gameSessionId}`);
+
+      // Emit updated state to the clients
+      const updatePayload = { 
+        state, 
+        lastGuess: { 
+          user: userId, 
+          guess: guessName, 
+          correct: isCorrect, 
+          matchedName: isCorrect ? matchedPlayer.name : null 
+        } 
+      };
+      
+      this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
+      this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+
+      return { status: 'success', isCorrect, matchedPlayer };
+    } catch (error) {
+      this.logger.error(`Exception in handleSubmitGuess: ${error.message}`, error.stack);
+      await this.redisClient.unwatch().catch(() => {});
+      return { status: 'error', message: 'Internal server error' };
     }
-
-    const otherPlayer = state.players.find(p => p !== userId) || state.players[0];
-    state.currentTurn = otherPlayer;
-
-    // Execute transaction
-    const multi = this.redisClient.multi();
-    multi.set(key, JSON.stringify(state));
-    const results = await multi.exec();
-
-    if (!results) {
-      return { status: 'error', message: 'Concurrent modification, try again' };
-    }
-
-    // Emit updated state to the clients
-    // (In a real app, we need to store gameSessionId -> room/sockets binding or use Redis Pub/Sub,
-    // here we can just broadcast or emit to the specific users involved)
-    
-    // We don't have socket IDs directly stored in the game state right now to .to(socketId).
-    // Let's rely on standard socket.io room features if we make them join a room, but currently 
-    // Matchmaking emits directly to socket IDs.
-    // For now we will broadcast to everyone in a room named gameSessionId.
-    // Wait, let's make users join the socket.io room when match is found.
-    this.server.to(gameSessionId).emit('gameStateUpdated', { state, lastGuess: { user: userId, guess: guessName, correct: isCorrect, matchedName: isCorrect ? matchedPlayer.name : null } });
-
-    return { status: 'success', isCorrect, matchedPlayer };
   }
 }

@@ -10,6 +10,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly gameService;
     private readonly redisClient;
     server: Server;
+    private readonly logger;
     constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService);
     afterInit(server: Server): void;
     handleConnection(client: Socket): Promise<void>;
@@ -39,6 +40,10 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         gameSessionId: `${string}-${string}-${string}-${string}-${string}`;
         error?: undefined;
     } | {
+        status: string;
+        message: string;
+    }>;
+    handleJoinGameRoom(client: Socket, gameSessionId: string): Promise<{
         status: string;
         message: string;
     }>;

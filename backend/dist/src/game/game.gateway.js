@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var GameGateway_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
@@ -19,12 +20,14 @@ const jwt_1 = require("@nestjs/jwt");
 const matchmaking_service_1 = require("./matchmaking.service");
 const game_service_1 = require("./game.service");
 const redis_service_1 = require("../redis/redis.service");
-let GameGateway = class GameGateway {
+const common_1 = require("@nestjs/common");
+let GameGateway = GameGateway_1 = class GameGateway {
     jwtService;
     matchmakingService;
     gameService;
     redisClient;
     server;
+    logger = new common_1.Logger(GameGateway_1.name);
     constructor(jwtService, matchmakingService, gameService, redisClient) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
@@ -83,49 +86,88 @@ let GameGateway = class GameGateway {
         const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id);
         return result;
     }
-    async handleSubmitGuess(client, payload) {
+    async handleJoinGameRoom(client, gameSessionId) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
-        const { gameSessionId, guessName } = payload;
-        if (!gameSessionId || !guessName) {
-            return { status: 'error', message: 'Missing gameSessionId or guessName' };
-        }
-        const key = `game:${gameSessionId}`;
-        await this.redisClient.watch(key);
-        const stateStr = await this.redisClient.get(key);
-        if (!stateStr) {
-            await this.redisClient.unwatch();
-            return { status: 'error', message: 'Game session not found' };
-        }
-        const state = JSON.parse(stateStr);
-        if (state.currentTurn !== userId) {
-            await this.redisClient.unwatch();
-            return { status: 'error', message: 'Not your turn' };
-        }
-        const matchedPlayer = await this.gameService.guessPlayer(guessName);
-        const isCorrect = !!matchedPlayer;
-        if (isCorrect) {
-            if (state.guessedPlayers.includes(matchedPlayer.name)) {
-                await this.redisClient.unwatch();
-                return { status: 'error', message: 'Player already guessed this round' };
+        if (!gameSessionId)
+            return { status: 'error', message: 'gameSessionId required' };
+        client.join(gameSessionId);
+        return { status: 'success', message: `Joined room ${gameSessionId}` };
+    }
+    async handleSubmitGuess(client, payload) {
+        try {
+            this.logger.log(`Received guess from client ${client.id}: ${JSON.stringify(payload)}`);
+            const userId = client.data?.user?.sub || client.data?.user?.userId;
+            if (!userId) {
+                this.logger.error(`Unauthorized access attempt by client ${client.id}`);
+                return { status: 'error', message: 'Unauthorized' };
             }
-            state.guessedPlayers.push(matchedPlayer.name);
-            state.scores[userId] += 1;
+            const { gameSessionId, guessName } = payload;
+            if (!gameSessionId || !guessName) {
+                this.logger.error(`Missing gameSessionId or guessName in payload`);
+                return { status: 'error', message: 'Missing gameSessionId or guessName' };
+            }
+            const key = `game:${gameSessionId}`;
+            this.logger.log(`Starting Redis transaction for gameSessionId: ${gameSessionId}`);
+            await this.redisClient.watch(key);
+            const stateStr = await this.redisClient.get(key);
+            if (!stateStr) {
+                await this.redisClient.unwatch();
+                this.logger.error(`Game session not found: ${gameSessionId}`);
+                return { status: 'error', message: 'Game session not found' };
+            }
+            const state = JSON.parse(stateStr);
+            if (state.currentTurn !== userId) {
+                await this.redisClient.unwatch();
+                this.logger.error(`User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`);
+                return { status: 'error', message: 'Not your turn' };
+            }
+            this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
+            const matchedPlayer = await this.gameService.guessPlayer(guessName);
+            this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
+            const isCorrect = !!matchedPlayer;
+            if (isCorrect) {
+                if (state.guessedPlayers.includes(matchedPlayer.name)) {
+                    await this.redisClient.unwatch();
+                    this.logger.error(`Player ${matchedPlayer.name} already guessed this round by user ${userId}`);
+                    return { status: 'error', message: 'Player already guessed this round' };
+                }
+                state.guessedPlayers.push(matchedPlayer.name);
+                state.scores[userId] += 1;
+            }
+            else {
+                state.strikes[userId] += 1;
+            }
+            const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
+            state.currentTurn = otherPlayer;
+            this.logger.log(`Executing Redis transaction to update state`);
+            const multi = this.redisClient.multi();
+            multi.set(key, JSON.stringify(state));
+            const results = await multi.exec();
+            if (!results) {
+                this.logger.error(`Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`);
+                return { status: 'error', message: 'Concurrent modification, try again' };
+            }
+            this.logger.log(`Redis transaction successful for gameSessionId: ${gameSessionId}`);
+            const updatePayload = {
+                state,
+                lastGuess: {
+                    user: userId,
+                    guess: guessName,
+                    correct: isCorrect,
+                    matchedName: isCorrect ? matchedPlayer.name : null
+                }
+            };
+            this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
+            this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+            return { status: 'success', isCorrect, matchedPlayer };
         }
-        else {
-            state.strikes[userId] += 1;
+        catch (error) {
+            this.logger.error(`Exception in handleSubmitGuess: ${error.message}`, error.stack);
+            await this.redisClient.unwatch().catch(() => { });
+            return { status: 'error', message: 'Internal server error' };
         }
-        const otherPlayer = state.players.find(p => p !== userId) || state.players[0];
-        state.currentTurn = otherPlayer;
-        const multi = this.redisClient.multi();
-        multi.set(key, JSON.stringify(state));
-        const results = await multi.exec();
-        if (!results) {
-            return { status: 'error', message: 'Concurrent modification, try again' };
-        }
-        this.server.to(gameSessionId).emit('gameStateUpdated', { state, lastGuess: { user: userId, guess: guessName, correct: isCorrect, matchedName: isCorrect ? matchedPlayer.name : null } });
-        return { status: 'success', isCorrect, matchedPlayer };
     }
 };
 exports.GameGateway = GameGateway;
@@ -156,6 +198,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleJoinPrivateRoom", null);
 __decorate([
+    (0, websockets_1.SubscribeMessage)('joinGameRoom'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('gameSessionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleJoinGameRoom", null);
+__decorate([
     (0, websockets_1.SubscribeMessage)('submitGuess'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)()),
@@ -163,7 +213,7 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleSubmitGuess", null);
-exports.GameGateway = GameGateway = __decorate([
+exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
     (0, websockets_1.WebSocketGateway)({ cors: { origin: '*' } }),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         matchmaking_service_1.MatchmakingService,

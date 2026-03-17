@@ -49,12 +49,13 @@ export class MatchmakingService {
 
         const gameSessionId = randomUUID();
         
-        await this.initializeGameState(gameSessionId, p1.userId, p2.userId);
+        const gameState = await this.initializeGameState(gameSessionId, p1.userId, p2.userId);
 
         this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
 
         this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
         this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
+        this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
 
         this.logger.log(`Match created: ${gameSessionId} [${p1.userId} vs ${p2.userId}]`);
       } else {
@@ -102,12 +103,13 @@ export class MatchmakingService {
     // Remove the room key to prevent others from joining
     await this.redisClient.del(`private_room:${uppercaseCode}`);
 
-    await this.initializeGameState(gameSessionId, host.userId, userId);
+    const gameState = await this.initializeGameState(gameSessionId, host.userId, userId);
 
     if (this.server) {
         this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
         this.server.to(host.socketId).emit('matchFound', { gameSessionId });
         this.server.to(socketId).emit('matchFound', { gameSessionId });
+        this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
     }
 
     this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
@@ -124,5 +126,6 @@ export class MatchmakingService {
       currentQuestion: "Name a football player who played in 2026",
     };
     await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
+    return gameState;
   }
 }
