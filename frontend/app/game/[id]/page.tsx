@@ -81,6 +81,8 @@ export default function GamePage() {
   const [turnSecondsLeft, setTurnSecondsLeft] = useState(10);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState<number>(0);
+  const guessInputRef = useRef<HTMLInputElement | null>(null);
+  const [showMatchOverUI, setShowMatchOverUI] = useState(false);
 
   const toastTimer = useRef<number | null>(null);
   const showToast = (message: string) => {
@@ -173,8 +175,6 @@ export default function GamePage() {
     [gameState?.players],
   );
 
-  const me = user ?? null;
-
   const [leftPlayerId, rightPlayerId] = useMemo(() => {
     if (userId === undefined) return [player1Id, player2Id] as const;
     if (player1Id === undefined && player2Id === undefined)
@@ -191,6 +191,15 @@ export default function GamePage() {
   const currentTurnId = gameState?.currentTurn;
   const isMyTurn = userId !== undefined && currentTurnId === userId;
   const isMatchOver = gameState?.status === "match_completed";
+
+  useEffect(() => {
+    if (!isMatchOver) {
+      setShowMatchOverUI(false);
+      return;
+    }
+    const id = window.setTimeout(() => setShowMatchOverUI(true), 350);
+    return () => window.clearTimeout(id);
+  }, [isMatchOver]);
 
   const leftIsActive =
     gameState?.currentTurn !== undefined && gameState?.currentTurn !== null
@@ -210,7 +219,61 @@ export default function GamePage() {
     if (w && typeof w === "object") return toId((w as Player)?.id);
     return undefined;
   }, [gameState?.winner]);
-  const didIWin = userId !== undefined && winnerId !== undefined && userId === winnerId;
+
+  const normalizedRoundHistory = useMemo(() => {
+    const history = Array.isArray(gameState?.roundHistory)
+      ? gameState?.roundHistory
+      : [];
+    const byRound = new Map<number, NonNullable<GameState["roundHistory"]>[number]>();
+    for (const h of history) {
+      if (!h || typeof h.round !== "number") continue;
+      byRound.set(h.round, h);
+    }
+
+    if (isMatchOver) {
+      const r = typeof gameState?.currentRound === "number" ? gameState.currentRound : undefined;
+      const strikes = gameState?.strikes;
+      const scores = gameState?.scores;
+      const hasRound = r !== undefined && byRound.has(r);
+      const canInfer = r !== undefined && !hasRound && strikes !== undefined && scores !== undefined;
+
+      if (canInfer) {
+        const p1 = player1Id;
+        const p2 = player2Id;
+        const p1Key = coerceString(p1);
+        const p2Key = coerceString(p2);
+        const p1Strikes = getByKeyOrIndex(strikes as any, p1Key, 0);
+        const p2Strikes = getByKeyOrIndex(strikes as any, p2Key, 1);
+        const roundWinner =
+          p1Strikes >= 3 ? p2Key : p2Strikes >= 3 ? p1Key : coerceString(winnerId);
+
+        const leftPts = getByKeyOrIndex(scores as any, leftId, 0);
+        const rightPts = getByKeyOrIndex(scores as any, rightId, 1);
+
+        byRound.set(r, {
+          round: r,
+          winner: roundWinner,
+          scores: { [leftId]: leftPts, [rightId]: rightPts },
+        });
+      }
+    }
+
+    return ([1, 2, 3] as const).map((round) => ({
+      round,
+      entry: byRound.get(round),
+    }));
+  }, [
+    gameState?.currentRound,
+    gameState?.roundHistory,
+    gameState?.scores,
+    gameState?.strikes,
+    isMatchOver,
+    leftId,
+    player1Id,
+    player2Id,
+    rightId,
+    winnerId,
+  ]);
 
   useEffect(() => {
     // Visual 10-second countdown; resets immediately on turn changes.
@@ -225,6 +288,13 @@ export default function GamePage() {
 
     return () => window.clearInterval(id);
   }, [gameState?.currentTurn, isMatchOver]);
+
+  useEffect(() => {
+    if (isMatchOver) return;
+    if (!isMyTurn) return;
+    const id = window.setTimeout(() => guessInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [gameState?.currentTurn, isMatchOver, isMyTurn]);
 
   useEffect(() => {
     if (!isTransitioning) return;
@@ -314,7 +384,7 @@ export default function GamePage() {
     }, [router, seconds]);
 
     return (
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/50 p-8 backdrop-blur-xl lg:col-span-3">
+      <section className="relative w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-black/60 p-6 backdrop-blur-xl sm:p-8">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-44 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="absolute -bottom-52 left-1/3 h-[520px] w-[520px] rounded-full bg-fuchsia-500/10 blur-3xl" />
@@ -322,58 +392,44 @@ export default function GamePage() {
         </div>
 
         <div className="relative mx-auto max-w-5xl text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200">
-            <Crown className="h-4 w-4" />
-            MATCH COMPLETED
-          </div>
-
-          <h2 className="mt-6 text-5xl font-extrabold tracking-tight text-white sm:text-6xl">
+          <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
             {winnerLabel || "Winner"}
           </h2>
 
-          <p
-            className={`mt-4 text-2xl font-extrabold sm:text-3xl ${
-              didIWin ? "text-emerald-300" : "text-red-300"
-            }`}
-          >
-            {didIWin ? "YOU WON THE MATCH!" : "YOU LOST!"}
-          </p>
-
-          <p className="mt-4 text-sm text-zinc-300">
-            Final (BO3):{" "}
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-sm text-zinc-200">
+            <Crown className="h-4 w-4 text-amber-200" />
+            <span className="font-semibold text-white">Final (BO3)</span>
+            <span className="text-zinc-400">•</span>
             <span className="font-semibold text-white">
               {leftOverall} - {rightOverall}
             </span>
-          </p>
+          </div>
 
-          <div className="mt-8 overflow-x-auto">
-            <div className="mx-auto flex w-fit gap-3">
-              {([1, 2, 3] as const).map((round) => {
-                const entry = gameState?.roundHistory?.find((r) => r?.round === round);
-                const winnerId = entry?.winner;
+          <div className="mt-7 overflow-x-auto">
+            <div className="mx-auto flex w-fit gap-4 px-1">
+              {normalizedRoundHistory.map(({ round, entry }) => {
+                const w = entry?.winner;
                 const winnerName =
-                  winnerId !== undefined && winnerId !== null
-                    ? playerNames[coerceString(winnerId)] ?? String(winnerId)
+                  w !== undefined && w !== null
+                    ? playerNames[coerceString(w)] ?? String(w)
                     : "—";
-                const leftPts = entry?.scores ? (entry.scores[leftId] ?? 0) : 0;
-                const rightPts = entry?.scores ? (entry.scores[rightId] ?? 0) : 0;
+                const leftPts = entry?.scores ? entry.scores[leftId] ?? 0 : 0;
+                const rightPts = entry?.scores ? entry.scores[rightId] ?? 0 : 0;
 
                 return (
                   <div
                     key={round}
-                    className="min-w-[200px] rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left"
+                    className="min-w-[280px] rounded-3xl border border-white/10 bg-white/[0.06] p-6 text-left sm:min-w-[320px]"
                   >
-                    <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                    <p className="text-xs font-semibold tracking-[0.22em] text-zinc-400">
                       ROUND {round}
                     </p>
-                    <p className="mt-2 text-base font-semibold text-white">
-                      Winner: <span className="text-zinc-100">{winnerName}</span>
+                    <p className="mt-4 text-4xl font-extrabold tracking-tight text-white">
+                      {leftPts} <span className="text-zinc-500">-</span>{" "}
+                      {rightPts}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-300">
-                      Score:{" "}
-                      <span className="font-semibold text-white">
-                        {leftPts} - {rightPts}
-                      </span>
+                    <p className="mt-3 text-sm font-semibold text-zinc-200">
+                      Winner: <span className="text-white">{winnerName}</span>
                     </p>
                   </div>
                 );
@@ -381,31 +437,17 @@ export default function GamePage() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left">
-              <p className="text-xs font-semibold tracking-wide text-zinc-400">
-                YOU
-              </p>
-              <p className="mt-1 text-lg font-semibold text-white">
-                {me?.username ?? me?.email ?? (me as any)?.id ?? "Player"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left">
-              <p className="text-xs font-semibold tracking-wide text-zinc-400">
-                RETURNING TO LOBBY
-              </p>
-              <p className="mt-1 text-lg font-semibold text-white">
-                {seconds}s
-              </p>
-            </div>
-          </div>
-
           <button
             onClick={() => router.replace("/lobby")}
-            className="mt-8 w-full rounded-3xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-6 py-4 text-base font-semibold text-black hover:brightness-110 transition"
+            className="mt-7 w-full rounded-3xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-6 py-4 text-base font-semibold text-black transition hover:brightness-110"
           >
             Return to Lobby Now
           </button>
+
+          <p className="mt-4 text-xs text-zinc-400">
+            Returning automatically in{" "}
+            <span className="font-semibold text-zinc-200">{seconds}s</span>
+          </p>
         </div>
       </section>
     );
@@ -472,16 +514,18 @@ export default function GamePage() {
           </div>
         )}
 
-        <main className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.25fr_1fr]">
+        <main className="relative mt-8 grid gap-6 lg:grid-cols-[1fr_1.25fr_1fr]">
           <section
             className={`relative overflow-hidden rounded-3xl border bg-white/[0.06] p-6 backdrop-blur-xl transition ${
-              leftIsActive
+              !isMatchOver && leftIsActive
                 ? "border-emerald-400/40 ring-4 ring-emerald-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                 : "border-white/10"
             } ${
-              !leftIsActive && (gameState?.currentTurn ?? null) !== null
-                ? "opacity-50"
-                : ""
+              isMatchOver
+                ? "opacity-35 pointer-events-none"
+                : !leftIsActive && (gameState?.currentTurn ?? null) !== null
+                  ? "opacity-50"
+                  : ""
             }`}
           >
             <div className="absolute inset-0 pointer-events-none opacity-0 [mask-image:radial-gradient(circle_at_30%_20%,black,transparent_70%)] lg:opacity-100">
@@ -563,7 +607,7 @@ export default function GamePage() {
           </section>
 
           {isMatchOver ? (
-            <GameOverCenterStage />
+            <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl opacity-35 pointer-events-none" />
           ) : (
             <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
               <div className="flex items-center justify-between gap-3">
@@ -628,6 +672,7 @@ export default function GamePage() {
                         YOUR GUESS
                       </label>
                       <input
+                        ref={guessInputRef}
                         value={guess}
                         onChange={(e) => setGuess(e.target.value)}
                         onKeyDown={(e) => {
@@ -708,13 +753,15 @@ export default function GamePage() {
 
           <section
             className={`relative overflow-hidden rounded-3xl border bg-white/[0.06] p-6 backdrop-blur-xl transition ${
-              rightIsActive
+              !isMatchOver && rightIsActive
                 ? "border-emerald-400/40 ring-4 ring-emerald-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                 : "border-white/10"
             } ${
-              !rightIsActive && (gameState?.currentTurn ?? null) !== null
-                ? "opacity-50"
-                : ""
+              isMatchOver
+                ? "opacity-35 pointer-events-none"
+                : !rightIsActive && (gameState?.currentTurn ?? null) !== null
+                  ? "opacity-50"
+                  : ""
             }`}
           >
             <div className="absolute inset-0 pointer-events-none opacity-0 [mask-image:radial-gradient(circle_at_70%_20%,black,transparent_70%)] lg:opacity-100">
@@ -796,6 +843,15 @@ export default function GamePage() {
               </div>
             </div>
           </section>
+
+          {showMatchOverUI && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center px-3 sm:px-6">
+              <div className="absolute inset-0 rounded-3xl bg-black/55 backdrop-blur-[2px]" />
+              <div className="relative z-10 w-full">
+                <GameOverCenterStage />
+              </div>
+            </div>
+          )}
         </main>
 
         {!gameState && (
