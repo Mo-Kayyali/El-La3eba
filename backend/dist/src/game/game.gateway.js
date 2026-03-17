@@ -94,6 +94,15 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (!gameSessionId)
             return { status: 'error', message: 'gameSessionId required' };
         client.join(gameSessionId);
+        try {
+            const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+            if (stateStr) {
+                client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
+            }
+        }
+        catch (err) {
+            this.logger.error(`Error fetching state for reconnecting client: ${err.message}`);
+        }
         return { status: 'success', message: `Joined room ${gameSessionId}` };
     }
     async handleSubmitGuess(client, payload) {
@@ -160,7 +169,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
                     isMatchOver = true;
                     state.status = 'match_completed';
-                    state.winner = state.overallScores[state.players[0]] > state.overallScores[state.players[1]] ? state.players[0] : state.players[1];
+                    state.winner =
+                        state.overallScores[state.players[0]] >
+                            state.overallScores[state.players[1]]
+                            ? state.players[0]
+                            : state.players[1];
                 }
                 else {
                     state.currentRound += 1;
@@ -168,12 +181,13 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
                     state.guessedPlayers = [];
                     const questions = [
-                        "Name a football player who played in 2026",
-                        "Name a player who has won the Champions League",
-                        "Name a player who has played in the Premier League",
-                        "Name a player who has won the World Cup"
+                        'Name a football player who played in 2026',
+                        'Name a player who has won the Champions League',
+                        'Name a player who has played in the Premier League',
+                        'Name a player who has won the World Cup',
                     ];
-                    state.currentQuestion = questions[(state.currentRound - 1) % questions.length];
+                    state.currentQuestion =
+                        questions[(state.currentRound - 1) % questions.length];
                     state.currentTurn = userId;
                 }
             }

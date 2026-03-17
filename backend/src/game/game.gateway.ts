@@ -122,7 +122,22 @@ export class GameGateway
     if (!gameSessionId)
       return { status: 'error', message: 'gameSessionId required' };
 
+    // 1. Put the new socket into the room
     client.join(gameSessionId);
+
+    // 2. NEW: Fetch the current state from Redis and give it to the client immediately!
+    try {
+      const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+      if (stateStr) {
+        // Send it ONLY to this specific client who just joined/reconnected
+        client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
+      }
+    } catch (err) {
+      this.logger.error(
+        `Error fetching state for reconnecting client: ${err.message}`,
+      );
+    }
+
     return { status: 'success', message: `Joined room ${gameSessionId}` };
   }
 
@@ -170,7 +185,9 @@ export class GameGateway
 
       if (state.status === 'match_completed') {
         await this.redisClient.unwatch();
-        this.logger.error(`Attempt to guess in completed match ${gameSessionId}`);
+        this.logger.error(
+          `Attempt to guess in completed match ${gameSessionId}`,
+        );
         return { status: 'error', message: 'Match is already completed' };
       }
 
@@ -210,32 +227,38 @@ export class GameGateway
 
       if (state.strikes[userId] >= 3) {
         isRoundOver = true;
-        const otherPlayer = state.players.find((p: string) => p !== userId) || state.players[0];
-        
+        const otherPlayer =
+          state.players.find((p: string) => p !== userId) || state.players[0];
+
         // Update overall scores
         state.overallScores[otherPlayer] += 1;
 
         if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
-            isMatchOver = true;
-            state.status = 'match_completed';
-            state.winner = state.overallScores[state.players[0]] > state.overallScores[state.players[1]] ? state.players[0] : state.players[1];
+          isMatchOver = true;
+          state.status = 'match_completed';
+          state.winner =
+            state.overallScores[state.players[0]] >
+            state.overallScores[state.players[1]]
+              ? state.players[0]
+              : state.players[1];
         } else {
-            // Match continues to next round
-            state.currentRound += 1;
-            state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
-            state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-            state.guessedPlayers = [];
-            
-            const questions = [
-                "Name a football player who played in 2026",
-                "Name a player who has won the Champions League",
-                "Name a player who has played in the Premier League",
-                "Name a player who has won the World Cup"
-            ];
-            state.currentQuestion = questions[(state.currentRound - 1) % questions.length];
-            
-            // Loser guesses first in the next round, so we don't change currentTurn (it's already userId)
-            state.currentTurn = userId;
+          // Match continues to next round
+          state.currentRound += 1;
+          state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+          state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
+          state.guessedPlayers = [];
+
+          const questions = [
+            'Name a football player who played in 2026',
+            'Name a player who has won the Champions League',
+            'Name a player who has played in the Premier League',
+            'Name a player who has won the World Cup',
+          ];
+          state.currentQuestion =
+            questions[(state.currentRound - 1) % questions.length];
+
+          // Loser guesses first in the next round, so we don't change currentTurn (it's already userId)
+          state.currentTurn = userId;
         }
       } else {
         const otherPlayer =
@@ -277,10 +300,14 @@ export class GameGateway
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
         this.server.to(gameSessionId).emit('matchOver', updatePayload);
       } else if (isRoundOver) {
-        this.logger.log(`Broadcasting nextRoundStarted to room ${gameSessionId}`);
+        this.logger.log(
+          `Broadcasting nextRoundStarted to room ${gameSessionId}`,
+        );
         this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
       } else {
-        this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
+        this.logger.log(
+          `Broadcasting gameStateUpdated to room ${gameSessionId}`,
+        );
         this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
       }
 

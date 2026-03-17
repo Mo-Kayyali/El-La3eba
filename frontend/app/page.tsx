@@ -63,7 +63,13 @@ export default function Home() {
       setSuccess("Account created. Please log in.");
     } catch (err) {
       const fallback = "Something went wrong. Please try again.";
-      const ax = err as AxiosError<any>;
+      type ApiErrorResponse = {
+        message?: string | string[];
+        error?: string;
+        [key: string]: unknown;
+      };
+
+      const ax = err as AxiosError<ApiErrorResponse>;
       const msg =
         ax.response?.data?.message ??
         ax.response?.data?.error ??
