@@ -50,3 +50,16 @@ Do NOT build the game logic yet. Focus strictly on the following:
 3. **Gateway Setup:** Create a `GameGateway` (in a new `Game` module).
 4. **Connection Handling:** Implement `handleConnection` and `handleDisconnect`. When a user connects, log their Socket ID.
 5. **JWT WebSocket Auth:** Ensure the WebSocket connection is secured. The client should pass their JWT token, and the gateway should verify it before allowing the connection.
+
+## 6. Current Mission: Phase 3 (Matchmaking & Redis Queue)
+
+1. **Matchmaking Service:** Create a `MatchmakingService` inside the `GameModule` that utilizes Redis.
+2. **Queue Logic (Random Match):**
+   - Create a WebSocket event listener for `joinQueue`.
+   - When a user emits `joinQueue`, push their `userId` and `socketId` into a Redis list (e.g., `matchmaking_queue`).
+   - Implement an interval check that inspects this queue every 2 seconds.
+3. **Session Creation:**
+   - If the queue has 2 or more players, pop two players from the queue.
+   - Generate a unique `gameSessionId` (UUID).
+   - Emit a `matchFound` event to both players' specific Socket IDs containing the `gameSessionId`.
+4. **Private Matches:** Implement `createPrivateRoom` (generates a random 6-character Redis key) and `joinPrivateRoom` (accepts the code, verifies it in Redis, and emits `matchFound`).

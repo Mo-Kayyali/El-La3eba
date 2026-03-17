@@ -10,13 +10,15 @@ exports.GameModule = void 0;
 const common_1 = require("@nestjs/common");
 const game_gateway_1 = require("./game.gateway");
 const auth_module_1 = require("../auth/auth.module");
+const redis_module_1 = require("../redis/redis.module");
+const matchmaking_service_1 = require("./matchmaking.service");
 let GameModule = class GameModule {
 };
 exports.GameModule = GameModule;
 exports.GameModule = GameModule = __decorate([
     (0, common_1.Module)({
-        imports: [auth_module_1.AuthModule],
-        providers: [game_gateway_1.GameGateway],
+        imports: [auth_module_1.AuthModule, redis_module_1.RedisModule],
+        providers: [game_gateway_1.GameGateway, matchmaking_service_1.MatchmakingService],
     })
 ], GameModule);
 //# sourceMappingURL=game.module.js.map

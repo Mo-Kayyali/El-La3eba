@@ -3,16 +3,28 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { MatchmakingService } from './matchmaking.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly matchmakingService: MatchmakingService,
+  ) {}
+
+  afterInit(server: Server) {
+    this.matchmakingService.setServer(server);
+  }
 
   async handleConnection(client: Socket) {
     try {
@@ -40,5 +52,41 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (userId) {
+      this.matchmakingService.leaveQueue(userId);
+    }
+  }
+
+  @SubscribeMessage('joinQueue')
+  async handleJoinQueue(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    await this.matchmakingService.joinQueue(userId, client.id);
+    return { status: 'queued' };
+  }
+
+  @SubscribeMessage('createPrivateRoom')
+  async handleCreatePrivateRoom(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id);
+    return { status: 'success', roomCode };
+  }
+
+  @SubscribeMessage('joinPrivateRoom')
+  async handleJoinPrivateRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomCode') roomCode: string,
+  ) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    if (!roomCode) return { status: 'error', message: 'Room code required' };
+
+    const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id);
+    return result;
   }
 }
