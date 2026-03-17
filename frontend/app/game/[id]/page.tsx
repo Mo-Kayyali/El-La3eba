@@ -41,7 +41,7 @@ function coerceString(v: unknown) {
 function getByKeyOrIndex(
   value: Record<string, number> | number[] | undefined,
   key: string | undefined,
-  index: number
+  index: number,
 ) {
   if (!value) return 0;
   if (Array.isArray(value)) return value[index] ?? 0;
@@ -65,6 +65,7 @@ export default function GamePage() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [guess, setGuess] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [turnSecondsLeft, setTurnSecondsLeft] = useState(10);
 
   const toastTimer = useRef<number | null>(null);
   const showToast = (message: string) => {
@@ -96,13 +97,21 @@ export default function GamePage() {
     // Join room as soon as the socket is connected (covers route transitions + hard refresh).
     socket.emit("joinGameRoom", { gameSessionId });
 
-    const onGameStateUpdated = (payload: GameState) => {
-      setGameState(payload ?? null);
+    const onGameStateUpdated = (payload: any) => {
+      // Extract the nested state if it exists, otherwise use the raw payload
+      const actualState = payload?.state || payload;
+      setGameState(actualState ?? null);
+
+      // Optional: You can also use payload.lastGuess here to show a toast notification!
+      // if (payload?.lastGuess) {
+      //   console.log("Last guess was:", payload.lastGuess);
+      // }
     };
 
     const onNextRoundStarted = (payload: GameState) => {
-      setGameState(payload ?? null);
-      const round = payload?.currentRound;
+      const actualState = (payload as any)?.state || payload;
+      setGameState(actualState ?? null);
+      const round = (actualState as any)?.currentRound;
       showToast(`Round ${typeof round === "number" ? round : "?"} Started!`);
     };
 
@@ -140,14 +149,34 @@ export default function GamePage() {
   const isMyTurn = userId !== undefined && currentTurnId === userId;
   const isMatchOver = gameState?.status === "match_completed";
 
+  useEffect(() => {
+    // Visual 10-second countdown; resets immediately on turn changes.
+    setTurnSecondsLeft(10);
+    if (isMatchOver) return;
+    if (gameState?.currentTurn === null || gameState?.currentTurn === undefined)
+      return;
+
+    const id = window.setInterval(() => {
+      setTurnSecondsLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [gameState?.currentTurn, isMatchOver]);
+
   const currentRound = gameState?.currentRound ?? 1;
   const question = gameState?.currentQuestion ?? "Waiting for question...";
   const guessedPlayers = gameState?.guessedPlayers ?? [];
 
   const leftRoundScore = getByKeyOrIndex(gameState?.scores, leftId, 0);
   const rightRoundScore = getByKeyOrIndex(gameState?.scores, rightId, 1);
-  const leftStrikes = Math.min(3, Math.max(0, getByKeyOrIndex(gameState?.strikes, leftId, 0)));
-  const rightStrikes = Math.min(3, Math.max(0, getByKeyOrIndex(gameState?.strikes, rightId, 1)));
+  const leftStrikes = Math.min(
+    3,
+    Math.max(0, getByKeyOrIndex(gameState?.strikes, leftId, 0)),
+  );
+  const rightStrikes = Math.min(
+    3,
+    Math.max(0, getByKeyOrIndex(gameState?.strikes, rightId, 1)),
+  );
   const leftOverall = getByKeyOrIndex(gameState?.overallScores, leftId, 0);
   const rightOverall = getByKeyOrIndex(gameState?.overallScores, rightId, 1);
 
@@ -159,17 +188,25 @@ export default function GamePage() {
     return p?.username ?? p?.email ?? coerceString(p?.id) ?? "Winner";
   }, [gameState?.winner]);
 
-  const canSubmit = !!socket?.connected && !!gameSessionId && !isMatchOver && isMyTurn;
+  const canSubmit =
+    !!socket?.connected && !!gameSessionId && !isMatchOver && isMyTurn;
 
   const submitGuess = () => {
     const trimmed = guess.trim();
     if (!trimmed || !canSubmit) return;
-    socket?.emit("submitGuess", { gameSessionId, guess: trimmed });
+    socket?.emit("submitGuess", { gameSessionId, guessName: trimmed });
     setGuess("");
   };
 
   const displayName = (p: Player | null, fallback: string) =>
-    p?.username ?? p?.email ?? (p?.id !== undefined ? `Player ${String(p.id)}` : fallback);
+    p?.username ??
+    p?.email ??
+    (p?.id !== undefined ? `Player ${String(p.id)}` : fallback);
+
+  const timerLabel = useMemo(() => {
+    const s = Math.max(0, Math.min(10, turnSecondsLeft));
+    return `0:${String(s).padStart(2, "0")} left`;
+  }, [turnSecondsLeft]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05060a] text-zinc-100">
@@ -184,7 +221,9 @@ export default function GamePage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs tracking-[0.28em] text-zinc-400">EL-LA3EBA</p>
-            <h1 className="mt-2 text-2xl font-semibold text-white">Live Match</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-white">
+              Live Match
+            </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-300">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5">
                 <Swords className="h-4 w-4 text-cyan-200/90" />
@@ -194,7 +233,10 @@ export default function GamePage() {
                 </span>
               </span>
               <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5">
-                Round <span className="ml-2 font-semibold text-white">{currentRound}</span>
+                Round{" "}
+                <span className="ml-2 font-semibold text-white">
+                  {currentRound}
+                </span>
               </span>
               <span
                 className={`inline-flex items-center rounded-full border px-3 py-1.5 ${
@@ -242,7 +284,9 @@ export default function GamePage() {
             <div className="relative">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-400">PLAYER 1</p>
+                  <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                    PLAYER 1
+                  </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">
                     {displayName(leftPlayer, "Waiting...")}
                     {toId(leftPlayer?.id) === userId && (
@@ -252,17 +296,26 @@ export default function GamePage() {
                     )}
                   </h2>
                   <p className="mt-2 text-sm text-zinc-300">
-                    Round points: <span className="font-semibold text-white">{leftRoundScore}</span>
+                    Round points:{" "}
+                    <span className="font-semibold text-white">
+                      {leftRoundScore}
+                    </span>
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-center">
-                  <p className="text-[10px] tracking-[0.22em] text-zinc-400">MATCH</p>
-                  <p className="mt-0.5 text-lg font-semibold text-white">{leftOverall}</p>
+                  <p className="text-[10px] tracking-[0.22em] text-zinc-400">
+                    MATCH
+                  </p>
+                  <p className="mt-0.5 text-lg font-semibold text-white">
+                    {leftOverall}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-5">
-                <p className="text-xs font-semibold tracking-wide text-zinc-400">STRIKES</p>
+                <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                  STRIKES
+                </p>
                 <div className="mt-2 flex items-center gap-2">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <span
@@ -273,7 +326,11 @@ export default function GamePage() {
                           : "border-white/10 bg-white/[0.04] text-zinc-500"
                       }`}
                     >
-                      <X className="h-4 w-4" />
+                      <X
+                        className="h-4 w-4"
+                        strokeWidth={2.5}
+                        fill={i < leftStrikes ? "currentColor" : "none"}
+                      />
                     </span>
                   ))}
                 </div>
@@ -282,7 +339,9 @@ export default function GamePage() {
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-3 text-sm">
                 <span className="text-zinc-400">Status:</span>{" "}
                 <span className="font-semibold text-white">
-                  {gameState?.currentTurn === toId(leftPlayer?.id) ? "Your side to play" : "Waiting"}
+                  {gameState?.currentTurn === toId(leftPlayer?.id)
+                    ? "Your side to play"
+                    : "Waiting"}
                 </span>
               </div>
             </div>
@@ -291,8 +350,12 @@ export default function GamePage() {
           <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-400">CURRENT QUESTION</p>
-                <h3 className="mt-2 text-xl font-semibold text-white leading-snug">{question}</h3>
+                <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                  CURRENT QUESTION
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-white leading-snug">
+                  {question}
+                </h3>
               </div>
               <div
                 className={`shrink-0 rounded-2xl border px-3 py-2 text-sm font-semibold ${
@@ -303,9 +366,28 @@ export default function GamePage() {
                       : "border-white/10 bg-white/[0.06] text-zinc-300"
                 }`}
               >
-                {isMatchOver ? "Match finished" : isMyTurn ? "Your turn" : "Opponent’s turn"}
+                {isMatchOver
+                  ? "Match finished"
+                  : isMyTurn
+                    ? "Your turn"
+                    : "Opponent’s turn"}
               </div>
             </div>
+
+            {!isMatchOver && (
+              <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                <p className="text-xs font-semibold tracking-[0.22em] text-zinc-400">
+                  TURN TIMER
+                </p>
+                <p
+                  className={`text-lg font-semibold ${
+                    turnSecondsLeft <= 3 ? "text-red-200" : "text-white"
+                  }`}
+                >
+                  {timerLabel}
+                </p>
+              </div>
+            )}
 
             {!isMatchOver ? (
               <div className="mt-6">
@@ -321,7 +403,11 @@ export default function GamePage() {
                         if (e.key === "Enter") submitGuess();
                       }}
                       disabled={!canSubmit}
-                      placeholder={canSubmit ? "Type a player name..." : "Waiting for your turn..."}
+                      placeholder={
+                        canSubmit
+                          ? "Type a player name..."
+                          : "Waiting for your turn..."
+                      }
                       className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
@@ -346,9 +432,14 @@ export default function GamePage() {
 
                 <div className="mt-5 rounded-3xl border border-white/10 bg-black/30 p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-white">Activity Feed</p>
+                    <p className="text-sm font-semibold text-white">
+                      Activity Feed
+                    </p>
                     <span className="text-xs text-zinc-400">
-                      Taken: <span className="font-semibold text-zinc-200">{guessedPlayers.length}</span>
+                      Taken:{" "}
+                      <span className="font-semibold text-zinc-200">
+                        {guessedPlayers.length}
+                      </span>
                     </span>
                   </div>
 
@@ -375,8 +466,9 @@ export default function GamePage() {
                     Waiting for{" "}
                     <span className="font-semibold text-white">
                       {displayName(
-                        players.find((p) => toId(p?.id) === currentTurnId) ?? null,
-                        "opponent"
+                        players.find((p) => toId(p?.id) === currentTurnId) ??
+                          null,
+                        "opponent",
                       )}
                     </span>{" "}
                     to play.
@@ -396,7 +488,9 @@ export default function GamePage() {
                       MATCH COMPLETED
                     </div>
 
-                    <h2 className="mt-5 text-3xl font-semibold text-white">GAME OVER</h2>
+                    <h2 className="mt-5 text-3xl font-semibold text-white">
+                      GAME OVER
+                    </h2>
                     <p className="mt-2 text-sm text-zinc-300">
                       Winner:{" "}
                       <span className="font-semibold text-white">
@@ -406,7 +500,9 @@ export default function GamePage() {
 
                     <div className="mt-6 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                        <p className="text-xs font-semibold tracking-wide text-zinc-400">YOU</p>
+                        <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                          YOU
+                        </p>
                         <p className="mt-1 text-lg font-semibold text-white">
                           {displayName(me as Player | null, "Player")}
                         </p>
@@ -447,7 +543,9 @@ export default function GamePage() {
             <div className="relative">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-400">PLAYER 2</p>
+                  <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                    PLAYER 2
+                  </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">
                     {displayName(rightPlayer, "Waiting...")}
                     {toId(rightPlayer?.id) === userId && (
@@ -458,17 +556,25 @@ export default function GamePage() {
                   </h2>
                   <p className="mt-2 text-sm text-zinc-300">
                     Round points:{" "}
-                    <span className="font-semibold text-white">{rightRoundScore}</span>
+                    <span className="font-semibold text-white">
+                      {rightRoundScore}
+                    </span>
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-center">
-                  <p className="text-[10px] tracking-[0.22em] text-zinc-400">MATCH</p>
-                  <p className="mt-0.5 text-lg font-semibold text-white">{rightOverall}</p>
+                  <p className="text-[10px] tracking-[0.22em] text-zinc-400">
+                    MATCH
+                  </p>
+                  <p className="mt-0.5 text-lg font-semibold text-white">
+                    {rightOverall}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-5">
-                <p className="text-xs font-semibold tracking-wide text-zinc-400">STRIKES</p>
+                <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                  STRIKES
+                </p>
                 <div className="mt-2 flex items-center gap-2">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <span
@@ -479,7 +585,11 @@ export default function GamePage() {
                           : "border-white/10 bg-white/[0.04] text-zinc-500"
                       }`}
                     >
-                      <X className="h-4 w-4" />
+                      <X
+                        className="h-4 w-4"
+                        strokeWidth={2.5}
+                        fill={i < rightStrikes ? "currentColor" : "none"}
+                      />
                     </span>
                   ))}
                 </div>
@@ -488,7 +598,9 @@ export default function GamePage() {
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-3 text-sm">
                 <span className="text-zinc-400">Status:</span>{" "}
                 <span className="font-semibold text-white">
-                  {gameState?.currentTurn === toId(rightPlayer?.id) ? "Your side to play" : "Waiting"}
+                  {gameState?.currentTurn === toId(rightPlayer?.id)
+                    ? "Your side to play"
+                    : "Waiting"}
                 </span>
               </div>
             </div>
@@ -497,12 +609,11 @@ export default function GamePage() {
 
         {!gameState && (
           <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.05] p-6 text-sm text-zinc-300">
-            Loading game state… If this takes too long, make sure the socket is connected and the
-            server is emitting `gameStateUpdated`.
+            Loading game state… If this takes too long, make sure the socket is
+            connected and the server is emitting `gameStateUpdated`.
           </div>
         )}
       </div>
     </div>
   );
 }
-

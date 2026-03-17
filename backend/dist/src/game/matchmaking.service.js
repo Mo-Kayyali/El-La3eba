@@ -15,15 +15,20 @@ const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
 const redis_service_1 = require("../redis/redis.service");
 const crypto_1 = require("crypto");
+const game_questions_1 = require("./game.questions");
 let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     redisClient;
     logger = new common_1.Logger(MatchmakingService_1.name);
     server;
+    startTurnTimerFn;
     constructor(redisClient) {
         this.redisClient = redisClient;
     }
     setServer(server) {
         this.server = server;
+    }
+    setTurnTimerStarter(fn) {
+        this.startTurnTimerFn = fn;
     }
     async joinQueue(userId, socketId) {
         const queueData = JSON.stringify({ userId, socketId });
@@ -53,6 +58,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
                 this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
                 this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
                 this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+                this.startTurnTimerFn?.(gameSessionId);
                 this.logger.log(`Match created: ${gameSessionId} [${p1.userId} vs ${p2.userId}]`);
             }
             else {
@@ -96,6 +102,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             this.server.to(host.socketId).emit('matchFound', { gameSessionId });
             this.server.to(socketId).emit('matchFound', { gameSessionId });
             this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+            this.startTurnTimerFn?.(gameSessionId);
         }
         this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
         return { success: true, gameSessionId };
@@ -109,7 +116,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             currentRound: 1,
             strikes: { [player1Id]: 0, [player2Id]: 0 },
             guessedPlayers: [],
-            currentQuestion: "Name a football player who played in 2026",
+            currentQuestion: (0, game_questions_1.pickRandomFootballQuestion)(),
         };
         await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
         return gameState;

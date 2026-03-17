@@ -3,16 +3,22 @@ import { Interval } from '@nestjs/schedule';
 import { RedisService } from '../redis/redis.service';
 import { Server } from 'socket.io';
 import { randomUUID, randomBytes } from 'crypto';
+import { pickRandomFootballQuestion } from './game.questions';
 
 @Injectable()
 export class MatchmakingService {
   private readonly logger = new Logger(MatchmakingService.name);
   private server: Server;
+  private startTurnTimerFn?: (gameSessionId: string) => void;
 
   constructor(private readonly redisClient: RedisService) {}
 
   setServer(server: Server) {
     this.server = server;
+  }
+
+  setTurnTimerStarter(fn: (gameSessionId: string) => void) {
+    this.startTurnTimerFn = fn;
   }
 
   async joinQueue(userId: string, socketId: string) {
@@ -56,6 +62,7 @@ export class MatchmakingService {
         this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
         this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
         this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+        this.startTurnTimerFn?.(gameSessionId);
 
         this.logger.log(`Match created: ${gameSessionId} [${p1.userId} vs ${p2.userId}]`);
       } else {
@@ -110,6 +117,7 @@ export class MatchmakingService {
         this.server.to(host.socketId).emit('matchFound', { gameSessionId });
         this.server.to(socketId).emit('matchFound', { gameSessionId });
         this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+        this.startTurnTimerFn?.(gameSessionId);
     }
 
     this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
@@ -125,7 +133,7 @@ export class MatchmakingService {
       currentRound: 1,
       strikes: { [player1Id]: 0, [player2Id]: 0 },
       guessedPlayers: [],
-      currentQuestion: "Name a football player who played in 2026",
+      currentQuestion: pickRandomFootballQuestion(),
     };
     await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
     return gameState;

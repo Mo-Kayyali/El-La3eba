@@ -4,8 +4,10 @@ export declare class MatchmakingService {
     private readonly redisClient;
     private readonly logger;
     private server;
+    private startTurnTimerFn?;
     constructor(redisClient: RedisService);
     setServer(server: Server): void;
+    setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
     joinQueue(userId: string, socketId: string): Promise<void>;
     leaveQueue(userId: string): Promise<void>;
     handleMatchmakingInterval(): Promise<void>;
