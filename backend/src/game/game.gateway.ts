@@ -95,6 +95,16 @@ export class GameGateway
             state.players[0];
           roundWinner = otherPlayer;
 
+          // Record the round result snapshot for the Game Over history view
+          if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
+          if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+            state.roundHistory.push({
+              round: state.currentRound,
+              winner: roundWinner,
+              scores: { ...(state.scores ?? {}) },
+            });
+          }
+
           state.overallScores[otherPlayer] += 1;
 
           if (
@@ -172,8 +182,10 @@ export class GameGateway
           latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
           latest.guessedPlayers = [];
           latest.currentQuestion = pickRandomFootballQuestion();
-          // Loser starts next round (timedOutUserId is the loser)
-          latest.currentTurn = timedOutUserId;
+          // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
+          if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
+          else if (latest.currentRound === 3) latest.currentTurn = latest.players[0];
+          else latest.currentTurn = latest.players[0];
 
           const multi2 = this.redisClient.multi();
           multi2.set(key, JSON.stringify(latest));
@@ -254,7 +266,12 @@ export class GameGateway
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
-    await this.matchmakingService.joinQueue(userId, client.id);
+    const username =
+      client.data?.user?.username ||
+      client.data?.user?.name ||
+      client.data?.user?.email;
+
+    await this.matchmakingService.joinQueue(userId, client.id, username);
     return { status: 'queued' };
   }
 
@@ -263,9 +280,15 @@ export class GameGateway
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
+    const username =
+      client.data?.user?.username ||
+      client.data?.user?.name ||
+      client.data?.user?.email;
+
     const roomCode = await this.matchmakingService.createPrivateRoom(
       userId,
       client.id,
+      username,
     );
     return { status: 'success', roomCode };
   }
@@ -280,10 +303,16 @@ export class GameGateway
 
     if (!roomCode) return { status: 'error', message: 'Room code required' };
 
+    const username =
+      client.data?.user?.username ||
+      client.data?.user?.name ||
+      client.data?.user?.email;
+
     const result = await this.matchmakingService.joinPrivateRoom(
       roomCode,
       userId,
       client.id,
+      username,
     );
     return result;
   }
@@ -411,6 +440,16 @@ export class GameGateway
           state.players.find((p: string) => p !== userId) || state.players[0];
         roundWinner = otherPlayer;
 
+        // Record the round result snapshot for the Game Over history view
+        if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
+        if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+          state.roundHistory.push({
+            round: state.currentRound,
+            winner: roundWinner,
+            scores: { ...(state.scores ?? {}) },
+          });
+        }
+
         // Update overall scores
         state.overallScores[otherPlayer] += 1;
 
@@ -497,8 +536,10 @@ export class GameGateway
         latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
         latest.guessedPlayers = [];
         latest.currentQuestion = pickRandomFootballQuestion();
-        // Loser starts next round (userId is the loser)
-        latest.currentTurn = userId;
+        // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
+        if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
+        else if (latest.currentRound === 3) latest.currentTurn = latest.players[0];
+        else latest.currentTurn = latest.players[0];
 
         const multi2 = this.redisClient.multi();
         multi2.set(key, JSON.stringify(latest));

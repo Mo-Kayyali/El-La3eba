@@ -25,6 +25,12 @@ type GameState = {
   overallScores?: Record<string, number> | number[];
   status?: "in_progress" | "match_completed" | string;
   winner?: Player | string | number | null;
+  playerNames?: Record<string, string>;
+  roundHistory?: Array<{
+    round: number;
+    winner: string | number;
+    scores: Record<string, number>;
+  }>;
   [key: string]: unknown;
 };
 
@@ -247,13 +253,23 @@ export default function GamePage() {
   const leftOverall = getByKeyOrIndex(gameState?.overallScores, leftId, 0);
   const rightOverall = getByKeyOrIndex(gameState?.overallScores, rightId, 1);
 
+  const playerNames = (gameState?.playerNames ?? {}) as Record<string, string>;
+  const currentTurnName = useMemo(() => {
+    const id = coerceString(currentTurnId);
+    if (!id) return "";
+    return playerNames[id] ?? id;
+  }, [currentTurnId, playerNames]);
+
   const winnerLabel = useMemo(() => {
     const w = gameState?.winner;
     if (!w) return "";
-    if (typeof w === "string" || typeof w === "number") return String(w);
+    if (typeof w === "string" || typeof w === "number") {
+      const id = coerceString(w);
+      return playerNames[id] ?? id;
+    }
     const p = w as Player;
     return p?.username ?? p?.email ?? coerceString(p?.id) ?? "Winner";
-  }, [gameState?.winner]);
+  }, [gameState?.winner, playerNames]);
 
   const canSubmit =
     !!socket?.connected &&
@@ -269,10 +285,10 @@ export default function GamePage() {
     setGuess("");
   };
 
-  const playerLabel = (id: string | number | undefined, fallback: string) => {
+  const displayName = (id: string | number | undefined, fallback: string) => {
     if (id === undefined || id === null) return fallback;
-    if (userId !== undefined && id === userId) return "You";
-    return "Opponent";
+    const key = coerceString(id);
+    return playerNames[key] ?? fallback;
   };
 
   const timerLabel = useMemo(() => {
@@ -305,22 +321,22 @@ export default function GamePage() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_55%)]" />
         </div>
 
-        <div className="relative mx-auto max-w-3xl text-center">
+        <div className="relative mx-auto max-w-5xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200">
             <Crown className="h-4 w-4" />
             MATCH COMPLETED
           </div>
 
           <h2 className="mt-6 text-5xl font-extrabold tracking-tight text-white sm:text-6xl">
-            GAME OVER
+            {winnerLabel || "Winner"}
           </h2>
 
           <p
-            className={`mt-6 text-3xl font-extrabold sm:text-4xl ${
+            className={`mt-4 text-2xl font-extrabold sm:text-3xl ${
               didIWin ? "text-emerald-300" : "text-red-300"
             }`}
           >
-            {didIWin ? "YOU WON THE MATCH! 🏆" : "YOU LOST! 💀"}
+            {didIWin ? "YOU WON THE MATCH!" : "YOU LOST!"}
           </p>
 
           <p className="mt-4 text-sm text-zinc-300">
@@ -328,12 +344,42 @@ export default function GamePage() {
             <span className="font-semibold text-white">
               {leftOverall} - {rightOverall}
             </span>
-            {" • "}
-            Winner:{" "}
-            <span className="font-semibold text-white">
-              {winnerLabel || "Unknown"}
-            </span>
           </p>
+
+          <div className="mt-8 overflow-x-auto">
+            <div className="mx-auto flex w-fit gap-3">
+              {([1, 2, 3] as const).map((round) => {
+                const entry = gameState?.roundHistory?.find((r) => r?.round === round);
+                const winnerId = entry?.winner;
+                const winnerName =
+                  winnerId !== undefined && winnerId !== null
+                    ? playerNames[coerceString(winnerId)] ?? String(winnerId)
+                    : "—";
+                const leftPts = entry?.scores ? (entry.scores[leftId] ?? 0) : 0;
+                const rightPts = entry?.scores ? (entry.scores[rightId] ?? 0) : 0;
+
+                return (
+                  <div
+                    key={round}
+                    className="min-w-[200px] rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left"
+                  >
+                    <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                      ROUND {round}
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-white">
+                      Winner: <span className="text-zinc-100">{winnerName}</span>
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      Score:{" "}
+                      <span className="font-semibold text-white">
+                        {leftPts} - {rightPts}
+                      </span>
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left">
@@ -449,7 +495,7 @@ export default function GamePage() {
                     PLAYER 1
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">
-                    {playerLabel(leftPlayerId, "Waiting...")}
+                    {displayName(leftPlayerId, "Waiting...")}
                     {leftIsMe && (
                       <span className="ml-2 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs text-zinc-200">
                         You
@@ -651,7 +697,7 @@ export default function GamePage() {
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-sm text-zinc-300">
                     Waiting for{" "}
                     <span className="font-semibold text-white">
-                      {playerLabel(toId(currentTurnId), "opponent")}
+                      {currentTurnName || "opponent"}
                     </span>{" "}
                     to play.
                   </div>
@@ -682,7 +728,7 @@ export default function GamePage() {
                     PLAYER 2
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">
-                    {playerLabel(rightPlayerId, "Waiting...")}
+                    {displayName(rightPlayerId, "Waiting...")}
                     {rightIsMe && (
                       <span className="ml-2 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs text-zinc-200">
                         You

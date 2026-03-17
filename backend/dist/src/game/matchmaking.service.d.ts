@@ -8,11 +8,11 @@ export declare class MatchmakingService {
     constructor(redisClient: RedisService);
     setServer(server: Server): void;
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
-    joinQueue(userId: string, socketId: string): Promise<void>;
+    joinQueue(userId: string, socketId: string, username?: string): Promise<void>;
     leaveQueue(userId: string): Promise<void>;
     handleMatchmakingInterval(): Promise<void>;
-    createPrivateRoom(userId: string, socketId: string): Promise<string>;
-    joinPrivateRoom(code: string, userId: string, socketId: string): Promise<{
+    createPrivateRoom(userId: string, socketId: string, username?: string): Promise<string>;
+    joinPrivateRoom(code: string, userId: string, socketId: string, username?: string): Promise<{
         success: boolean;
         error: string;
         gameSessionId?: undefined;

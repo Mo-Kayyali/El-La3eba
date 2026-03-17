@@ -82,6 +82,15 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
                         state.players[0];
                     roundWinner = otherPlayer;
+                    if (!Array.isArray(state.roundHistory))
+                        state.roundHistory = [];
+                    if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
+                        state.roundHistory.push({
+                            round: state.currentRound,
+                            winner: roundWinner,
+                            scores: { ...(state.scores ?? {}) },
+                        });
+                    }
                     state.overallScores[otherPlayer] += 1;
                     if (state.overallScores[otherPlayer] >= 2 ||
                         state.currentRound >= 3) {
@@ -146,7 +155,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                     latest.guessedPlayers = [];
                     latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
-                    latest.currentTurn = timedOutUserId;
+                    if (latest.currentRound === 2)
+                        latest.currentTurn = latest.players[1];
+                    else if (latest.currentRound === 3)
+                        latest.currentTurn = latest.players[0];
+                    else
+                        latest.currentTurn = latest.players[0];
                     const multi2 = this.redisClient.multi();
                     multi2.set(key, JSON.stringify(latest));
                     const results2 = await multi2.exec();
@@ -211,14 +225,20 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
-        await this.matchmakingService.joinQueue(userId, client.id);
+        const username = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email;
+        await this.matchmakingService.joinQueue(userId, client.id, username);
         return { status: 'queued' };
     }
     async handleCreatePrivateRoom(client) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
-        const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id);
+        const username = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email;
+        const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, username);
         return { status: 'success', roomCode };
     }
     async handleJoinPrivateRoom(client, roomCode) {
@@ -227,7 +247,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: 'Unauthorized' };
         if (!roomCode)
             return { status: 'error', message: 'Room code required' };
-        const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id);
+        const username = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email;
+        const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id, username);
         return result;
     }
     async handleJoinGameRoom(client, gameSessionId) {
@@ -310,6 +333,15 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 isRoundOver = true;
                 const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
                 roundWinner = otherPlayer;
+                if (!Array.isArray(state.roundHistory))
+                    state.roundHistory = [];
+                if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
+                    state.roundHistory.push({
+                        round: state.currentRound,
+                        winner: roundWinner,
+                        scores: { ...(state.scores ?? {}) },
+                    });
+                }
                 state.overallScores[otherPlayer] += 1;
                 if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
                     isMatchOver = true;
@@ -379,7 +411,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                 latest.guessedPlayers = [];
                 latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
-                latest.currentTurn = userId;
+                if (latest.currentRound === 2)
+                    latest.currentTurn = latest.players[1];
+                else if (latest.currentRound === 3)
+                    latest.currentTurn = latest.players[0];
+                else
+                    latest.currentTurn = latest.players[0];
                 const multi2 = this.redisClient.multi();
                 multi2.set(key, JSON.stringify(latest));
                 const results2 = await multi2.exec();

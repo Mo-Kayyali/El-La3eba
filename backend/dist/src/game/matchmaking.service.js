@@ -30,8 +30,8 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     setTurnTimerStarter(fn) {
         this.startTurnTimerFn = fn;
     }
-    async joinQueue(userId, socketId) {
-        const queueData = JSON.stringify({ userId, socketId });
+    async joinQueue(userId, socketId, username) {
+        const queueData = JSON.stringify({ userId, socketId, username });
         await this.redisClient.lpush('matchmaking_queue', queueData);
         this.logger.log(`User ${userId} joined matchmaking queue`);
     }
@@ -53,7 +53,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
                     return;
                 }
                 const gameSessionId = (0, crypto_1.randomUUID)();
-                const gameState = await this.initializeGameState(gameSessionId, p1.userId, p2.userId);
+                const gameState = await this.initializeGameState(gameSessionId, p1.userId, p2.userId, p1.username, p2.username);
                 this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
                 this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
                 this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
@@ -69,7 +69,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             }
         }
     }
-    async createPrivateRoom(userId, socketId) {
+    async createPrivateRoom(userId, socketId, username) {
         let roomCode = '';
         let isUnique = false;
         while (!isUnique) {
@@ -79,12 +79,12 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
                 isUnique = true;
             }
         }
-        const roomData = JSON.stringify({ userId, socketId });
+        const roomData = JSON.stringify({ userId, socketId, username });
         await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 1800);
         this.logger.log(`Private room ${roomCode} created by user ${userId}`);
         return roomCode;
     }
-    async joinPrivateRoom(code, userId, socketId) {
+    async joinPrivateRoom(code, userId, socketId, username) {
         const uppercaseCode = code.toUpperCase();
         const roomDataStr = await this.redisClient.get(`private_room:${uppercaseCode}`);
         if (!roomDataStr) {
@@ -96,7 +96,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         }
         const gameSessionId = (0, crypto_1.randomUUID)();
         await this.redisClient.del(`private_room:${uppercaseCode}`);
-        const gameState = await this.initializeGameState(gameSessionId, host.userId, userId);
+        const gameState = await this.initializeGameState(gameSessionId, host.userId, userId, host.username, username);
         if (this.server) {
             this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
             this.server.to(host.socketId).emit('matchFound', { gameSessionId });
@@ -107,10 +107,15 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
         return { success: true, gameSessionId };
     }
-    async initializeGameState(gameSessionId, player1Id, player2Id) {
+    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username) {
         const gameState = {
             players: [player1Id, player2Id],
             currentTurn: player1Id,
+            playerNames: {
+                [player1Id]: player1Username ?? String(player1Id),
+                [player2Id]: player2Username ?? String(player2Id),
+            },
+            roundHistory: [],
             scores: { [player1Id]: 0, [player2Id]: 0 },
             overallScores: { [player1Id]: 0, [player2Id]: 0 },
             currentRound: 1,
