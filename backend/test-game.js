@@ -19,7 +19,8 @@ async function getToken(playerNum) {
   });
 
   const data = await res.json();
-  return { token: data.access_token, id: data.user?.id };
+  const userId = data.user?.id || data.user?.sub || data.user?.userId || data.userId;
+  return { token: data.access_token, id: userId };
 }
 
 async function runTest() {
@@ -91,9 +92,14 @@ async function runTest() {
     // Extract the nested state, or fallback if the backend sends it flat
     const state = payload.state || payload;
 
+    if (state.status === 'match_completed' || state.winner) {
+      return; // Ignore if game is already over
+    }
+
     // Only log the state once per turn to avoid console spam
     if (botNum === 1) {
       console.log('\n--- 🎮 GAME STATE UPDATE ---');
+      console.log(`Round ${state.currentRound} | Overall Scores: Bot 1 [${state.overallScores?.[p1.id] || 0}] - Bot 2 [${state.overallScores?.[p2.id] || 0}]`);
       console.log(
         `Current Turn: ${state.currentTurn === p1.id ? 'Bot 1' : 'Bot 2'}`,
       );
@@ -104,40 +110,55 @@ async function runTest() {
 
     // Bot 1 Turn Logic
     if (botNum === 1 && state.currentTurn === playerId) {
-      if (state.guessedPlayers?.length === 0) {
-        console.log('\n🤖 Bot 1 typing: "Messi"...');
-        setTimeout(() => {
-          client.emit('submitGuess', { gameSessionId, guessName: 'Messi' });
-        }, 1500);
-      } else if (state.guessedPlayers?.length >= 2) {
-        console.log('\n🤖 Bot 1 typing: "Mbappe"...');
-        setTimeout(() => {
-          client.emit('submitGuess', { gameSessionId, guessName: 'Mbappe' });
-        }, 1500);
+      console.log(`\n🤖 Bot 1 is thinking... (Strikes: ${state.strikes[playerId]})`);
+      
+      let nextGuess = 'Messi';
+      // If round 1, bot 1 wins (by guessing correctly)
+      if (state.currentRound === 1) {
+          if (state.guessedPlayers?.length === 1) nextGuess = 'Ronaldo';
+          if (state.guessedPlayers?.length >= 2) nextGuess = 'Mbappe';
       }
+      // If round 2, bot 1 throws the game to let bot 2 win
+      else if (state.currentRound === 2) {
+          nextGuess = 'Bot 1 intentionally failing ' + Math.random();
+      }
+      // If round 3, bot 1 tries to win again
+      else {
+          if (state.guessedPlayers?.length === 0) nextGuess = 'Vinicius Junior';
+          if (state.guessedPlayers?.length === 1) nextGuess = 'Bellingham';
+          if (state.guessedPlayers?.length >= 2) nextGuess = 'Haaland';
+      }
+      
+      setTimeout(() => {
+        console.log(`🤖 Bot 1 submitting guess: "${nextGuess}"`);
+        client.emit('submitGuess', { gameSessionId, guessName: nextGuess });
+      }, 2000);
     }
 
     // Bot 2 Turn Logic
     if (botNum === 2 && state.currentTurn === playerId) {
-      if (state.guessedPlayers?.length === 1) {
-        console.log('\n🤖 Bot 2 typing: "Bellingham"...');
-        setTimeout(() => {
-          // CHANGED: guess -> guessName
-          client.emit('submitGuess', {
-            gameSessionId,
-            guessName: 'Bellingham',
-          });
-        }, 1500);
-      } else if (state.guessedPlayers?.length > 1) {
-        console.log('\n🤖 Bot 2 typing: "Fake Player" (Testing strike)...');
-        setTimeout(() => {
-          // CHANGED: guess -> guessName
-          client.emit('submitGuess', {
-            gameSessionId,
-            guessName: 'Fake Player',
-          });
-        }, 1500);
+      console.log(`\n🤖 Bot 2 is thinking... (Strikes: ${state.strikes[playerId]})`);
+      
+      let nextGuess = 'Kevin De Bruyne';
+      // If round 1, bot 2 throws
+      if (state.currentRound === 1) {
+          nextGuess = 'Bot 2 intentionally failing ' + Math.random();
       }
+      // If round 2, bot 2 tries to win
+      else if (state.currentRound === 2) {
+          if (state.guessedPlayers?.length === 0) nextGuess = 'Salah';
+          if (state.guessedPlayers?.length === 1) nextGuess = 'Saka';
+          if (state.guessedPlayers?.length >= 2) nextGuess = 'Foden';
+      }
+      // If round 3, bot 2 throws again
+      else {
+          nextGuess = 'Bot 2 fails again ' + Math.random();
+      }
+      
+      setTimeout(() => {
+        console.log(`🤖 Bot 2 submitting guess: "${nextGuess}"`);
+        client.emit('submitGuess', { gameSessionId, guessName: nextGuess });
+      }, 2000);
     }
   };
 
@@ -147,6 +168,14 @@ async function runTest() {
   client2.on('gameStateUpdated', (payload) =>
     handleGameStateUpdate(2, client2, p2.id, payload),
   );
+
+  client1.on('nextRoundStarted', (payload) => {
+    console.log(`\n🔔 --- ROUND ${payload.state.currentRound} STARTED --- 🔔`);
+    handleGameStateUpdate(1, client1, p1.id, payload);
+  });
+  client2.on('nextRoundStarted', (payload) => {
+    handleGameStateUpdate(2, client2, p2.id, payload);
+  });
 
   // --- 4. GAME OVER LOGIC --- //
   const handleGameOver = (payload) => {
@@ -158,13 +187,18 @@ async function runTest() {
     process.exit(0); // Exits the Node script cleanly
   };
 
-  // Listen for game over events (adjust the string if your backend uses a different event name)
-  client1.on('gameOver', handleGameOver);
-  client1.on('gameEnded', handleGameOver);
+  // Listen for game over events
+  client1.on('matchOver', handleGameOver);
+  client2.on('matchOver', handleGameOver);
 
   // --- START THE TEST --- //
+  console.log('Connecting Bot 1...');
   client1.connect();
-  client2.connect();
+  
+  setTimeout(() => {
+    console.log('Connecting Bot 2...');
+    client2.connect();
+  }, 1000);
 }
 
 runTest();

@@ -24,8 +24,22 @@ async function main() {
     { name: 'Toni Kroos', clubs: ['Real Madrid', 'Bayern Munich', 'Bayer Leverkusen'], activeYear: 2024 },
     { name: 'Neymar Jr', clubs: ['Al Hilal', 'PSG', 'Barcelona', 'Santos'], activeYear: 2026 },
     { name: 'Thibaut Courtois', clubs: ['Real Madrid', 'Chelsea', 'Atletico Madrid', 'Genk'], activeYear: 2026 },
-    { name: 'Alisson Becker', clubs: ['Liverpool', 'AS Roma', 'Internacional'], activeYear: 2026 }
+    { name: 'Alisson Becker', clubs: ['Liverpool', 'AS Roma', 'Internacional'], activeYear: 2026 },
+    { name: 'Lamine Yamal', clubs: ['Barcelona'], activeYear: 2026 },
+    { name: 'Pedri', clubs: ['Barcelona', 'Las Palmas'], activeYear: 2026 },
+    { name: 'Gavi', clubs: ['Barcelona'], activeYear: 2026 },
+    { name: 'Cole Palmer', clubs: ['Chelsea', 'Manchester City'], activeYear: 2026 },
+    { name: 'Florian Wirtz', clubs: ['Bayer Leverkusen'], activeYear: 2026 },
+    { name: 'Jamal Musiala', clubs: ['Bayern Munich'], activeYear: 2026 },
+    { name: 'Martin Odegaard', clubs: ['Arsenal', 'Real Madrid', 'Real Sociedad'], activeYear: 2026 },
+    { name: 'Son Heung-min', clubs: ['Tottenham Hotspur', 'Bayer Leverkusen', 'Hamburger SV'], activeYear: 2026 },
+    { name: 'Bruno Fernandes', clubs: ['Manchester United', 'Sporting CP', 'Sampdoria', 'Udinese'], activeYear: 2026 }
   ];
+
+  console.log('Creating extensions...');
+  await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "unaccent";`);
+  await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "fuzzystrmatch";`);
+  await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "pg_trgm";`);
 
   console.log('Start seeding...');
   for (const player of players) {

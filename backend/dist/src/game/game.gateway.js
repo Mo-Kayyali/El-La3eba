@@ -39,7 +39,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
     }
     async handleConnection(client) {
         try {
-            const token = client.handshake.auth?.token || client.handshake.headers?.authorization?.split(' ')[1];
+            const token = client.handshake.auth?.token ||
+                client.handshake.headers?.authorization?.split(' ')[1];
             if (!token) {
                 console.log(`Connection rejected: Missing token for client ${client.id}`);
                 client.disconnect();
@@ -106,7 +107,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             const { gameSessionId, guessName } = payload;
             if (!gameSessionId || !guessName) {
                 this.logger.error(`Missing gameSessionId or guessName in payload`);
-                return { status: 'error', message: 'Missing gameSessionId or guessName' };
+                return {
+                    status: 'error',
+                    message: 'Missing gameSessionId or guessName',
+                };
             }
             const key = `game:${gameSessionId}`;
             this.logger.log(`Starting Redis transaction for gameSessionId: ${gameSessionId}`);
@@ -118,6 +122,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 return { status: 'error', message: 'Game session not found' };
             }
             const state = JSON.parse(stateStr);
+            if (state.status === 'match_completed') {
+                await this.redisClient.unwatch();
+                this.logger.error(`Attempt to guess in completed match ${gameSessionId}`);
+                return { status: 'error', message: 'Match is already completed' };
+            }
             if (state.currentTurn !== userId) {
                 await this.redisClient.unwatch();
                 this.logger.error(`User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`);
@@ -131,7 +140,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 if (state.guessedPlayers.includes(matchedPlayer.name)) {
                     await this.redisClient.unwatch();
                     this.logger.error(`Player ${matchedPlayer.name} already guessed this round by user ${userId}`);
-                    return { status: 'error', message: 'Player already guessed this round' };
+                    return {
+                        status: 'error',
+                        message: 'Player already guessed this round',
+                    };
                 }
                 state.guessedPlayers.push(matchedPlayer.name);
                 state.scores[userId] += 1;
@@ -139,15 +151,46 @@ let GameGateway = GameGateway_1 = class GameGateway {
             else {
                 state.strikes[userId] += 1;
             }
-            const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
-            state.currentTurn = otherPlayer;
+            let isRoundOver = false;
+            let isMatchOver = false;
+            if (state.strikes[userId] >= 3) {
+                isRoundOver = true;
+                const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
+                state.overallScores[otherPlayer] += 1;
+                if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
+                    isMatchOver = true;
+                    state.status = 'match_completed';
+                    state.winner = state.overallScores[state.players[0]] > state.overallScores[state.players[1]] ? state.players[0] : state.players[1];
+                }
+                else {
+                    state.currentRound += 1;
+                    state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+                    state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
+                    state.guessedPlayers = [];
+                    const questions = [
+                        "Name a football player who played in 2026",
+                        "Name a player who has won the Champions League",
+                        "Name a player who has played in the Premier League",
+                        "Name a player who has won the World Cup"
+                    ];
+                    state.currentQuestion = questions[(state.currentRound - 1) % questions.length];
+                    state.currentTurn = userId;
+                }
+            }
+            else {
+                const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
+                state.currentTurn = otherPlayer;
+            }
             this.logger.log(`Executing Redis transaction to update state`);
             const multi = this.redisClient.multi();
             multi.set(key, JSON.stringify(state));
             const results = await multi.exec();
             if (!results) {
                 this.logger.error(`Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`);
-                return { status: 'error', message: 'Concurrent modification, try again' };
+                return {
+                    status: 'error',
+                    message: 'Concurrent modification, try again',
+                };
             }
             this.logger.log(`Redis transaction successful for gameSessionId: ${gameSessionId}`);
             const updatePayload = {
@@ -156,11 +199,21 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     user: userId,
                     guess: guessName,
                     correct: isCorrect,
-                    matchedName: isCorrect ? matchedPlayer.name : null
-                }
+                    matchedName: isCorrect ? matchedPlayer.name : null,
+                },
             };
-            this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
-            this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+            if (isMatchOver) {
+                this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
+                this.server.to(gameSessionId).emit('matchOver', updatePayload);
+            }
+            else if (isRoundOver) {
+                this.logger.log(`Broadcasting nextRoundStarted to room ${gameSessionId}`);
+                this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
+            }
+            else {
+                this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
+                this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+            }
             return { status: 'success', isCorrect, matchedPlayer };
         }
         catch (error) {

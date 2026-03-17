@@ -105,6 +105,8 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             players: [player1Id, player2Id],
             currentTurn: player1Id,
             scores: { [player1Id]: 0, [player2Id]: 0 },
+            overallScores: { [player1Id]: 0, [player2Id]: 0 },
+            currentRound: 1,
             strikes: { [player1Id]: 0, [player2Id]: 0 },
             guessedPlayers: [],
             currentQuestion: "Name a football player who played in 2026",

@@ -16,7 +16,9 @@ import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
+export class GameGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+{
   @WebSocketServer()
   server: Server;
 
@@ -36,10 +38,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   async handleConnection(client: Socket) {
     try {
       const token =
-        client.handshake.auth?.token || client.handshake.headers?.authorization?.split(' ')[1];
+        client.handshake.auth?.token ||
+        client.handshake.headers?.authorization?.split(' ')[1];
 
       if (!token) {
-        console.log(`Connection rejected: Missing token for client ${client.id}`);
+        console.log(
+          `Connection rejected: Missing token for client ${client.id}`,
+        );
         client.disconnect();
         return;
       }
@@ -50,7 +55,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       // Attach user info to socket (optional, for later use)
       client.data.user = payload;
-      console.log(`Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`);
+      console.log(
+        `Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`,
+      );
     } catch (error) {
       console.log(`Connection rejected: Invalid token for client ${client.id}`);
       client.disconnect();
@@ -79,7 +86,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
-    const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id);
+    const roomCode = await this.matchmakingService.createPrivateRoom(
+      userId,
+      client.id,
+    );
     return { status: 'success', roomCode };
   }
 
@@ -93,7 +103,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     if (!roomCode) return { status: 'error', message: 'Room code required' };
 
-    const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id);
+    const result = await this.matchmakingService.joinPrivateRoom(
+      roomCode,
+      userId,
+      client.id,
+    );
     return result;
   }
 
@@ -105,7 +119,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
-    if (!gameSessionId) return { status: 'error', message: 'gameSessionId required' };
+    if (!gameSessionId)
+      return { status: 'error', message: 'gameSessionId required' };
 
     client.join(gameSessionId);
     return { status: 'success', message: `Joined room ${gameSessionId}` };
@@ -117,7 +132,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     @MessageBody() payload: { gameSessionId: string; guessName: string },
   ) {
     try {
-      this.logger.log(`Received guess from client ${client.id}: ${JSON.stringify(payload)}`);
+      this.logger.log(
+        `Received guess from client ${client.id}: ${JSON.stringify(payload)}`,
+      );
 
       const userId = client.data?.user?.sub || client.data?.user?.userId;
       if (!userId) {
@@ -128,13 +145,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       const { gameSessionId, guessName } = payload;
       if (!gameSessionId || !guessName) {
         this.logger.error(`Missing gameSessionId or guessName in payload`);
-        return { status: 'error', message: 'Missing gameSessionId or guessName' };
+        return {
+          status: 'error',
+          message: 'Missing gameSessionId or guessName',
+        };
       }
 
       const key = `game:${gameSessionId}`;
 
       // Use WATCH for optimistic locking to prevent race conditions
-      this.logger.log(`Starting Redis transaction for gameSessionId: ${gameSessionId}`);
+      this.logger.log(
+        `Starting Redis transaction for gameSessionId: ${gameSessionId}`,
+      );
       await this.redisClient.watch(key);
       const stateStr = await this.redisClient.get(key);
 
@@ -146,9 +168,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       const state = JSON.parse(stateStr);
 
+      if (state.status === 'match_completed') {
+        await this.redisClient.unwatch();
+        this.logger.error(`Attempt to guess in completed match ${gameSessionId}`);
+        return { status: 'error', message: 'Match is already completed' };
+      }
+
       if (state.currentTurn !== userId) {
         await this.redisClient.unwatch();
-        this.logger.error(`User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`);
+        this.logger.error(
+          `User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`,
+        );
         return { status: 'error', message: 'Not your turn' };
       }
 
@@ -161,8 +191,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       if (isCorrect) {
         if (state.guessedPlayers.includes(matchedPlayer.name)) {
           await this.redisClient.unwatch();
-          this.logger.error(`Player ${matchedPlayer.name} already guessed this round by user ${userId}`);
-          return { status: 'error', message: 'Player already guessed this round' };
+          this.logger.error(
+            `Player ${matchedPlayer.name} already guessed this round by user ${userId}`,
+          );
+          return {
+            status: 'error',
+            message: 'Player already guessed this round',
+          };
         }
         state.guessedPlayers.push(matchedPlayer.name);
         state.scores[userId] += 1;
@@ -170,8 +205,43 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         state.strikes[userId] += 1;
       }
 
-      const otherPlayer = state.players.find((p: string) => p !== userId) || state.players[0];
-      state.currentTurn = otherPlayer;
+      let isRoundOver = false;
+      let isMatchOver = false;
+
+      if (state.strikes[userId] >= 3) {
+        isRoundOver = true;
+        const otherPlayer = state.players.find((p: string) => p !== userId) || state.players[0];
+        
+        // Update overall scores
+        state.overallScores[otherPlayer] += 1;
+
+        if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
+            isMatchOver = true;
+            state.status = 'match_completed';
+            state.winner = state.overallScores[state.players[0]] > state.overallScores[state.players[1]] ? state.players[0] : state.players[1];
+        } else {
+            // Match continues to next round
+            state.currentRound += 1;
+            state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+            state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
+            state.guessedPlayers = [];
+            
+            const questions = [
+                "Name a football player who played in 2026",
+                "Name a player who has won the Champions League",
+                "Name a player who has played in the Premier League",
+                "Name a player who has won the World Cup"
+            ];
+            state.currentQuestion = questions[(state.currentRound - 1) % questions.length];
+            
+            // Loser guesses first in the next round, so we don't change currentTurn (it's already userId)
+            state.currentTurn = userId;
+        }
+      } else {
+        const otherPlayer =
+          state.players.find((p: string) => p !== userId) || state.players[0];
+        state.currentTurn = otherPlayer;
+      }
 
       // Execute transaction
       this.logger.log(`Executing Redis transaction to update state`);
@@ -180,29 +250,46 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       const results = await multi.exec();
 
       if (!results) {
-        this.logger.error(`Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`);
-        return { status: 'error', message: 'Concurrent modification, try again' };
+        this.logger.error(
+          `Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`,
+        );
+        return {
+          status: 'error',
+          message: 'Concurrent modification, try again',
+        };
       }
 
-      this.logger.log(`Redis transaction successful for gameSessionId: ${gameSessionId}`);
+      this.logger.log(
+        `Redis transaction successful for gameSessionId: ${gameSessionId}`,
+      );
 
-      // Emit updated state to the clients
-      const updatePayload = { 
-        state, 
-        lastGuess: { 
-          user: userId, 
-          guess: guessName, 
-          correct: isCorrect, 
-          matchedName: isCorrect ? matchedPlayer.name : null 
-        } 
+      const updatePayload = {
+        state,
+        lastGuess: {
+          user: userId,
+          guess: guessName,
+          correct: isCorrect,
+          matchedName: isCorrect ? matchedPlayer.name : null,
+        },
       };
-      
-      this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
-      this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+
+      if (isMatchOver) {
+        this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
+        this.server.to(gameSessionId).emit('matchOver', updatePayload);
+      } else if (isRoundOver) {
+        this.logger.log(`Broadcasting nextRoundStarted to room ${gameSessionId}`);
+        this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
+      } else {
+        this.logger.log(`Broadcasting gameStateUpdated to room ${gameSessionId}`);
+        this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+      }
 
       return { status: 'success', isCorrect, matchedPlayer };
     } catch (error) {
-      this.logger.error(`Exception in handleSubmitGuess: ${error.message}`, error.stack);
+      this.logger.error(
+        `Exception in handleSubmitGuess: ${error.message}`,
+        error.stack,
+      );
       await this.redisClient.unwatch().catch(() => {});
       return { status: 'error', message: 'Internal server error' };
     }
