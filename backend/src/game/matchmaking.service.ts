@@ -3,11 +3,13 @@ import { Interval } from '@nestjs/schedule';
 import { RedisService } from '../redis/redis.service';
 import { Server } from 'socket.io';
 import { randomUUID, randomBytes } from 'crypto';
+import { pickRandomFootballQuestion } from './game.questions';
 
 @Injectable()
 export class MatchmakingService {
   private readonly logger = new Logger(MatchmakingService.name);
   private server: Server;
+  private startTurnTimerFn?: (gameSessionId: string) => void;
 
   constructor(private readonly redisClient: RedisService) {}
 
@@ -15,8 +17,12 @@ export class MatchmakingService {
     this.server = server;
   }
 
-  async joinQueue(userId: string, socketId: string) {
-    const queueData = JSON.stringify({ userId, socketId });
+  setTurnTimerStarter(fn: (gameSessionId: string) => void) {
+    this.startTurnTimerFn = fn;
+  }
+
+  async joinQueue(userId: string, socketId: string, username?: string) {
+    const queueData = JSON.stringify({ userId, socketId, username });
     await this.redisClient.lpush('matchmaking_queue', queueData);
     this.logger.log(`User ${userId} joined matchmaking queue`);
   }
@@ -49,13 +55,20 @@ export class MatchmakingService {
 
         const gameSessionId = randomUUID();
         
-        const gameState = await this.initializeGameState(gameSessionId, p1.userId, p2.userId);
+        const gameState = await this.initializeGameState(
+          gameSessionId,
+          p1.userId,
+          p2.userId,
+          p1.username,
+          p2.username,
+        );
 
         this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
 
         this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
         this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
         this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+        this.startTurnTimerFn?.(gameSessionId);
 
         this.logger.log(`Match created: ${gameSessionId} [${p1.userId} vs ${p2.userId}]`);
       } else {
@@ -65,7 +78,11 @@ export class MatchmakingService {
     }
   }
 
-  async createPrivateRoom(userId: string, socketId: string): Promise<string> {
+  async createPrivateRoom(
+    userId: string,
+    socketId: string,
+    username?: string,
+  ): Promise<string> {
     let roomCode = '';
     let isUnique = false;
 
@@ -77,14 +94,19 @@ export class MatchmakingService {
       }
     }
 
-    const roomData = JSON.stringify({ userId, socketId });
+    const roomData = JSON.stringify({ userId, socketId, username });
     // Expires in 30 minutes (1800 seconds)
     await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 1800);
     this.logger.log(`Private room ${roomCode} created by user ${userId}`);
     return roomCode;
   }
 
-  async joinPrivateRoom(code: string, userId: string, socketId: string) {
+  async joinPrivateRoom(
+    code: string,
+    userId: string,
+    socketId: string,
+    username?: string,
+  ) {
     const uppercaseCode = code.toUpperCase();
     const roomDataStr = await this.redisClient.get(`private_room:${uppercaseCode}`);
 
@@ -103,29 +125,47 @@ export class MatchmakingService {
     // Remove the room key to prevent others from joining
     await this.redisClient.del(`private_room:${uppercaseCode}`);
 
-    const gameState = await this.initializeGameState(gameSessionId, host.userId, userId);
+    const gameState = await this.initializeGameState(
+      gameSessionId,
+      host.userId,
+      userId,
+      host.username,
+      username,
+    );
 
     if (this.server) {
         this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
         this.server.to(host.socketId).emit('matchFound', { gameSessionId });
         this.server.to(socketId).emit('matchFound', { gameSessionId });
         this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+        this.startTurnTimerFn?.(gameSessionId);
     }
 
     this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
     return { success: true, gameSessionId };
   }
 
-  private async initializeGameState(gameSessionId: string, player1Id: string, player2Id: string) {
+  private async initializeGameState(
+    gameSessionId: string,
+    player1Id: string,
+    player2Id: string,
+    player1Username?: string,
+    player2Username?: string,
+  ) {
     const gameState = {
       players: [player1Id, player2Id],
-      currentTurn: player1Id, // player 1 goes first
+      currentTurn: player1Id, // Round 1 starter: players[0]
+      playerNames: {
+        [player1Id]: player1Username ?? String(player1Id),
+        [player2Id]: player2Username ?? String(player2Id),
+      },
+      roundHistory: [],
       scores: { [player1Id]: 0, [player2Id]: 0 },
       overallScores: { [player1Id]: 0, [player2Id]: 0 },
       currentRound: 1,
       strikes: { [player1Id]: 0, [player2Id]: 0 },
       guessedPlayers: [],
-      currentQuestion: "Name a football player who played in 2026",
+      currentQuestion: pickRandomFootballQuestion(),
     };
     await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
     return gameState;

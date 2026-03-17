@@ -11,10 +11,15 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly redisClient;
     server: Server;
     private readonly logger;
+    private readonly turnTimers;
+    private readonly roundTransitionMs;
     constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService);
+    private sleep;
     afterInit(server: Server): void;
+    private clearTurnTimer;
+    private startTurnTimer;
     handleConnection(client: Socket): Promise<void>;
-    handleDisconnect(client: Socket): void;
+    handleDisconnect(client: Socket): Promise<void>;
     handleJoinQueue(client: Socket): Promise<{
         status: string;
         message: string;
