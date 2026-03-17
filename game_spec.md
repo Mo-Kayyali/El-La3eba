@@ -63,3 +63,28 @@ Do NOT build the game logic yet. Focus strictly on the following:
    - Generate a unique `gameSessionId` (UUID).
    - Emit a `matchFound` event to both players' specific Socket IDs containing the `gameSessionId`.
 4. **Private Matches:** Implement `createPrivateRoom` (generates a random 6-character Redis key) and `joinPrivateRoom` (accepts the code, verifies it in Redis, and emits `matchFound`).
+
+## 7. Current Mission: Phase 4 (Game Engine & Fuzzy Search)
+
+**Part A: The Database (PostgreSQL & Prisma)**
+
+1. Update `schema.prisma` to include a new model: `FootballPlayer`. It should have `id`, `name` (String), `clubs` (String array or JSON), and `activeYear` (Int).
+2. Create a script or Prisma migration that automatically runs `CREATE EXTENSION IF NOT EXISTS pg_trgm;` on the PostgreSQL database.
+3. Create a `GameService` that includes a `guessPlayer(guessName: string)` function. This function must use a raw Prisma query to perform a fuzzy search using `pg_trgm`'s `similarity()` function to find matches > 0.4.
+
+**Part B: The Game State (Redis)**
+
+1. When a `matchFound` event fires (from Phase 3), initialize a Game State object in Redis using the `gameSessionId` as the key.
+2. The Game State JSON should track:
+   - `players`: Array of the two user IDs.
+   - `currentTurn`: The user ID of who is currently typing.
+   - `scores`: { player1Id: 0, player2Id: 0 } (First to 5 wins).
+   - `strikes`: { player1Id: 0, player2Id: 0 } (3 strikes = round loss).
+   - `guessedPlayers`: Array of player names already successfully guessed this round.
+   - `currentQuestion`: E.g., "Name a Real Madrid player from 2026".
+3. Create a new WebSocket event `submitGuess`. When a player emits this, the server should:
+   - Verify it is actually their turn.
+   - Run the guess through the fuzzy search database.
+   - Check if the player was already guessed.
+   - Update the Redis Game State (add points or strikes, switch turns).
+   - Emit a `gameStateUpdated` event back to both clients with the new state.

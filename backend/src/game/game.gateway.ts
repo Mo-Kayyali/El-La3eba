@@ -11,6 +11,8 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { MatchmakingService } from './matchmaking.service';
+import { GameService } from './game.service';
+import { RedisService } from '../redis/redis.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
@@ -20,6 +22,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   constructor(
     private readonly jwtService: JwtService,
     private readonly matchmakingService: MatchmakingService,
+    private readonly gameService: GameService,
+    private readonly redisClient: RedisService,
   ) {}
 
   afterInit(server: Server) {
@@ -88,5 +92,77 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
     const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id);
     return result;
+  }
+
+  @SubscribeMessage('submitGuess')
+  async handleSubmitGuess(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { gameSessionId: string; guessName: string },
+  ) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const { gameSessionId, guessName } = payload;
+    if (!gameSessionId || !guessName) {
+      return { status: 'error', message: 'Missing gameSessionId or guessName' };
+    }
+
+    const key = `game:${gameSessionId}`;
+
+    // Use WATCH for optimistic locking to prevent race conditions
+    await this.redisClient.watch(key);
+    const stateStr = await this.redisClient.get(key);
+
+    if (!stateStr) {
+      await this.redisClient.unwatch();
+      return { status: 'error', message: 'Game session not found' };
+    }
+
+    const state = JSON.parse(stateStr);
+
+    if (state.currentTurn !== userId) {
+      await this.redisClient.unwatch();
+      return { status: 'error', message: 'Not your turn' };
+    }
+
+    // Check DB for player
+    const matchedPlayer = await this.gameService.guessPlayer(guessName);
+    const isCorrect = !!matchedPlayer;
+
+    if (isCorrect) {
+      if (state.guessedPlayers.includes(matchedPlayer.name)) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Player already guessed this round' };
+      }
+      state.guessedPlayers.push(matchedPlayer.name);
+      state.scores[userId] += 1;
+    } else {
+      state.strikes[userId] += 1;
+    }
+
+    const otherPlayer = state.players.find(p => p !== userId) || state.players[0];
+    state.currentTurn = otherPlayer;
+
+    // Execute transaction
+    const multi = this.redisClient.multi();
+    multi.set(key, JSON.stringify(state));
+    const results = await multi.exec();
+
+    if (!results) {
+      return { status: 'error', message: 'Concurrent modification, try again' };
+    }
+
+    // Emit updated state to the clients
+    // (In a real app, we need to store gameSessionId -> room/sockets binding or use Redis Pub/Sub,
+    // here we can just broadcast or emit to the specific users involved)
+    
+    // We don't have socket IDs directly stored in the game state right now to .to(socketId).
+    // Let's rely on standard socket.io room features if we make them join a room, but currently 
+    // Matchmaking emits directly to socket IDs.
+    // For now we will broadcast to everyone in a room named gameSessionId.
+    // Wait, let's make users join the socket.io room when match is found.
+    this.server.to(gameSessionId).emit('gameStateUpdated', { state, lastGuess: { user: userId, guess: guessName, correct: isCorrect, matchedName: isCorrect ? matchedPlayer.name : null } });
+
+    return { status: 'success', isCorrect, matchedPlayer };
   }
 }
