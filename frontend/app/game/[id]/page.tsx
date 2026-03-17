@@ -14,7 +14,8 @@ type Player = {
 };
 
 type GameState = {
-  players?: Player[];
+  // Backend state uses player IDs (string[]). Keep this flexible to avoid UI breakage.
+  players?: Array<string | number | Player>;
   currentTurn?: string | number | null;
   scores?: Record<string, number> | number[];
   strikes?: Record<string, number> | number[];
@@ -29,6 +30,12 @@ type GameState = {
 
 function toId(v: unknown) {
   if (typeof v === "string" || typeof v === "number") return v;
+  return undefined;
+}
+
+function playerEntryToId(entry: unknown) {
+  if (typeof entry === "string" || typeof entry === "number") return entry;
+  if (entry && typeof entry === "object") return toId((entry as Player)?.id);
   return undefined;
 }
 
@@ -66,6 +73,8 @@ export default function GamePage() {
   const [guess, setGuess] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [turnSecondsLeft, setTurnSecondsLeft] = useState(10);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionSecondsLeft, setTransitionSecondsLeft] = useState<number>(0);
 
   const toastTimer = useRef<number | null>(null);
   const showToast = (message: string) => {
@@ -111,43 +120,91 @@ export default function GamePage() {
     const onNextRoundStarted = (payload: GameState) => {
       const actualState = (payload as any)?.state || payload;
       setGameState(actualState ?? null);
+      setIsTransitioning(false);
+      setTransitionSecondsLeft(0);
       const round = (actualState as any)?.currentRound;
       showToast(`Round ${typeof round === "number" ? round : "?"} Started!`);
     };
 
     const onMatchOver = (payload: GameState) => {
-      setGameState(payload ?? null);
+      const actualState = (payload as any)?.state || payload;
+      setGameState(actualState ?? null);
+      setIsTransitioning(false);
+      setTransitionSecondsLeft(0);
       showToast("Match Over");
+    };
+
+    const onRoundOver = (payload: any) => {
+      const nextRoundIn =
+        typeof payload?.nextRoundIn === "number" ? payload.nextRoundIn : 4;
+      setIsTransitioning(true);
+      setTransitionSecondsLeft(Math.max(0, Math.floor(nextRoundIn)));
+      const winner = payload?.winner;
+      showToast(
+        `Round over${winner ? ` • Winner: ${String(winner)}` : ""} — next round soon`,
+      );
     };
 
     socket.on("gameStateUpdated", onGameStateUpdated);
     socket.on("nextRoundStarted", onNextRoundStarted);
     socket.on("matchOver", onMatchOver);
+    socket.on("roundOver", onRoundOver);
 
     return () => {
       socket.off("gameStateUpdated", onGameStateUpdated);
       socket.off("nextRoundStarted", onNextRoundStarted);
       socket.off("matchOver", onMatchOver);
+      socket.off("roundOver", onRoundOver);
     };
   }, [gameSessionId, isConnected, socket]);
 
-  const players = useMemo(() => gameState?.players ?? [], [gameState?.players]);
-  const me = players.find((p) => toId(p?.id) === userId) ?? user ?? null;
+  const player1Id = useMemo(
+    () => playerEntryToId(gameState?.players?.[0]),
+    [gameState?.players],
+  );
+  const player2Id = useMemo(
+    () => playerEntryToId(gameState?.players?.[1]),
+    [gameState?.players],
+  );
 
-  const [leftPlayer, rightPlayer] = useMemo(() => {
-    if (players.length === 0) return [null, null] as const;
-    if (!userId) return [players[0] ?? null, players[1] ?? null] as const;
-    const mine = players.find((p) => toId(p?.id) === userId) ?? null;
-    const other = players.find((p) => toId(p?.id) !== userId) ?? null;
-    return [mine ?? players[0] ?? null, other ?? players[1] ?? null] as const;
-  }, [players, userId]);
+  const me = user ?? null;
 
-  const leftId = coerceString(leftPlayer?.id);
-  const rightId = coerceString(rightPlayer?.id);
+  const [leftPlayerId, rightPlayerId] = useMemo(() => {
+    if (userId === undefined) return [player1Id, player2Id] as const;
+    if (player1Id === undefined && player2Id === undefined)
+      return [undefined, undefined] as const;
+    if (userId === player1Id) return [player1Id, player2Id] as const;
+    if (userId === player2Id) return [player2Id, player1Id] as const;
+    // If somehow a spectator/unknown user, keep original order.
+    return [player1Id, player2Id] as const;
+  }, [player1Id, player2Id, userId]);
+
+  const leftId = coerceString(leftPlayerId);
+  const rightId = coerceString(rightPlayerId);
 
   const currentTurnId = gameState?.currentTurn;
   const isMyTurn = userId !== undefined && currentTurnId === userId;
   const isMatchOver = gameState?.status === "match_completed";
+
+  const leftIsActive =
+    gameState?.currentTurn !== undefined && gameState?.currentTurn !== null
+      ? gameState?.currentTurn === leftPlayerId
+      : false;
+  const rightIsActive =
+    gameState?.currentTurn !== undefined && gameState?.currentTurn !== null
+      ? gameState?.currentTurn === rightPlayerId
+      : false;
+
+  const leftIsMe = userId !== undefined && leftPlayerId === userId;
+  const rightIsMe = userId !== undefined && rightPlayerId === userId;
+
+  const winnerId = useMemo(() => {
+    const w = gameState?.winner;
+    if (typeof w === "string" || typeof w === "number") return w;
+    if (w && typeof w === "object") return toId((w as Player)?.id);
+    return undefined;
+  }, [gameState?.winner]);
+  const didIWin = userId !== undefined && winnerId !== undefined && userId === winnerId;
 
   useEffect(() => {
     // Visual 10-second countdown; resets immediately on turn changes.
@@ -162,6 +219,16 @@ export default function GamePage() {
 
     return () => window.clearInterval(id);
   }, [gameState?.currentTurn, isMatchOver]);
+
+  useEffect(() => {
+    if (!isTransitioning) return;
+    setTurnSecondsLeft(10);
+    if (transitionSecondsLeft <= 0) return;
+    const id = window.setInterval(() => {
+      setTransitionSecondsLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [isTransitioning, transitionSecondsLeft]);
 
   const currentRound = gameState?.currentRound ?? 1;
   const question = gameState?.currentQuestion ?? "Waiting for question...";
@@ -189,7 +256,11 @@ export default function GamePage() {
   }, [gameState?.winner]);
 
   const canSubmit =
-    !!socket?.connected && !!gameSessionId && !isMatchOver && isMyTurn;
+    !!socket?.connected &&
+    !!gameSessionId &&
+    !isMatchOver &&
+    isMyTurn &&
+    !isTransitioning;
 
   const submitGuess = () => {
     const trimmed = guess.trim();
@@ -198,15 +269,101 @@ export default function GamePage() {
     setGuess("");
   };
 
-  const displayName = (p: Player | null, fallback: string) =>
-    p?.username ??
-    p?.email ??
-    (p?.id !== undefined ? `Player ${String(p.id)}` : fallback);
+  const playerLabel = (id: string | number | undefined, fallback: string) => {
+    if (id === undefined || id === null) return fallback;
+    if (userId !== undefined && id === userId) return "You";
+    return "Opponent";
+  };
 
   const timerLabel = useMemo(() => {
     const s = Math.max(0, Math.min(10, turnSecondsLeft));
     return `0:${String(s).padStart(2, "0")} left`;
   }, [turnSecondsLeft]);
+
+  function GameOverCenterStage() {
+    const [seconds, setSeconds] = useState(15);
+
+    useEffect(() => {
+      setSeconds(15);
+      const id = window.setInterval(() => {
+        setSeconds((prev) => Math.max(0, prev - 1));
+      }, 1000);
+
+      return () => window.clearInterval(id);
+    }, []);
+
+    useEffect(() => {
+      if (seconds !== 0) return;
+      router.push("/lobby");
+    }, [router, seconds]);
+
+    return (
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/50 p-8 backdrop-blur-xl lg:col-span-3">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-44 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-amber-400/10 blur-3xl" />
+          <div className="absolute -bottom-52 left-1/3 h-[520px] w-[520px] rounded-full bg-fuchsia-500/10 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_55%)]" />
+        </div>
+
+        <div className="relative mx-auto max-w-3xl text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200">
+            <Crown className="h-4 w-4" />
+            MATCH COMPLETED
+          </div>
+
+          <h2 className="mt-6 text-5xl font-extrabold tracking-tight text-white sm:text-6xl">
+            GAME OVER
+          </h2>
+
+          <p
+            className={`mt-6 text-3xl font-extrabold sm:text-4xl ${
+              didIWin ? "text-emerald-300" : "text-red-300"
+            }`}
+          >
+            {didIWin ? "YOU WON THE MATCH! 🏆" : "YOU LOST! 💀"}
+          </p>
+
+          <p className="mt-4 text-sm text-zinc-300">
+            Final (BO3):{" "}
+            <span className="font-semibold text-white">
+              {leftOverall} - {rightOverall}
+            </span>
+            {" • "}
+            Winner:{" "}
+            <span className="font-semibold text-white">
+              {winnerLabel || "Unknown"}
+            </span>
+          </p>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left">
+              <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                YOU
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">
+                {me?.username ?? me?.email ?? (me as any)?.id ?? "Player"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-left">
+              <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                RETURNING TO LOBBY
+              </p>
+              <p className="mt-1 text-lg font-semibold text-white">
+                {seconds}s
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.replace("/lobby")}
+            className="mt-8 w-full rounded-3xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-6 py-4 text-base font-semibold text-black hover:brightness-110 transition"
+          >
+            Return to Lobby Now
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05060a] text-zinc-100">
@@ -272,9 +429,13 @@ export default function GamePage() {
         <main className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.25fr_1fr]">
           <section
             className={`relative overflow-hidden rounded-3xl border bg-white/[0.06] p-6 backdrop-blur-xl transition ${
-              gameState?.currentTurn === toId(leftPlayer?.id)
-                ? "border-cyan-400/40 shadow-[0_0_0_1px_rgba(34,211,238,0.18),0_0_50px_rgba(34,211,238,0.10)]"
+              leftIsActive
+                ? "border-emerald-400/40 ring-4 ring-emerald-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                 : "border-white/10"
+            } ${
+              !leftIsActive && (gameState?.currentTurn ?? null) !== null
+                ? "opacity-50"
+                : ""
             }`}
           >
             <div className="absolute inset-0 pointer-events-none opacity-0 [mask-image:radial-gradient(circle_at_30%_20%,black,transparent_70%)] lg:opacity-100">
@@ -288,8 +449,8 @@ export default function GamePage() {
                     PLAYER 1
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">
-                    {displayName(leftPlayer, "Waiting...")}
-                    {toId(leftPlayer?.id) === userId && (
+                    {playerLabel(leftPlayerId, "Waiting...")}
+                    {leftIsMe && (
                       <span className="ml-2 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs text-zinc-200">
                         You
                       </span>
@@ -322,7 +483,7 @@ export default function GamePage() {
                       key={i}
                       className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl border ${
                         i < leftStrikes
-                          ? "border-red-500/30 bg-red-500/10 text-red-200"
+                          ? "border-red-500 bg-red-500/20 text-red-500"
                           : "border-white/10 bg-white/[0.04] text-zinc-500"
                       }`}
                     >
@@ -338,97 +499,122 @@ export default function GamePage() {
 
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-3 text-sm">
                 <span className="text-zinc-400">Status:</span>{" "}
-                <span className="font-semibold text-white">
-                  {gameState?.currentTurn === toId(leftPlayer?.id)
-                    ? "Your side to play"
-                    : "Waiting"}
+                <span
+                  className={`font-semibold ${
+                    leftIsActive ? "text-emerald-200 animate-pulse" : "text-white"
+                  }`}
+                >
+                  {leftIsActive
+                    ? leftIsMe
+                      ? "Your Turn"
+                      : "Opponent's Turn"
+                    : leftIsMe
+                      ? "Opponent's Turn"
+                      : "Your Turn"}
                 </span>
               </div>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold tracking-wide text-zinc-400">
-                  CURRENT QUESTION
-                </p>
-                <h3 className="mt-2 text-xl font-semibold text-white leading-snug">
-                  {question}
-                </h3>
-              </div>
-              <div
-                className={`shrink-0 rounded-2xl border px-3 py-2 text-sm font-semibold ${
-                  isMatchOver
-                    ? "border-amber-400/30 bg-amber-500/10 text-amber-200"
-                    : isMyTurn
+          {isMatchOver ? (
+            <GameOverCenterStage />
+          ) : (
+            <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-zinc-400">
+                    CURRENT QUESTION
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-white leading-snug">
+                    {question}
+                  </h3>
+                </div>
+                <div
+                  className={`shrink-0 rounded-2xl border px-3 py-2 text-sm font-semibold ${
+                    isMyTurn
                       ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-100"
                       : "border-white/10 bg-white/[0.06] text-zinc-300"
-                }`}
-              >
-                {isMatchOver
-                  ? "Match finished"
-                  : isMyTurn
-                    ? "Your turn"
-                    : "Opponent’s turn"}
+                  }`}
+                >
+                  {isTransitioning
+                    ? "Transition"
+                    : isMyTurn
+                      ? "Your turn"
+                      : "Opponent’s turn"}
+                </div>
               </div>
-            </div>
 
-            {!isMatchOver && (
               <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
                 <p className="text-xs font-semibold tracking-[0.22em] text-zinc-400">
-                  TURN TIMER
+                  {isTransitioning ? "NEXT ROUND" : "TURN TIMER"}
                 </p>
                 <p
                   className={`text-lg font-semibold ${
-                    turnSecondsLeft <= 3 ? "text-red-200" : "text-white"
+                    !isTransitioning && turnSecondsLeft <= 3
+                      ? "text-red-200"
+                      : "text-white"
                   }`}
                 >
-                  {timerLabel}
+                  {isTransitioning
+                    ? transitionSecondsLeft > 0
+                      ? `${transitionSecondsLeft}s`
+                      : "Starting..."
+                    : timerLabel}
                 </p>
               </div>
-            )}
 
-            {!isMatchOver ? (
               <div className="mt-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="flex-1 rounded-2xl border border-white/10 bg-black/30 p-3">
-                    <label className="block text-xs font-semibold tracking-wide text-zinc-400">
-                      YOUR GUESS
-                    </label>
-                    <input
-                      value={guess}
-                      onChange={(e) => setGuess(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") submitGuess();
-                      }}
-                      disabled={!canSubmit}
-                      placeholder={
-                        canSubmit
-                          ? "Type a player name..."
-                          : "Waiting for your turn..."
-                      }
-                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
-                    />
+                {isTransitioning ? (
+                  <div className="rounded-3xl border border-white/10 bg-black/30 p-5 text-center">
+                    <p className="text-sm font-semibold text-white">
+                      Round Over! Next round starting in...
+                    </p>
+                    <p className="mt-2 text-2xl font-extrabold text-cyan-100">
+                      {transitionSecondsLeft > 0
+                        ? `${transitionSecondsLeft}s`
+                        : "Starting..."}
+                    </p>
                   </div>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="flex-1 rounded-2xl border border-white/10 bg-black/30 p-3">
+                      <label className="block text-xs font-semibold tracking-wide text-zinc-400">
+                        YOUR GUESS
+                      </label>
+                      <input
+                        value={guess}
+                        onChange={(e) => setGuess(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") submitGuess();
+                        }}
+                        disabled={!canSubmit}
+                        placeholder={
+                          canSubmit
+                            ? "Type a player name..."
+                            : "Waiting for your turn..."
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+                    </div>
 
-                  <button
-                    disabled={!canSubmit || !guess.trim()}
-                    onClick={submitGuess}
-                    className={`group relative overflow-hidden rounded-2xl px-5 py-4 text-sm font-semibold transition ${
-                      !canSubmit || !guess.trim()
-                        ? "cursor-not-allowed bg-white/10 text-zinc-300"
-                        : "bg-gradient-to-r from-fuchsia-500 to-cyan-400 text-black hover:brightness-110"
-                    }`}
-                  >
-                    <span className="relative z-10">Submit Guess</span>
-                    {canSubmit && guess.trim() && (
-                      <span className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                        <span className="absolute inset-[-2px] rounded-2xl bg-gradient-to-r from-fuchsia-500/40 to-cyan-400/40 blur-xl" />
-                      </span>
-                    )}
-                  </button>
-                </div>
+                    <button
+                      disabled={!canSubmit || !guess.trim()}
+                      onClick={submitGuess}
+                      className={`group relative overflow-hidden rounded-2xl px-5 py-4 text-sm font-semibold transition ${
+                        !canSubmit || !guess.trim()
+                          ? "cursor-not-allowed bg-white/10 text-zinc-300"
+                          : "bg-gradient-to-r from-fuchsia-500 to-cyan-400 text-black hover:brightness-110"
+                      }`}
+                    >
+                      <span className="relative z-10">Submit Guess</span>
+                      {canSubmit && guess.trim() && (
+                        <span className="pointer-events-none absolute inset-0 opacity-0 transition group-hover:opacity-100">
+                          <span className="absolute inset-[-2px] rounded-2xl bg-gradient-to-r from-fuchsia-500/40 to-cyan-400/40 blur-xl" />
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-5 rounded-3xl border border-white/10 bg-black/30 p-5">
                   <div className="flex items-center justify-between gap-3">
@@ -465,75 +651,24 @@ export default function GamePage() {
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-sm text-zinc-300">
                     Waiting for{" "}
                     <span className="font-semibold text-white">
-                      {displayName(
-                        players.find((p) => toId(p?.id) === currentTurnId) ??
-                          null,
-                        "opponent",
-                      )}
+                      {playerLabel(toId(currentTurnId), "opponent")}
                     </span>{" "}
                     to play.
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-black/40">
-                <div className="relative p-8">
-                  <div className="pointer-events-none absolute inset-0">
-                    <div className="absolute -top-28 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-amber-400/10 blur-3xl" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_55%)]" />
-                  </div>
-                  <div className="relative">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
-                      <Crown className="h-4 w-4" />
-                      MATCH COMPLETED
-                    </div>
-
-                    <h2 className="mt-5 text-3xl font-semibold text-white">
-                      GAME OVER
-                    </h2>
-                    <p className="mt-2 text-sm text-zinc-300">
-                      Winner:{" "}
-                      <span className="font-semibold text-white">
-                        {winnerLabel || "Unknown"}
-                      </span>
-                    </p>
-
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                        <p className="text-xs font-semibold tracking-wide text-zinc-400">
-                          YOU
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-white">
-                          {displayName(me as Player | null, "Player")}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                        <p className="text-xs font-semibold tracking-wide text-zinc-400">
-                          FINAL SCORE (BO3)
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-white">
-                          {leftOverall} - {rightOverall}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => router.replace("/lobby")}
-                      className="mt-6 w-full rounded-3xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-6 py-4 text-base font-semibold text-black hover:brightness-110 transition"
-                    >
-                      Return to Lobby
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+            </section>
+          )}
 
           <section
             className={`relative overflow-hidden rounded-3xl border bg-white/[0.06] p-6 backdrop-blur-xl transition ${
-              gameState?.currentTurn === toId(rightPlayer?.id)
-                ? "border-fuchsia-400/40 shadow-[0_0_0_1px_rgba(232,121,249,0.18),0_0_50px_rgba(232,121,249,0.10)]"
+              rightIsActive
+                ? "border-emerald-400/40 ring-4 ring-emerald-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                 : "border-white/10"
+            } ${
+              !rightIsActive && (gameState?.currentTurn ?? null) !== null
+                ? "opacity-50"
+                : ""
             }`}
           >
             <div className="absolute inset-0 pointer-events-none opacity-0 [mask-image:radial-gradient(circle_at_70%_20%,black,transparent_70%)] lg:opacity-100">
@@ -547,8 +682,8 @@ export default function GamePage() {
                     PLAYER 2
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">
-                    {displayName(rightPlayer, "Waiting...")}
-                    {toId(rightPlayer?.id) === userId && (
+                    {playerLabel(rightPlayerId, "Waiting...")}
+                    {rightIsMe && (
                       <span className="ml-2 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-xs text-zinc-200">
                         You
                       </span>
@@ -581,7 +716,7 @@ export default function GamePage() {
                       key={i}
                       className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl border ${
                         i < rightStrikes
-                          ? "border-red-500/30 bg-red-500/10 text-red-200"
+                          ? "border-red-500 bg-red-500/20 text-red-500"
                           : "border-white/10 bg-white/[0.04] text-zinc-500"
                       }`}
                     >
@@ -597,10 +732,20 @@ export default function GamePage() {
 
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-3 text-sm">
                 <span className="text-zinc-400">Status:</span>{" "}
-                <span className="font-semibold text-white">
-                  {gameState?.currentTurn === toId(rightPlayer?.id)
-                    ? "Your side to play"
-                    : "Waiting"}
+                <span
+                  className={`font-semibold ${
+                    rightIsActive
+                      ? "text-emerald-200 animate-pulse"
+                      : "text-white"
+                  }`}
+                >
+                  {rightIsActive
+                    ? rightIsMe
+                      ? "Your Turn"
+                      : "Opponent's Turn"
+                    : rightIsMe
+                      ? "Opponent's Turn"
+                      : "Your Turn"}
                 </span>
               </div>
             </div>

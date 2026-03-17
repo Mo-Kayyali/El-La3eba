@@ -12,7 +12,9 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     server: Server;
     private readonly logger;
     private readonly turnTimers;
+    private readonly roundTransitionMs;
     constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService);
+    private sleep;
     afterInit(server: Server): void;
     private clearTurnTimer;
     private startTurnTimer;

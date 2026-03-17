@@ -25,6 +25,7 @@ export class GameGateway
 
   private readonly logger = new Logger(GameGateway.name);
   private readonly turnTimers = new Map<string, NodeJS.Timeout>();
+  private readonly roundTransitionMs = 4000;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -32,6 +33,10 @@ export class GameGateway
     private readonly gameService: GameService,
     private readonly redisClient: RedisService,
   ) {}
+
+  private sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   afterInit(server: Server) {
     this.matchmakingService.setServer(server);
@@ -81,12 +86,14 @@ export class GameGateway
 
         let isRoundOver = false;
         let isMatchOver = false;
+        let roundWinner: string | null = null;
 
         if (state.strikes[timedOutUserId] >= 3) {
           isRoundOver = true;
           const otherPlayer =
             state.players.find((p: string) => p !== timedOutUserId) ||
             state.players[0];
+          roundWinner = otherPlayer;
 
           state.overallScores[otherPlayer] += 1;
 
@@ -102,14 +109,8 @@ export class GameGateway
                 ? state.players[0]
                 : state.players[1];
           } else {
-            state.currentRound += 1;
-            state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
-            state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-            state.guessedPlayers = [];
-            state.currentQuestion = pickRandomFootballQuestion();
-
-            // Loser starts next round (timedOutUserId is the loser)
-            state.currentTurn = timedOutUserId;
+            // Round over, but match continues: transition period.
+            state.currentTurn = null;
           }
         } else {
           const otherPlayer =
@@ -146,7 +147,44 @@ export class GameGateway
           this.server.to(gameSessionId).emit('matchOver', updatePayload);
           this.clearTurnTimer(gameSessionId);
         } else if (isRoundOver) {
-          this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
+          this.server.to(gameSessionId).emit('roundOver', {
+            winner: roundWinner,
+            nextRoundIn: this.roundTransitionMs / 1000,
+          });
+
+          await this.sleep(this.roundTransitionMs);
+
+          // Start next round after transition, with optimistic locking.
+          await this.redisClient.watch(key);
+          const latestStr = await this.redisClient.get(key);
+          if (!latestStr) {
+            await this.redisClient.unwatch();
+            return;
+          }
+          const latest = JSON.parse(latestStr);
+          if (latest.status === 'match_completed') {
+            await this.redisClient.unwatch();
+            return;
+          }
+
+          latest.currentRound += 1;
+          latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+          latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+          latest.guessedPlayers = [];
+          latest.currentQuestion = pickRandomFootballQuestion();
+          // Loser starts next round (timedOutUserId is the loser)
+          latest.currentTurn = timedOutUserId;
+
+          const multi2 = this.redisClient.multi();
+          multi2.set(key, JSON.stringify(latest));
+          const results2 = await multi2.exec();
+          if (!results2) {
+            this.startTurnTimer(gameSessionId);
+            return;
+          }
+
+          const nextPayload = { state: latest, lastGuess: updatePayload.lastGuess };
+          this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
           this.startTurnTimer(gameSessionId);
         } else {
           this.startTurnTimer(gameSessionId);
@@ -365,11 +403,13 @@ export class GameGateway
 
       let isRoundOver = false;
       let isMatchOver = false;
+      let roundWinner: string | null = null;
 
       if (state.strikes[userId] >= 3) {
         isRoundOver = true;
         const otherPlayer =
           state.players.find((p: string) => p !== userId) || state.players[0];
+        roundWinner = otherPlayer;
 
         // Update overall scores
         state.overallScores[otherPlayer] += 1;
@@ -383,15 +423,8 @@ export class GameGateway
               ? state.players[0]
               : state.players[1];
         } else {
-          // Match continues to next round
-          state.currentRound += 1;
-          state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
-          state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-          state.guessedPlayers = [];
-          state.currentQuestion = pickRandomFootballQuestion();
-
-          // Loser guesses first in the next round, so we don't change currentTurn (it's already userId)
-          state.currentTurn = userId;
+          // Round ends, but match continues: transition period.
+          state.currentTurn = null;
         }
       } else {
         const otherPlayer =
@@ -436,10 +469,60 @@ export class GameGateway
         this.server.to(gameSessionId).emit('matchOver', updatePayload);
         this.clearTurnTimer(gameSessionId);
       } else if (isRoundOver) {
+        this.logger.log(`Broadcasting roundOver to room ${gameSessionId}`);
+        this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+        this.server.to(gameSessionId).emit('roundOver', {
+          winner: roundWinner,
+          nextRoundIn: this.roundTransitionMs / 1000,
+        });
+
+        await this.sleep(this.roundTransitionMs);
+
+        // Start next round after transition, with optimistic locking.
+        await this.redisClient.watch(key);
+        const latestStr = await this.redisClient.get(key);
+        if (!latestStr) {
+          await this.redisClient.unwatch();
+          return { status: 'error', message: 'Game session not found' };
+        }
+        const latest = JSON.parse(latestStr);
+
+        if (latest.status === 'match_completed') {
+          await this.redisClient.unwatch();
+          return { status: 'success', isCorrect, matchedPlayer };
+        }
+
+        latest.currentRound += 1;
+        latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+        latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+        latest.guessedPlayers = [];
+        latest.currentQuestion = pickRandomFootballQuestion();
+        // Loser starts next round (userId is the loser)
+        latest.currentTurn = userId;
+
+        const multi2 = this.redisClient.multi();
+        multi2.set(key, JSON.stringify(latest));
+        const results2 = await multi2.exec();
+
+        if (!results2) {
+          await this.redisClient.unwatch().catch(() => {});
+          this.startTurnTimer(gameSessionId);
+          return {
+            status: 'error',
+            message: 'Concurrent modification, try again',
+          };
+        }
+        await this.redisClient.unwatch().catch(() => {});
+
+        const nextPayload = {
+          state: latest,
+          lastGuess: updatePayload.lastGuess,
+        };
+
         this.logger.log(
           `Broadcasting nextRoundStarted to room ${gameSessionId}`,
         );
-        this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
+        this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
         this.startTurnTimer(gameSessionId);
       } else {
         this.logger.log(

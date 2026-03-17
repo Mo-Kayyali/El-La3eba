@@ -30,11 +30,15 @@ let GameGateway = GameGateway_1 = class GameGateway {
     server;
     logger = new common_1.Logger(GameGateway_1.name);
     turnTimers = new Map();
+    roundTransitionMs = 4000;
     constructor(jwtService, matchmakingService, gameService, redisClient) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
         this.gameService = gameService;
         this.redisClient = redisClient;
+    }
+    sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     afterInit(server) {
         this.matchmakingService.setServer(server);
@@ -72,10 +76,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 state.strikes[timedOutUserId] = (state.strikes[timedOutUserId] ?? 0) + 1;
                 let isRoundOver = false;
                 let isMatchOver = false;
+                let roundWinner = null;
                 if (state.strikes[timedOutUserId] >= 3) {
                     isRoundOver = true;
                     const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
                         state.players[0];
+                    roundWinner = otherPlayer;
                     state.overallScores[otherPlayer] += 1;
                     if (state.overallScores[otherPlayer] >= 2 ||
                         state.currentRound >= 3) {
@@ -88,12 +94,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                                 : state.players[1];
                     }
                     else {
-                        state.currentRound += 1;
-                        state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
-                        state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-                        state.guessedPlayers = [];
-                        state.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
-                        state.currentTurn = timedOutUserId;
+                        state.currentTurn = null;
                     }
                 }
                 else {
@@ -124,7 +125,37 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     this.clearTurnTimer(gameSessionId);
                 }
                 else if (isRoundOver) {
-                    this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
+                    this.server.to(gameSessionId).emit('roundOver', {
+                        winner: roundWinner,
+                        nextRoundIn: this.roundTransitionMs / 1000,
+                    });
+                    await this.sleep(this.roundTransitionMs);
+                    await this.redisClient.watch(key);
+                    const latestStr = await this.redisClient.get(key);
+                    if (!latestStr) {
+                        await this.redisClient.unwatch();
+                        return;
+                    }
+                    const latest = JSON.parse(latestStr);
+                    if (latest.status === 'match_completed') {
+                        await this.redisClient.unwatch();
+                        return;
+                    }
+                    latest.currentRound += 1;
+                    latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                    latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                    latest.guessedPlayers = [];
+                    latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                    latest.currentTurn = timedOutUserId;
+                    const multi2 = this.redisClient.multi();
+                    multi2.set(key, JSON.stringify(latest));
+                    const results2 = await multi2.exec();
+                    if (!results2) {
+                        this.startTurnTimer(gameSessionId);
+                        return;
+                    }
+                    const nextPayload = { state: latest, lastGuess: updatePayload.lastGuess };
+                    this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
                     this.startTurnTimer(gameSessionId);
                 }
                 else {
@@ -274,9 +305,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
             let isRoundOver = false;
             let isMatchOver = false;
+            let roundWinner = null;
             if (state.strikes[userId] >= 3) {
                 isRoundOver = true;
                 const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
+                roundWinner = otherPlayer;
                 state.overallScores[otherPlayer] += 1;
                 if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
                     isMatchOver = true;
@@ -288,12 +321,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                             : state.players[1];
                 }
                 else {
-                    state.currentRound += 1;
-                    state.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
-                    state.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-                    state.guessedPlayers = [];
-                    state.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
-                    state.currentTurn = userId;
+                    state.currentTurn = null;
                 }
             }
             else {
@@ -328,8 +356,48 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 this.clearTurnTimer(gameSessionId);
             }
             else if (isRoundOver) {
+                this.logger.log(`Broadcasting roundOver to room ${gameSessionId}`);
+                this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+                this.server.to(gameSessionId).emit('roundOver', {
+                    winner: roundWinner,
+                    nextRoundIn: this.roundTransitionMs / 1000,
+                });
+                await this.sleep(this.roundTransitionMs);
+                await this.redisClient.watch(key);
+                const latestStr = await this.redisClient.get(key);
+                if (!latestStr) {
+                    await this.redisClient.unwatch();
+                    return { status: 'error', message: 'Game session not found' };
+                }
+                const latest = JSON.parse(latestStr);
+                if (latest.status === 'match_completed') {
+                    await this.redisClient.unwatch();
+                    return { status: 'success', isCorrect, matchedPlayer };
+                }
+                latest.currentRound += 1;
+                latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                latest.guessedPlayers = [];
+                latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                latest.currentTurn = userId;
+                const multi2 = this.redisClient.multi();
+                multi2.set(key, JSON.stringify(latest));
+                const results2 = await multi2.exec();
+                if (!results2) {
+                    await this.redisClient.unwatch().catch(() => { });
+                    this.startTurnTimer(gameSessionId);
+                    return {
+                        status: 'error',
+                        message: 'Concurrent modification, try again',
+                    };
+                }
+                await this.redisClient.unwatch().catch(() => { });
+                const nextPayload = {
+                    state: latest,
+                    lastGuess: updatePayload.lastGuess,
+                };
                 this.logger.log(`Broadcasting nextRoundStarted to room ${gameSessionId}`);
-                this.server.to(gameSessionId).emit('nextRoundStarted', updatePayload);
+                this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
                 this.startTurnTimer(gameSessionId);
             }
             else {
