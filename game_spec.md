@@ -42,3 +42,11 @@ Do NOT build the game logic yet. Focus strictly on the following:
 3. Configure Prisma with the `User` model defined above.
 4. Implement JWT-based Authentication (Register, Login).
 5. Implement Email Verification: Generate a 6-digit code, store it in Redis with a 15-minute TTL, and create an endpoint to verify it.
+
+## 5. Current Mission: Phase 2 (Swagger & WebSockets Foundation)
+
+1. **API Documentation:** Install and configure `@nestjs/swagger`. Set it up in `main.ts` so I can view the UI at `/api`. Add basic Swagger decorators (`@ApiTags`, `@ApiOperation`) to the existing Auth endpoints.
+2. **Real-Time Engine:** Install `@nestjs/websockets` and `@nestjs/platform-socket.io`.
+3. **Gateway Setup:** Create a `GameGateway` (in a new `Game` module).
+4. **Connection Handling:** Implement `handleConnection` and `handleDisconnect`. When a user connects, log their Socket ID.
+5. **JWT WebSocket Auth:** Ensure the WebSocket connection is secured. The client should pass their JWT token, and the gateway should verify it before allowing the connection.
