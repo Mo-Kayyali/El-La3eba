@@ -82,7 +82,6 @@ export default function GamePage() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState<number>(0);
   const guessInputRef = useRef<HTMLInputElement | null>(null);
-  const [showMatchOverUI, setShowMatchOverUI] = useState(false);
 
   const toastTimer = useRef<number | null>(null);
   const showToast = (message: string) => {
@@ -191,15 +190,6 @@ export default function GamePage() {
   const currentTurnId = gameState?.currentTurn;
   const isMyTurn = userId !== undefined && currentTurnId === userId;
   const isMatchOver = gameState?.status === "match_completed";
-
-  useEffect(() => {
-    if (!isMatchOver) {
-      setShowMatchOverUI(false);
-      return;
-    }
-    const id = window.setTimeout(() => setShowMatchOverUI(true), 350);
-    return () => window.clearTimeout(id);
-  }, [isMatchOver]);
 
   const leftIsActive =
     gameState?.currentTurn !== undefined && gameState?.currentTurn !== null
@@ -384,14 +374,8 @@ export default function GamePage() {
     }, [router, seconds]);
 
     return (
-      <section className="relative w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-black/60 p-6 backdrop-blur-xl sm:p-8">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-44 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-amber-400/10 blur-3xl" />
-          <div className="absolute -bottom-52 left-1/3 h-[520px] w-[520px] rounded-full bg-fuchsia-500/10 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_55%)]" />
-        </div>
-
-        <div className="relative mx-auto max-w-5xl text-center">
+      <section className="w-full max-w-4xl rounded-3xl border border-white/10 bg-black/60 p-6 sm:p-8">
+        <div className="mx-auto max-w-5xl text-center">
           <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
             {winnerLabel || "Winner"}
           </h2>
@@ -450,6 +434,14 @@ export default function GamePage() {
           </p>
         </div>
       </section>
+    );
+  }
+
+  if (gameState?.status === "match_completed") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#05060a] text-zinc-100 px-6 py-10">
+        <GameOverCenterStage />
+      </div>
     );
   }
 
@@ -843,15 +835,6 @@ export default function GamePage() {
               </div>
             </div>
           </section>
-
-          {showMatchOverUI && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center px-3 sm:px-6">
-              <div className="absolute inset-0 rounded-3xl bg-black/55 backdrop-blur-[2px]" />
-              <div className="relative z-10 w-full">
-                <GameOverCenterStage />
-              </div>
-            </div>
-          )}
         </main>
 
         {!gameState && (
