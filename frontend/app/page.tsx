@@ -200,6 +200,7 @@ export default function Home() {
                     onChange={setUsername}
                     placeholder="yourname"
                     autoComplete="username"
+                    required={mode === "register"}
                     icon={<User className="h-4 w-4" />}
                   />
                 </div>
@@ -278,10 +279,12 @@ function Field(props: {
   placeholder?: string;
   type?: string;
   autoComplete?: string;
+  required?: boolean;
   icon: React.ReactNode;
 }) {
   const { label, value, onChange, placeholder, type = "text", autoComplete, icon } =
     props;
+  const required = props.required ?? true;
 
   return (
     <label className="block">
@@ -296,7 +299,7 @@ function Field(props: {
           type={type}
           autoComplete={autoComplete}
           placeholder={placeholder}
-          required
+          required={required}
           className={cx(
             "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 pl-11 text-sm text-white outline-none transition",
             "placeholder:text-zinc-500",

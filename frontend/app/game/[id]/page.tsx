@@ -54,7 +54,7 @@ export default function GamePage() {
   const params = useParams<{ id: string }>();
 
   const { user, accessToken, isAuthenticated } = useAuthStore();
-  const { socket } = useSocketStore();
+  const { socket, isConnected, connectSocket } = useSocketStore();
 
   const gameSessionId = useMemo(() => {
     const raw = params?.id;
@@ -84,12 +84,20 @@ export default function GamePage() {
       router.replace("/");
       return;
     }
-  }, [accessToken, isAuthenticated, router]);
+    // If the user hard-refreshed on /game/:id, the socket store may be "dead".
+    // Re-connect defensively (store will no-op if already connected).
+    connectSocket(accessToken);
+  }, [accessToken, connectSocket, isAuthenticated, router]);
 
   useEffect(() => {
-    if (!socket?.connected || !gameSessionId) return;
+    if (!socket || !gameSessionId) return;
+    if (!isConnected && !socket.connected) return;
 
     socket.emit("joinGameRoom", { gameSessionId });
+  }, [gameSessionId, isConnected, socket]);
+
+  useEffect(() => {
+    if (!socket || !gameSessionId) return;
 
     const onGameStateUpdated = (payload: GameState) => {
       setGameState(payload ?? null);
