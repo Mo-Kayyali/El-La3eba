@@ -2,89 +2,113 @@
 
 ## 1. Game Concept
 
-"El La3eba" is a real-time, 1v1 multiplayer football quiz game. Players compete to answer football trivia questions.
+"El La3eba" is a real-time multiplayer football quiz game. Players compete to answer football trivia questions under time pressure.
 
-- **Core Loop:** Turn-based answering. Players type names. Fuzzy searching matches guesses against a player database.
-- **Win Condition:** First to 5 points.
-- **Loss Condition:** 3 strikes (wrong answers or timeout) per round.
-- **Modes:** Random Matchmaking, Play vs Friend (Invite Code).
+- **Core Loop:** Turn-based answering. Players type names. Advanced fuzzy searching matches guesses against a player database or routes to an AI referee.
+- **Match Format:** "Best of 3" Rounds. Players alternate starting turns per round.
+- **Loss Condition (Per Round):** A player loses the round if they accumulate 3 strikes (wrong answers, already taken players, or timeouts).
+- **Turn Timer:** Strict 10-second timer per turn.
+- **Current Modes:** Ranked Matchmaking (1v1 Queue), Play vs Friend (Private Room Code).
+- **Future Modes:** Survival Mode (Sudden Death), 2v2 Co-op, Daily Challenges.
 
-## 2. Tech Stack
+## 2. Tech Stack & Infrastructure (Current & Planned)
 
-- **Frontend:** React (To be built later).
-- **Backend:** NestJS (REST API + WebSockets).
-- **Database:** PostgreSQL (via Prisma ORM) utilizing `pg_trgm` for fuzzy text searching.
-- **In-Memory Cache:** Redis (for matchmaking, live game state, and temporary verification codes).
+- **Frontend (Deployment: Vercel):** Next.js (App Router), React, Tailwind CSS, Zustand, Socket.io-client.
+- **Backend (Deployment: Render/Railway/AWS):** NestJS (REST API + WebSockets).
+- **Database (Deployment: Supabase):** PostgreSQL (via Prisma ORM) utilizing `pg_trgm`, `fuzzystrmatch`, `unaccent`, and eventually `pgvector`.
+- **In-Memory Cache & State (Deployment: Upstash/Aiven):** Redis (matchmaking queues, live game state locking via `WATCH`/`MULTI`, turn timers).
+- **AI Microservice (Deployment: Vercel/Render):** Python (FastAPI) + LangChain + LLMs (Gemini/OpenAI) for dynamic question generation and AI refereeing.
 
-## 3. Database Schema (Prisma Initial Setup)
+## 3. Database Schema (Prisma - Current)
 
-For the foundation, we require the following User schema:
-
+```prisma
 model User {
-id String @id @default(uuid())
-email String @unique
-username String @unique
-passwordHash String
-isVerified Boolean @default(false)
-mmr Int @default(1000) // Matchmaking rating
-gamesPlayed Int @default(0)
-wins Int @default(0)
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  email          String   @unique
+  username       String   @unique
+  passwordHash   String
+  isVerified     Boolean  @default(false)
+  mmr            Int      @default(1000) // Matchmaking rating
+  gamesPlayed    Int      @default(0)
+  wins           Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
-## 4. Current Mission: Phase 1 (Auth & Foundation)
+model FootballPlayer {
+  id         String   @id @default(uuid())
+  name       String   // Full name (e.g., "Lionel Messi")
+  aliases    String[] // Known nicknames or alternate spellings
+  clubs      String[]
+  activeYear Int
+}
 
-Do NOT build the game logic yet. Focus strictly on the following:
+4. Completed Features: Backend Engine (NestJS & Redis)
+Auth: JWT-based registration and login. Secured WebSocket Gateway.
 
-1. Initialize a NestJS backend folder.
-2. Create a `docker-compose.yml` for PostgreSQL and Redis.
-3. Configure Prisma with the `User` model defined above.
-4. Implement JWT-based Authentication (Register, Login).
-5. Implement Email Verification: Generate a 6-digit code, store it in Redis with a 15-minute TTL, and create an endpoint to verify it.
+Matchmaking Service: - Users join a Redis queue (matchmaking_queue). Pop 2 players -> generate gameSessionId -> emit matchFound.
 
-## 5. Current Mission: Phase 2 (Swagger & WebSockets Foundation)
+Supports Private Rooms with 6-character codes.
 
-1. **API Documentation:** Install and configure `@nestjs/swagger`. Set it up in `main.ts` so I can view the UI at `/api`. Add basic Swagger decorators (`@ApiTags`, `@ApiOperation`) to the existing Auth endpoints.
-2. **Real-Time Engine:** Install `@nestjs/websockets` and `@nestjs/platform-socket.io`.
-3. **Gateway Setup:** Create a `GameGateway` (in a new `Game` module).
-4. **Connection Handling:** Implement `handleConnection` and `handleDisconnect`. When a user connects, log their Socket ID.
-5. **JWT WebSocket Auth:** Ensure the WebSocket connection is secured. The client should pass their JWT token, and the gateway should verify it before allowing the connection.
+Advanced Fuzzy Search Engine: - Scales tolerance: ≤ 4 chars (0 typos), ≥ 5 (1 typo), ≥ 8 (2 typos).
 
-## 6. Current Mission: Phase 3 (Matchmaking & Redis Queue)
+Uses Levenshtein distance, Trigram word_similarity, and unaccent.
 
-1. **Matchmaking Service:** Create a `MatchmakingService` inside the `GameModule` that utilizes Redis.
-2. **Queue Logic (Random Match):**
-   - Create a WebSocket event listener for `joinQueue`.
-   - When a user emits `joinQueue`, push their `userId` and `socketId` into a Redis list (e.g., `matchmaking_queue`).
-   - Implement an interval check that inspects this queue every 2 seconds.
-3. **Session Creation:**
-   - If the queue has 2 or more players, pop two players from the queue.
-   - Generate a unique `gameSessionId` (UUID).
-   - Emit a `matchFound` event to both players' specific Socket IDs containing the `gameSessionId`.
-4. **Private Matches:** Implement `createPrivateRoom` (generates a random 6-character Redis key) and `joinPrivateRoom` (accepts the code, verifies it in Redis, and emits `matchFound`).
+Rejects inputs if the length difference is > 3 characters.
 
-## 7. Current Mission: Phase 4 (Game Engine & Fuzzy Search)
+Robust Game State Machine (Redis):
 
-**Part A: The Database (PostgreSQL & Prisma)**
+Tracks currentTurn, overallScores, scores, strikes, guessedPlayers, and roundHistory.
 
-1. Update `schema.prisma` to include a new model: `FootballPlayer`. It should have `id`, `name` (String), `clubs` (String array or JSON), and `activeYear` (Int).
-2. Create a script or Prisma migration that automatically runs `CREATE EXTENSION IF NOT EXISTS pg_trgm;` on the PostgreSQL database.
-3. Create a `GameService` that includes a `guessPlayer(guessName: string)` function. This function must use a raw Prisma query to perform a fuzzy search using `pg_trgm`'s `similarity()` function to find matches > 0.4.
+Alternates starting player per round. Handles 4-second cinematic delays between rounds.
 
-**Part B: The Game State (Redis)**
+Server-Side Timers: Integrates NodeJS.Timeout mapping to auto-assign strikes and flip turns at 10 seconds. Protected by Redis WATCH transactions.
 
-1. When a `matchFound` event fires (from Phase 3), initialize a Game State object in Redis using the `gameSessionId` as the key.
-2. The Game State JSON should track:
-   - `players`: Array of the two user IDs.
-   - `currentTurn`: The user ID of who is currently typing.
-   - `scores`: { player1Id: 0, player2Id: 0 } (First to 5 wins).
-   - `strikes`: { player1Id: 0, player2Id: 0 } (3 strikes = round loss).
-   - `guessedPlayers`: Array of player names already successfully guessed this round.
-   - `currentQuestion`: E.g., "Name a Real Madrid player from 2026".
-3. Create a new WebSocket event `submitGuess`. When a player emits this, the server should:
-   - Verify it is actually their turn.
-   - Run the guess through the fuzzy search database.
-   - Check if the player was already guessed.
-   - Update the Redis Game State (add points or strikes, switch turns).
-   - Emit a `gameStateUpdated` event back to both clients with the new state.
+5. Completed Features: Frontend App (Next.js)
+State Management: Bulletproof socketStore (prevents React Strict Mode duplicate connections) and authStore.
+
+Matchmaking Lobby: UI for Ranked Queue and Private Matches. Auto-redirects to /game/[id].
+
+Live Game Board (/game/[id]):
+
+Dynamic mapping of player names (JWT usernames) to UI cards.
+
+Visual glowing indicators for active turn and auto-focuses text input.
+
+10-second countdown timer UI synchronized with the backend.
+
+Endgame Screen:
+
+Safely unmounts the game board completely when status === 'match_completed'.
+
+Displays a centered Match Summary modal mapping through roundHistory.
+
+6. Phase Roadmap: What Needs to be Built Next
+Phase 6A: AI Integration & "Infinite Content" (Python Microservice)
+The "Infinite Content" Engine: A Python LangChain script to scrape football stats and generate thousands of unique trivia questions with difficulty ratings.
+
+The Real-Time "AI Referee": Bypass strict Postgres fuzzy search for subjective questions. Send { question, guess } to the FastAPI LLM microservice to return { "isCorrect": true/false }.
+
+Semantic Search (pgvector via Supabase): Generate vector embeddings for player names to instantly match obscure nicknames (e.g., "Dibu" -> "Emiliano Martinez") using math instead of string-distance algorithms.
+
+Phase 6B: Competitive MMR & Advanced Logic
+Elo / MMR System: Implement a standardized Elo formula on the backend. When a match ends, calculate the point exchange based on both players' current MMR and update the User database.
+
+Skill-Based Matchmaking (SBMM): Update the Redis matchmaking queue to pair players within specific MMR brackets instead of purely random popping.
+
+Advanced Game Mechanics: Introduce "Lifelines" or special abilities (e.g., "Skip Turn", "Hint") that cost in-game currency or can be used once per match.
+
+Phase 6C: UI/UX Polish & Better Frontend/Backend Architecture
+Animations & Transitions: Add Framer Motion to the Next.js frontend for smooth modal popups, strike animations, and point ticking.
+
+Backend Refactoring: Clean up the NestJS architecture. Separate game state logic, socket emission logic, and database queries into stricter, more modular services to prepare for massive scaling.
+
+Global Leaderboards: Build a UI to display top players globally and amongst friends.
+
+Phase 6D: Production Deployment Phase
+Supabase: Migrate the local Postgres database to a managed Supabase project. Enable the pgvector extension natively.
+
+Vercel: Deploy the Next.js frontend to Vercel. Set up environment variables for the production NestJS backend URL.
+
+Backend Cloud Host: Deploy the NestJS server and Redis instance to a scalable cloud provider (e.g., Render, Railway, or AWS ECS) ensuring WebSocket ports are correctly exposed and load balanced.
+```
