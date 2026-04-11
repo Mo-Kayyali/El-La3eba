@@ -21,6 +21,7 @@ const matchmaking_service_1 = require("./matchmaking.service");
 const game_service_1 = require("./game.service");
 const redis_service_1 = require("../redis/redis.service");
 const common_1 = require("@nestjs/common");
+const crypto_1 = require("crypto");
 const game_questions_1 = require("./game.questions");
 let GameGateway = GameGateway_1 = class GameGateway {
     jwtService;
@@ -30,6 +31,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
     server;
     logger = new common_1.Logger(GameGateway_1.name);
     turnTimers = new Map();
+    rematchTimers = new Map();
     roundTransitionMs = 4000;
     constructor(jwtService, matchmakingService, gameService, redisClient) {
         this.jwtService = jwtService;
@@ -49,6 +51,36 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (existing) {
             clearTimeout(existing);
             this.turnTimers.delete(gameSessionId);
+        }
+    }
+    async initializeRematch(gameSessionId, state) {
+        const p1Id = String(state.players[0]);
+        const p2Id = String(state.players[1]);
+        const names = (state.playerNames ?? {});
+        const p1Name = names[p1Id] ?? p1Id;
+        const p2Name = names[p2Id] ?? p2Id;
+        const rematchData = JSON.stringify({
+            p1Id, p2Id, p1Name, p2Name, p1Ready: false, p2Ready: false,
+        });
+        await this.redisClient.set(`rematch:${gameSessionId}`, rematchData, 'EX', 35);
+        this.startRematchTimer(gameSessionId);
+        this.logger.log(`Rematch window opened for game ${gameSessionId}`);
+    }
+    startRematchTimer(gameSessionId) {
+        this.clearRematchTimer(gameSessionId);
+        const timeout = setTimeout(async () => {
+            this.rematchTimers.delete(gameSessionId);
+            await this.redisClient.del(`rematch:${gameSessionId}`).catch(() => { });
+            this.server.to(gameSessionId).emit('rematchExpired');
+            this.logger.log(`Rematch window expired for game ${gameSessionId}`);
+        }, 30_000);
+        this.rematchTimers.set(gameSessionId, timeout);
+    }
+    clearRematchTimer(gameSessionId) {
+        const existing = this.rematchTimers.get(gameSessionId);
+        if (existing) {
+            clearTimeout(existing);
+            this.rematchTimers.delete(gameSessionId);
         }
     }
     startTurnTimer(gameSessionId) {
@@ -132,6 +164,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 if (isMatchOver) {
                     this.server.to(gameSessionId).emit('matchOver', updatePayload);
                     this.clearTurnTimer(gameSessionId);
+                    this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch failed: ${e?.message}`));
                 }
                 else if (isRoundOver) {
                     this.server.to(gameSessionId).emit('roundOver', {
@@ -252,6 +285,58 @@ let GameGateway = GameGateway_1 = class GameGateway {
             client.data?.user?.email;
         const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id, username);
         return result;
+    }
+    async handleRequestRematch(client, gameSessionId) {
+        const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!userId || !gameSessionId) {
+            return { status: 'error', message: 'Invalid request' };
+        }
+        const rematchKey = `rematch:${gameSessionId}`;
+        try {
+            await this.redisClient.watch(rematchKey);
+            const rematchStr = await this.redisClient.get(rematchKey);
+            if (!rematchStr) {
+                await this.redisClient.unwatch();
+                return { status: 'error', message: 'Rematch window has expired' };
+            }
+            const rematch = JSON.parse(rematchStr);
+            if (rematch.p1Id === userId) {
+                rematch.p1Ready = true;
+            }
+            else if (rematch.p2Id === userId) {
+                rematch.p2Ready = true;
+            }
+            else {
+                await this.redisClient.unwatch();
+                return { status: 'error', message: 'Not a player in this game' };
+            }
+            const multi = this.redisClient.multi();
+            multi.set(rematchKey, JSON.stringify(rematch), 'EX', 35);
+            const results = await multi.exec();
+            if (!results) {
+                return { status: 'retry', message: 'Concurrent update, please try again' };
+            }
+            this.server.to(gameSessionId).emit('rematchRequested', { userId });
+            if (rematch.p1Ready && rematch.p2Ready) {
+                this.clearRematchTimer(gameSessionId);
+                await this.redisClient.del(rematchKey);
+                const newGameSessionId = (0, crypto_1.randomUUID)();
+                const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name);
+                this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+                this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
+                this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
+                this.startTurnTimer(newGameSessionId);
+                this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
+            }
+            return { status: 'ok' };
+        }
+        catch (error) {
+            this.logger.error(`Error in requestRematch: ${error?.message}`, error?.stack);
+            return { status: 'error', message: 'Internal server error' };
+        }
+        finally {
+            await this.redisClient.unwatch().catch(() => { });
+        }
     }
     async handleJoinGameRoom(client, gameSessionId) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
@@ -386,6 +471,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
                 this.server.to(gameSessionId).emit('matchOver', updatePayload);
                 this.clearTurnTimer(gameSessionId);
+                this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch failed: ${e?.message}`));
             }
             else if (isRoundOver) {
                 this.logger.log(`Broadcasting roundOver to room ${gameSessionId}`);
@@ -466,20 +552,28 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleJoinQueue", null);
 __decorate([
-    (0, websockets_1.SubscribeMessage)('createPrivateRoom'),
+    (0, websockets_1.SubscribeMessage)('createPrivateMatch'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleCreatePrivateRoom", null);
 __decorate([
-    (0, websockets_1.SubscribeMessage)('joinPrivateRoom'),
+    (0, websockets_1.SubscribeMessage)('joinPrivateMatch'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)('roomCode')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [socket_io_1.Socket, String]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleJoinPrivateRoom", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('requestRematch'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('gameSessionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleRequestRematch", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('joinGameRoom'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

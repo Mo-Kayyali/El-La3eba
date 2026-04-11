@@ -83,6 +83,11 @@ export default function GamePage() {
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState<number>(0);
   const guessInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Rematch state
+  const [rematchSecondsLeft, setRematchSecondsLeft] = useState(30);
+  const [hasRequestedRematch, setHasRequestedRematch] = useState(false);
+  const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
+
   const toastTimer = useRef<number | null>(null);
   const showToast = (message: string) => {
     setToast(message);
@@ -152,18 +157,41 @@ export default function GamePage() {
       );
     };
 
+    const onRematchRequested = (payload: { userId: string }) => {
+      // Only show the badge if it is the *opponent* who clicked, not us.
+      if (String(payload?.userId) !== String(userId)) {
+        setOpponentWantsRematch(true);
+      }
+    };
+
+    const onRematchStarting = (payload: { newGameSessionId: string }) => {
+      if (payload?.newGameSessionId) {
+        router.push(`/game/${payload.newGameSessionId}`);
+      }
+    };
+
+    const onRematchExpired = () => {
+      router.push("/lobby");
+    };
+
     socket.on("gameStateUpdated", onGameStateUpdated);
     socket.on("nextRoundStarted", onNextRoundStarted);
     socket.on("matchOver", onMatchOver);
     socket.on("roundOver", onRoundOver);
+    socket.on("rematchRequested", onRematchRequested);
+    socket.on("rematchStarting", onRematchStarting);
+    socket.on("rematchExpired", onRematchExpired);
 
     return () => {
       socket.off("gameStateUpdated", onGameStateUpdated);
       socket.off("nextRoundStarted", onNextRoundStarted);
       socket.off("matchOver", onMatchOver);
       socket.off("roundOver", onRoundOver);
+      socket.off("rematchRequested", onRematchRequested);
+      socket.off("rematchStarting", onRematchStarting);
+      socket.off("rematchExpired", onRematchExpired);
     };
-  }, [gameSessionId, isConnected, socket]);
+  }, [gameSessionId, isConnected, router, socket, userId]);
 
   const player1Id = useMemo(
     () => playerEntryToId(gameState?.players?.[0]),
@@ -296,6 +324,16 @@ export default function GamePage() {
     return () => window.clearInterval(id);
   }, [isTransitioning, transitionSecondsLeft]);
 
+  // 30-second rematch countdown — starts the moment the match is over.
+  useEffect(() => {
+    if (!isMatchOver) return;
+    setRematchSecondsLeft(30);
+    const id = window.setInterval(() => {
+      setRematchSecondsLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [isMatchOver]);
+
   const currentRound = gameState?.currentRound ?? 1;
   const question = gameState?.currentQuestion ?? "Waiting for question...";
   const guessedPlayers = gameState?.guessedPlayers ?? [];
@@ -357,22 +395,6 @@ export default function GamePage() {
   }, [turnSecondsLeft]);
 
   function GameOverCenterStage() {
-    const [seconds, setSeconds] = useState(15);
-
-    useEffect(() => {
-      setSeconds(15);
-      const id = window.setInterval(() => {
-        setSeconds((prev) => Math.max(0, prev - 1));
-      }, 1000);
-
-      return () => window.clearInterval(id);
-    }, []);
-
-    useEffect(() => {
-      if (seconds !== 0) return;
-      router.push("/lobby");
-    }, [router, seconds]);
-
     return (
       <section className="w-full max-w-4xl rounded-3xl border border-white/10 bg-black/60 p-6 sm:p-8">
         <div className="mx-auto max-w-5xl text-center">
@@ -389,6 +411,7 @@ export default function GamePage() {
             </span>
           </div>
 
+          {/* Round history cards */}
           <div className="mt-7 overflow-x-auto">
             <div className="mx-auto flex w-fit gap-4 px-1">
               {normalizedRoundHistory.map(({ round, entry }) => {
@@ -421,17 +444,65 @@ export default function GamePage() {
             </div>
           </div>
 
-          <button
-            onClick={() => router.replace("/lobby")}
-            className="mt-7 w-full rounded-3xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-6 py-4 text-base font-semibold text-black transition hover:brightness-110"
-          >
-            Return to Lobby Now
-          </button>
+          {/* Rematch section */}
+          <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+            {/* 30-second countdown */}
+            <div className="flex items-center justify-center gap-3">
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl font-extrabold ${
+                  rematchSecondsLeft <= 5
+                    ? "border-red-500/60 text-red-200"
+                    : rematchSecondsLeft <= 10
+                      ? "border-amber-400/60 text-amber-200"
+                      : "border-white/20 text-white"
+                }`}
+              >
+                {rematchSecondsLeft}
+              </div>
+              <p className="text-sm text-zinc-300">seconds to decide</p>
+            </div>
 
-          <p className="mt-4 text-xs text-zinc-400">
-            Returning automatically in{" "}
-            <span className="font-semibold text-zinc-200">{seconds}s</span>
-          </p>
+            {/* Opponent-wants-rematch badge */}
+            {opponentWantsRematch && !hasRequestedRematch && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                Opponent wants to play again!
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                disabled={hasRequestedRematch || rematchSecondsLeft === 0}
+                onClick={() => {
+                  if (!socket?.connected || !gameSessionId || hasRequestedRematch) return;
+                  setHasRequestedRematch(true);
+                  socket.emit("requestRematch", { gameSessionId });
+                }}
+                className={`flex-1 rounded-3xl px-6 py-4 text-base font-semibold transition sm:max-w-[240px] ${
+                  hasRequestedRematch || rematchSecondsLeft === 0
+                    ? "cursor-not-allowed bg-white/10 text-zinc-300"
+                    : "bg-gradient-to-r from-fuchsia-500 to-cyan-400 text-black hover:brightness-110"
+                }`}
+              >
+                {hasRequestedRematch ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-400/30 border-t-zinc-300" />
+                    Waiting for opponent…
+                  </span>
+                ) : (
+                  "Play Again"
+                )}
+              </button>
+
+              <button
+                onClick={() => router.replace("/lobby")}
+                className="flex-1 rounded-3xl border border-white/10 bg-white/[0.06] px-6 py-4 text-base font-semibold text-white hover:bg-white/[0.09] hover:border-white/20 transition sm:max-w-[240px]"
+              >
+                Return to Lobby
+              </button>
+            </div>
+          </div>
         </div>
       </section>
     );

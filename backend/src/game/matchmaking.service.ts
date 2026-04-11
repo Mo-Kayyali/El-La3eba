@@ -95,8 +95,8 @@ export class MatchmakingService {
     }
 
     const roomData = JSON.stringify({ userId, socketId, username });
-    // Expires in 30 minutes (1800 seconds)
-    await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 1800);
+    // Expires in 15 minutes (900 seconds)
+    await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 900);
     this.logger.log(`Private room ${roomCode} created by user ${userId}`);
     return roomCode;
   }
@@ -145,7 +145,7 @@ export class MatchmakingService {
     return { success: true, gameSessionId };
   }
 
-  private async initializeGameState(
+  async initializeGameState(
     gameSessionId: string,
     player1Id: string,
     player2Id: string,

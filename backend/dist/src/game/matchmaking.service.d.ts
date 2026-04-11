@@ -21,5 +21,28 @@ export declare class MatchmakingService {
         gameSessionId: `${string}-${string}-${string}-${string}-${string}`;
         error?: undefined;
     }>;
-    private initializeGameState;
+    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string): Promise<{
+        players: string[];
+        currentTurn: string;
+        playerNames: {
+            [player1Id]: string;
+            [player2Id]: string;
+        };
+        roundHistory: never[];
+        scores: {
+            [player1Id]: number;
+            [player2Id]: number;
+        };
+        overallScores: {
+            [player1Id]: number;
+            [player2Id]: number;
+        };
+        currentRound: number;
+        strikes: {
+            [player1Id]: number;
+            [player2Id]: number;
+        };
+        guessedPlayers: never[];
+        currentQuestion: "Name a football player who played in 2026" | "Name a player who has won the Champions League" | "Name a player who has played in the Premier League" | "Name a player who has won the World Cup" | "Name a player who has won the Ballon d’Or" | "Name a player who has played for Barcelona" | "Name a player who has played for Real Madrid";
+    }>;
 }

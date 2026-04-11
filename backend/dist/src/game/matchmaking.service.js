@@ -80,7 +80,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             }
         }
         const roomData = JSON.stringify({ userId, socketId, username });
-        await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 1800);
+        await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 900);
         this.logger.log(`Private room ${roomCode} created by user ${userId}`);
         return roomCode;
     }

@@ -16,7 +16,16 @@ export default function LobbyPage() {
   );
 
   const [isSearching, setIsSearching] = useState(false);
+
+  // Private match — create flow
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [createdRoomCode, setCreatedRoomCode] = useState<string | null>(null);
+  const [isWaitingForFriend, setIsWaitingForFriend] = useState(false);
+
+  // Private match — join flow
   const [roomCode, setRoomCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!accessToken) {
@@ -180,15 +189,68 @@ export default function LobbyPage() {
             </p>
 
             <div className="mt-6 grid gap-4">
-              <button
-                onClick={() => {
-                  alert("Create Room: hook up your socket event here.");
-                }}
-                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-white hover:border-white/20 hover:bg-black/40 transition"
-              >
-                Create Room
-              </button>
+              {/* ── Create flow ── */}
+              {!isWaitingForFriend ? (
+                <button
+                  disabled={isCreatingRoom || !socket?.connected}
+                  onClick={() => {
+                    if (!socket?.connected) return;
+                    setIsCreatingRoom(true);
+                    setCreatedRoomCode(null);
+                    socket.emit(
+                      "createPrivateMatch",
+                      (response: { status: string; roomCode?: string }) => {
+                        setIsCreatingRoom(false);
+                        if (response?.status === "success" && response.roomCode) {
+                          setCreatedRoomCode(response.roomCode);
+                          setIsWaitingForFriend(true);
+                        }
+                      },
+                    );
+                  }}
+                  className={`w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-white transition ${
+                    isCreatingRoom || !socket?.connected
+                      ? "cursor-not-allowed opacity-60"
+                      : "hover:border-white/20 hover:bg-black/40"
+                  }`}
+                >
+                  {isCreatingRoom ? "Creating…" : "Create Room"}
+                </button>
+              ) : (
+                <div className="rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-4">
+                  <p className="text-xs font-semibold tracking-wide text-cyan-300">
+                    YOUR ROOM CODE
+                  </p>
+                  <p className="mt-2 text-center text-3xl font-extrabold tracking-[0.25em] text-white">
+                    {createdRoomCode}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-2 text-xs text-zinc-300">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+                      Waiting for friend…
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdRoomCode ?? "");
+                      }}
+                      className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/[0.1] transition"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsWaitingForFriend(false);
+                      setCreatedRoomCode(null);
+                    }}
+                    className="mt-3 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-400 hover:bg-white/[0.08] transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
 
+              {/* ── Join flow ── */}
               <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
                 <label className="block text-xs font-semibold tracking-wide text-zinc-400">
                   ROOM CODE
@@ -196,21 +258,45 @@ export default function LobbyPage() {
                 <div className="mt-2 flex gap-2">
                   <input
                     value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value)}
+                    onChange={(e) => {
+                      setRoomCode(e.target.value.toUpperCase().slice(0, 6));
+                      setJoinError(null);
+                    }}
                     placeholder="e.g. A1B2C3"
+                    maxLength={6}
                     className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/10"
                   />
                   <button
+                    disabled={isJoining || !socket?.connected || roomCode.trim().length < 6}
                     onClick={() => {
                       const code = roomCode.trim();
-                      if (!code) return;
-                      alert(`Join Room (${code}): hook up your socket event here.`);
+                      if (!code || !socket?.connected) return;
+                      setIsJoining(true);
+                      setJoinError(null);
+                      socket.emit(
+                        "joinPrivateMatch",
+                        { roomCode: code },
+                        (response: { success?: boolean; error?: string; status?: string }) => {
+                          setIsJoining(false);
+                          if (response?.success === false || response?.status === "error") {
+                            setJoinError(response?.error ?? "Failed to join room");
+                          }
+                          // On success the server emits matchFound which is already handled above.
+                        },
+                      );
                     }}
-                    className="rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15 transition"
+                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
+                      isJoining || !socket?.connected || roomCode.trim().length < 6
+                        ? "cursor-not-allowed bg-white/10 opacity-60"
+                        : "bg-white/10 hover:bg-white/15"
+                    }`}
                   >
-                    Join
+                    {isJoining ? "…" : "Join"}
                   </button>
                 </div>
+                {joinError && (
+                  <p className="mt-2 text-xs font-semibold text-red-300">{joinError}</p>
+                )}
               </div>
             </div>
           </section>

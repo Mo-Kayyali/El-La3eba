@@ -14,6 +14,7 @@ import { MatchmakingService } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
 
 @WebSocketGateway({ cors: { origin: '*' } })
@@ -25,6 +26,7 @@ export class GameGateway
 
   private readonly logger = new Logger(GameGateway.name);
   private readonly turnTimers = new Map<string, NodeJS.Timeout>();
+  private readonly rematchTimers = new Map<string, NodeJS.Timeout>();
   private readonly roundTransitionMs = 4000;
 
   constructor(
@@ -52,6 +54,45 @@ export class GameGateway
       this.turnTimers.delete(gameSessionId);
     }
   }
+
+  // ─── Rematch helpers ─────────────────────────────────────────────────────
+
+  private async initializeRematch(gameSessionId: string, state: any) {
+    const p1Id = String(state.players[0]);
+    const p2Id = String(state.players[1]);
+    const names = (state.playerNames ?? {}) as Record<string, string>;
+    const p1Name = names[p1Id] ?? p1Id;
+    const p2Name = names[p2Id] ?? p2Id;
+
+    const rematchData = JSON.stringify({
+      p1Id, p2Id, p1Name, p2Name, p1Ready: false, p2Ready: false,
+    });
+    // 35 s TTL — slightly longer than the 30 s app-level timer for safety.
+    await this.redisClient.set(`rematch:${gameSessionId}`, rematchData, 'EX', 35);
+    this.startRematchTimer(gameSessionId);
+    this.logger.log(`Rematch window opened for game ${gameSessionId}`);
+  }
+
+  private startRematchTimer(gameSessionId: string) {
+    this.clearRematchTimer(gameSessionId);
+    const timeout = setTimeout(async () => {
+      this.rematchTimers.delete(gameSessionId);
+      await this.redisClient.del(`rematch:${gameSessionId}`).catch(() => {});
+      this.server.to(gameSessionId).emit('rematchExpired');
+      this.logger.log(`Rematch window expired for game ${gameSessionId}`);
+    }, 30_000);
+    this.rematchTimers.set(gameSessionId, timeout);
+  }
+
+  private clearRematchTimer(gameSessionId: string) {
+    const existing = this.rematchTimers.get(gameSessionId);
+    if (existing) {
+      clearTimeout(existing);
+      this.rematchTimers.delete(gameSessionId);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   private startTurnTimer(gameSessionId: string) {
     this.clearTurnTimer(gameSessionId);
@@ -156,6 +197,9 @@ export class GameGateway
         if (isMatchOver) {
           this.server.to(gameSessionId).emit('matchOver', updatePayload);
           this.clearTurnTimer(gameSessionId);
+          this.initializeRematch(gameSessionId, state).catch((e) =>
+            this.logger.error(`initializeRematch failed: ${e?.message}`),
+          );
         } else if (isRoundOver) {
           this.server.to(gameSessionId).emit('roundOver', {
             winner: roundWinner,
@@ -275,7 +319,7 @@ export class GameGateway
     return { status: 'queued' };
   }
 
-  @SubscribeMessage('createPrivateRoom')
+  @SubscribeMessage('createPrivateMatch')
   async handleCreatePrivateRoom(@ConnectedSocket() client: Socket) {
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
@@ -293,7 +337,7 @@ export class GameGateway
     return { status: 'success', roomCode };
   }
 
-  @SubscribeMessage('joinPrivateRoom')
+  @SubscribeMessage('joinPrivateMatch')
   async handleJoinPrivateRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody('roomCode') roomCode: string,
@@ -315,6 +359,85 @@ export class GameGateway
       username,
     );
     return result;
+  }
+
+  @SubscribeMessage('requestRematch')
+  async handleRequestRematch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    if (!userId || !gameSessionId) {
+      return { status: 'error', message: 'Invalid request' };
+    }
+
+    const rematchKey = `rematch:${gameSessionId}`;
+    try {
+      await this.redisClient.watch(rematchKey);
+      const rematchStr = await this.redisClient.get(rematchKey);
+
+      if (!rematchStr) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Rematch window has expired' };
+      }
+
+      const rematch = JSON.parse(rematchStr) as {
+        p1Id: string; p2Id: string; p1Name: string; p2Name: string;
+        p1Ready: boolean; p2Ready: boolean;
+      };
+
+      if (rematch.p1Id === userId) {
+        rematch.p1Ready = true;
+      } else if (rematch.p2Id === userId) {
+        rematch.p2Ready = true;
+      } else {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Not a player in this game' };
+      }
+
+      // Atomically persist the updated readiness via WATCH + MULTI/EXEC.
+      const multi = this.redisClient.multi();
+      multi.set(rematchKey, JSON.stringify(rematch), 'EX', 35);
+      const results = await multi.exec();
+
+      if (!results) {
+        // Another request modified the key between WATCH and EXEC — ask client to retry.
+        return { status: 'retry', message: 'Concurrent update, please try again' };
+      }
+
+      // Tell everyone in the room that this player wants to rematch.
+      this.server.to(gameSessionId).emit('rematchRequested', { userId });
+
+      if (rematch.p1Ready && rematch.p2Ready) {
+        // Both accepted — start a brand-new game for them.
+        this.clearRematchTimer(gameSessionId);
+        await this.redisClient.del(rematchKey);
+
+        const newGameSessionId = randomUUID();
+        const newState = await this.matchmakingService.initializeGameState(
+          newGameSessionId,
+          rematch.p1Id,
+          rematch.p2Id,
+          rematch.p1Name,
+          rematch.p2Name,
+        );
+
+        // Move all sockets still in the old room into the new one.
+        this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+        this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
+        this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
+        this.startTurnTimer(newGameSessionId);
+
+        this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
+      }
+
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error(`Error in requestRematch: ${error?.message}`, error?.stack);
+      return { status: 'error', message: 'Internal server error' };
+    } finally {
+      await this.redisClient.unwatch().catch(() => {});
+    }
   }
 
   @SubscribeMessage('joinGameRoom')
@@ -507,6 +630,9 @@ export class GameGateway
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
         this.server.to(gameSessionId).emit('matchOver', updatePayload);
         this.clearTurnTimer(gameSessionId);
+        this.initializeRematch(gameSessionId, state).catch((e) =>
+          this.logger.error(`initializeRematch failed: ${e?.message}`),
+        );
       } else if (isRoundOver) {
         this.logger.log(`Broadcasting roundOver to room ${gameSessionId}`);
         this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);

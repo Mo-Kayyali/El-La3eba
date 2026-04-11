@@ -12,11 +12,15 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     server: Server;
     private readonly logger;
     private readonly turnTimers;
+    private readonly rematchTimers;
     private readonly roundTransitionMs;
     constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService);
     private sleep;
     afterInit(server: Server): void;
     private clearTurnTimer;
+    private initializeRematch;
+    private startRematchTimer;
+    private clearRematchTimer;
     private startTurnTimer;
     handleConnection(client: Socket): Promise<void>;
     handleDisconnect(client: Socket): Promise<void>;
@@ -47,6 +51,13 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     } | {
         status: string;
         message: string;
+    }>;
+    handleRequestRematch(client: Socket, gameSessionId: string): Promise<{
+        status: string;
+        message: string;
+    } | {
+        status: string;
+        message?: undefined;
     }>;
     handleJoinGameRoom(client: Socket, gameSessionId: string): Promise<{
         status: string;
