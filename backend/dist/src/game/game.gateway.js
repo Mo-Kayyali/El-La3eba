@@ -164,6 +164,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 if (isMatchOver) {
                     this.server.to(gameSessionId).emit('matchOver', updatePayload);
                     this.clearTurnTimer(gameSessionId);
+                    if (state.isRanked && state.winner) {
+                        const loserId = state.players.find((p) => p !== state.winner);
+                        this.matchmakingService
+                            .updateMmrAfterMatch(state.winner, loserId)
+                            .catch((e) => this.logger.error(`MMR update failed: ${e?.message}`));
+                    }
                     this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch failed: ${e?.message}`));
                 }
                 else if (isRoundOver) {
@@ -242,7 +248,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
         console.log(`Client disconnected: ${client.id}`);
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (userId) {
-            this.matchmakingService.leaveQueue(userId);
+            this.matchmakingService.cancelSearch(userId).catch(() => { });
+            this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
         }
         try {
             const rooms = Array.from(client.rooms ?? []);
@@ -254,15 +261,30 @@ let GameGateway = GameGateway_1 = class GameGateway {
         catch {
         }
     }
-    async handleJoinQueue(client) {
+    async handleJoinQueue(client, mode = 'ranked') {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
+        const resolvedMode = mode === 'ranked' || mode === 'unrated' ? mode : 'ranked';
         const username = client.data?.user?.username ||
             client.data?.user?.name ||
             client.data?.user?.email;
-        await this.matchmakingService.joinQueue(userId, client.id, username);
-        return { status: 'queued' };
+        await this.matchmakingService.joinQueue(userId, client.id, username, resolvedMode);
+        return { status: 'queued', mode: resolvedMode };
+    }
+    async handleCancelSearch(client) {
+        const userId = client.data?.user?.sub || client.data?.user?.userId;
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        await this.matchmakingService.cancelSearch(userId);
+        return { status: 'ok' };
+    }
+    async handleCancelPrivateRoom(client) {
+        const userId = client.data?.user?.sub || client.data?.user?.userId;
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        await this.matchmakingService.cancelPrivateRoom(userId);
+        return { status: 'ok' };
     }
     async handleCreatePrivateRoom(client) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
@@ -399,12 +421,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
             let isCorrect = !!matchedPlayer;
             if (isCorrect) {
-                if (state.guessedPlayers.includes(matchedPlayer.name)) {
+                if (state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
                     isCorrect = false;
                     state.strikes[userId] += 1;
                 }
                 else {
-                    state.guessedPlayers.push(matchedPlayer.name);
+                    state.guessedPlayers.push({ name: matchedPlayer.name, guessedBy: userId });
                     state.scores[userId] += 1;
                 }
             }
@@ -471,6 +493,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
                 this.server.to(gameSessionId).emit('matchOver', updatePayload);
                 this.clearTurnTimer(gameSessionId);
+                if (state.isRanked && state.winner) {
+                    const loserId = state.players.find((p) => p !== state.winner);
+                    this.matchmakingService
+                        .updateMmrAfterMatch(state.winner, loserId)
+                        .catch((e) => this.logger.error(`MMR update failed: ${e?.message}`));
+                }
                 this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch failed: ${e?.message}`));
             }
             else if (isRoundOver) {
@@ -547,10 +575,25 @@ __decorate([
 __decorate([
     (0, websockets_1.SubscribeMessage)('joinQueue'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('mode')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleJoinQueue", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('cancelSearch'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
-], GameGateway.prototype, "handleJoinQueue", null);
+], GameGateway.prototype, "handleCancelSearch", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('cancelPrivateRoom'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleCancelPrivateRoom", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('createPrivateMatch'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

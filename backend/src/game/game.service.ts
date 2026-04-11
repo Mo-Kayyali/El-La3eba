@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+// AI REFEREE BLUEPRINT — uncomment when activating:
+// import axios from 'axios';
+// (also move `axios` from devDependencies to dependencies in package.json)
+
 @Injectable()
 export class GameService {
   constructor(private readonly prisma: PrismaService) {}
@@ -56,4 +60,40 @@ export class GameService {
 
     return matches.length > 0 ? matches[0] : null;
   }
+
+  // ─── AI Referee Blueprint ─────────────────────────────────────────────────
+  //
+  // When the Python microservice at http://localhost:8000 is ready:
+  //   1. Move `axios` from devDependencies → dependencies in package.json.
+  //   2. Uncomment the import at the top of this file.
+  //   3. Uncomment this method.
+  //   4. In game.gateway.ts replace every:
+  //        this.gameService.guessPlayer(guessName)
+  //      with:
+  //        this.gameService.verifyGuessWithAI(state.currentQuestion, guessName)
+  //
+  // The Python service must accept:
+  //   POST /evaluate
+  //   Body: { question: { clue: string; answer: string }, guess: string }
+  //   Response: { correct: boolean; canonical_name: string | null }
+  //
+  // async verifyGuessWithAI(
+  //   question: { clue: string; answer: string },
+  //   guessName: string,
+  // ): Promise<{ name: string } | null> {
+  //   try {
+  //     const response = await axios.post<{
+  //       correct: boolean;
+  //       canonical_name: string | null;
+  //     }>('http://localhost:8000/evaluate', { question, guess: guessName }, { timeout: 3000 });
+  //
+  //     if (response.data.correct && response.data.canonical_name) {
+  //       return { name: response.data.canonical_name };
+  //     }
+  //     return null;
+  //   } catch {
+  //     // AI service unavailable — fall back to local fuzzy match so the game never breaks.
+  //     return this.guessPlayer(guessName);
+  //   }
+  // }
 }

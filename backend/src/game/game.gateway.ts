@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { MatchmakingService } from './matchmaking.service';
+import type { QueueMode } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
@@ -197,6 +198,12 @@ export class GameGateway
         if (isMatchOver) {
           this.server.to(gameSessionId).emit('matchOver', updatePayload);
           this.clearTurnTimer(gameSessionId);
+          if (state.isRanked && state.winner) {
+            const loserId = state.players.find((p: string) => p !== state.winner) as string;
+            this.matchmakingService
+              .updateMmrAfterMatch(state.winner, loserId)
+              .catch((e) => this.logger.error(`MMR update failed: ${e?.message}`));
+          }
           this.initializeRematch(gameSessionId, state).catch((e) =>
             this.logger.error(`initializeRematch failed: ${e?.message}`),
           );
@@ -291,7 +298,9 @@ export class GameGateway
     console.log(`Client disconnected: ${client.id}`);
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (userId) {
-      this.matchmakingService.leaveQueue(userId);
+      // Best-effort cleanup — fire-and-forget is fine on disconnect
+      this.matchmakingService.cancelSearch(userId).catch(() => {});
+      this.matchmakingService.cancelPrivateRoom(userId).catch(() => {});
     }
 
     // Clear any per-session timers for rooms this socket was in
@@ -306,17 +315,41 @@ export class GameGateway
   }
 
   @SubscribeMessage('joinQueue')
-  async handleJoinQueue(@ConnectedSocket() client: Socket) {
+  async handleJoinQueue(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('mode') mode: QueueMode = 'ranked',
+  ) {
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const resolvedMode: QueueMode =
+      mode === 'ranked' || mode === 'unrated' ? mode : 'ranked';
 
     const username =
       client.data?.user?.username ||
       client.data?.user?.name ||
       client.data?.user?.email;
 
-    await this.matchmakingService.joinQueue(userId, client.id, username);
-    return { status: 'queued' };
+    await this.matchmakingService.joinQueue(userId, client.id, username, resolvedMode);
+    return { status: 'queued', mode: resolvedMode };
+  }
+
+  @SubscribeMessage('cancelSearch')
+  async handleCancelSearch(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    await this.matchmakingService.cancelSearch(userId);
+    return { status: 'ok' };
+  }
+
+  @SubscribeMessage('cancelPrivateRoom')
+  async handleCancelPrivateRoom(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    await this.matchmakingService.cancelPrivateRoom(userId);
+    return { status: 'ok' };
   }
 
   @SubscribeMessage('createPrivateMatch')
@@ -541,12 +574,12 @@ export class GameGateway
       let isCorrect = !!matchedPlayer;
 
       if (isCorrect) {
-        if (state.guessedPlayers.includes(matchedPlayer.name)) {
+        if (state.guessedPlayers.some((g: any) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
           // Penalty: treat already-guessed as a WRONG answer (strike) and proceed normally.
           isCorrect = false;
           state.strikes[userId] += 1;
         } else {
-          state.guessedPlayers.push(matchedPlayer.name);
+          state.guessedPlayers.push({ name: matchedPlayer.name, guessedBy: userId });
           state.scores[userId] += 1;
         }
       } else {
@@ -630,6 +663,12 @@ export class GameGateway
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
         this.server.to(gameSessionId).emit('matchOver', updatePayload);
         this.clearTurnTimer(gameSessionId);
+        if (state.isRanked && state.winner) {
+          const loserId = state.players.find((p: string) => p !== state.winner) as string;
+          this.matchmakingService
+            .updateMmrAfterMatch(state.winner, loserId)
+            .catch((e) => this.logger.error(`MMR update failed: ${e?.message}`));
+        }
         this.initializeRematch(gameSessionId, state).catch((e) =>
           this.logger.error(`initializeRematch failed: ${e?.message}`),
         );

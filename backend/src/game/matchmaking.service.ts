@@ -1,17 +1,36 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { RedisService } from '../redis/redis.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { Server } from 'socket.io';
 import { randomUUID, randomBytes } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
+import { calculateElo } from './elo.util';
+
+export type QueueMode = 'ranked' | 'unrated';
+
+interface QueueEntry {
+  userId: string;
+  socketId: string;
+  username?: string;
+}
 
 @Injectable()
 export class MatchmakingService {
   private readonly logger = new Logger(MatchmakingService.name);
-  private server: Server;
+  private server!: Server;
   private startTurnTimerFn?: (gameSessionId: string) => void;
 
-  constructor(private readonly redisClient: RedisService) {}
+  /** Redis key pairs for each queue mode. */
+  private readonly QUEUES: Record<QueueMode, { list: string; members: string }> = {
+    ranked: { list: 'ranked_queue', members: 'ranked_queue_members' },
+    unrated: { list: 'unrated_queue', members: 'unrated_queue_members' },
+  };
+
+  constructor(
+    private readonly redisClient: RedisService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   setServer(server: Server) {
     this.server = server;
@@ -21,86 +40,140 @@ export class MatchmakingService {
     this.startTurnTimerFn = fn;
   }
 
-  async joinQueue(userId: string, socketId: string, username?: string) {
-    const queueData = JSON.stringify({ userId, socketId, username });
-    await this.redisClient.lpush('matchmaking_queue', queueData);
-    this.logger.log(`User ${userId} joined matchmaking queue`);
+  // ─── Queue management ────────────────────────────────────────────────────
+
+  /**
+   * Adds a user to the specified queue.
+   * Enforces mutual exclusivity:
+   *   - removes the user from the opposite queue
+   *   - destroys any private room they currently own
+   */
+  async joinQueue(
+    userId: string,
+    socketId: string,
+    username: string | undefined,
+    mode: QueueMode,
+  ): Promise<void> {
+    const { list, members } = this.QUEUES[mode];
+    const opposite: QueueMode = mode === 'ranked' ? 'unrated' : 'ranked';
+
+    // Leave the opposite queue (lazy deletion — just remove from the members set)
+    await this.redisClient.srem(this.QUEUES[opposite].members, userId);
+
+    // Destroy any private room the user is hosting
+    await this.cleanupUserPrivateRoom(userId);
+
+    // Idempotent re-add: remove first so a double-call doesn't create two list entries
+    await this.redisClient.srem(members, userId);
+
+    const entry: QueueEntry = { userId, socketId, username };
+    await this.redisClient.lpush(list, JSON.stringify(entry));
+    await this.redisClient.sadd(members, userId);
+
+    this.logger.log(`User ${userId} joined ${mode} queue`);
   }
 
-  async leaveQueue(userId: string) {
-    // Note: It's hard to remove a specific user from a list by value if it's JSON stringified
-    // For a robust production app, we would use a Redis Sorted Set or Hash to manage queue entries
-    // For now, we will stick to the basic queue list but log the attempt.
-    this.logger.log(`User ${userId} requested to leave matchmaking queue`);
+  /**
+   * Removes a user from all queues (lazy deletion — removes from members sets only).
+   * Stale list entries are silently discarded when the queue is processed.
+   */
+  async cancelSearch(userId: string): Promise<void> {
+    await Promise.all([
+      this.redisClient.srem(this.QUEUES.ranked.members, userId),
+      this.redisClient.srem(this.QUEUES.unrated.members, userId),
+    ]);
+    this.logger.log(`User ${userId} removed from all queues`);
   }
 
-  @Interval(2000)
-  async handleMatchmakingInterval() {
-    if (!this.server) return;
+  /**
+   * Pops the next *valid* (non-cancelled) entry from a queue list.
+   * Cancelled users are silently discarded via the lazy-deletion pattern:
+   *   - Membership is tracked in a separate Redis Set.
+   *   - A cancel call removes the user from the Set only; the list entry is
+   *     discarded here the next time it surfaces.
+   */
+  private async popValidPlayer(
+    list: string,
+    members: string,
+  ): Promise<QueueEntry | null> {
+    // Cap iterations to avoid a spin-loop on a pathologically stale queue.
+    const MAX_ATTEMPTS = 50;
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      const entryStr = await this.redisClient.rpop(list);
+      if (!entryStr) return null; // queue is empty
 
-    const queueLength = await this.redisClient.llen('matchmaking_queue');
-    if (queueLength >= 2) {
-      const player1Str = await this.redisClient.rpop('matchmaking_queue');
-      const player2Str = await this.redisClient.rpop('matchmaking_queue');
-
-      if (player1Str && player2Str) {
-        const p1 = JSON.parse(player1Str);
-        const p2 = JSON.parse(player2Str);
-        
-        // Ensure they aren't the exact same user queuing twice in a row before starting
-        if (p1.userId === p2.userId) {
-          await this.redisClient.lpush('matchmaking_queue', player1Str);
-          return;
-        }
-
-        const gameSessionId = randomUUID();
-        
-        const gameState = await this.initializeGameState(
-          gameSessionId,
-          p1.userId,
-          p2.userId,
-          p1.username,
-          p2.username,
-        );
-
-        this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
-
-        this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
-        this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
-        this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
-        this.startTurnTimerFn?.(gameSessionId);
-
-        this.logger.log(`Match created: ${gameSessionId} [${p1.userId} vs ${p2.userId}]`);
-      } else {
-        if (player1Str) await this.redisClient.lpush('matchmaking_queue', player1Str);
-        if (player2Str) await this.redisClient.lpush('matchmaking_queue', player2Str);
+      const entry: QueueEntry = JSON.parse(entryStr);
+      const isMember = await this.redisClient.sismember(members, entry.userId);
+      if (isMember) {
+        // Atomically claim this slot
+        await this.redisClient.srem(members, entry.userId);
+        return entry;
       }
+      // else: user cancelled — silently discard and keep popping
     }
+    return null;
   }
 
+  // ─── Private rooms ───────────────────────────────────────────────────────
+
+  /**
+   * Creates a private room for the given user.
+   * Enforces mutual exclusivity: removes the user from any active queue first.
+   * Stores two Redis keys:
+   *   private_room:{code}  — room data (host socket + user info)
+   *   user_room:{userId}   — reverse-lookup so we can destroy the room later
+   */
   async createPrivateRoom(
     userId: string,
     socketId: string,
     username?: string,
   ): Promise<string> {
+    // Cannot be in a queue and host a private room simultaneously
+    await this.cancelSearch(userId);
+
     let roomCode = '';
     let isUnique = false;
-
     while (!isUnique) {
       roomCode = randomBytes(4).toString('hex').toUpperCase().slice(0, 6);
       const exists = await this.redisClient.exists(`private_room:${roomCode}`);
-      if (!exists) {
-        isUnique = true;
-      }
+      if (!exists) isUnique = true;
     }
 
+    const TTL = 900; // 15 minutes
     const roomData = JSON.stringify({ userId, socketId, username });
-    // Expires in 15 minutes (900 seconds)
-    await this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', 900);
+    await Promise.all([
+      this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
+      this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
+    ]);
+
     this.logger.log(`Private room ${roomCode} created by user ${userId}`);
     return roomCode;
   }
 
+  /** Allows the host to cancel their own private room before anyone joins. */
+  async cancelPrivateRoom(userId: string): Promise<void> {
+    await this.cleanupUserPrivateRoom(userId);
+    this.logger.log(`Private room cancelled by user ${userId}`);
+  }
+
+  /**
+   * Internal helper: deletes the private room owned by userId (if any).
+   * Removes both the room key and the reverse-lookup key.
+   */
+  private async cleanupUserPrivateRoom(userId: string): Promise<void> {
+    const roomCode = await this.redisClient.get(`user_room:${userId}`);
+    if (roomCode) {
+      await Promise.all([
+        this.redisClient.del(`private_room:${roomCode}`),
+        this.redisClient.del(`user_room:${userId}`),
+      ]);
+    }
+  }
+
+  /**
+   * Joins an existing private room and starts an unrated match.
+   * Removes both host and guest from any active queues (mutual exclusivity).
+   */
   async joinPrivateRoom(
     code: string,
     userId: string,
@@ -114,36 +187,113 @@ export class MatchmakingService {
       return { success: false, error: 'Room not found or expired' };
     }
 
-    const host = JSON.parse(roomDataStr);
-    
+    const host: QueueEntry = JSON.parse(roomDataStr);
+
     if (host.userId === userId) {
       return { success: false, error: 'You cannot join your own room' };
     }
 
+    // Consume the room atomically to prevent a second guest from joining
+    await Promise.all([
+      this.redisClient.del(`private_room:${uppercaseCode}`),
+      this.redisClient.del(`user_room:${host.userId}`),
+    ]);
+
+    // Both players must leave any public queue they were in
+    await Promise.all([
+      this.cancelSearch(host.userId),
+      this.cancelSearch(userId),
+    ]);
+
     const gameSessionId = randomUUID();
-
-    // Remove the room key to prevent others from joining
-    await this.redisClient.del(`private_room:${uppercaseCode}`);
-
     const gameState = await this.initializeGameState(
       gameSessionId,
       host.userId,
       userId,
       host.username,
       username,
+      false, // private matches are always unrated
     );
 
     if (this.server) {
-        this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
-        this.server.to(host.socketId).emit('matchFound', { gameSessionId });
-        this.server.to(socketId).emit('matchFound', { gameSessionId });
-        this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
-        this.startTurnTimerFn?.(gameSessionId);
+      this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
+      this.server.to(host.socketId).emit('matchFound', { gameSessionId });
+      this.server.to(socketId).emit('matchFound', { gameSessionId });
+      this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+      this.startTurnTimerFn?.(gameSessionId);
     }
 
-    this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
+    this.logger.log(
+      `Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`,
+    );
     return { success: true, gameSessionId };
   }
+
+  // ─── Matchmaking interval ────────────────────────────────────────────────
+
+  @Interval(2000)
+  async handleMatchmakingInterval() {
+    if (!this.server) return;
+    // Process both queues independently each tick
+    await Promise.all([
+      this.processQueue('ranked', true),
+      this.processQueue('unrated', false),
+    ]);
+  }
+
+  private async processQueue(mode: QueueMode, isRanked: boolean): Promise<void> {
+    const { list, members } = this.QUEUES[mode];
+
+    const queueLength = await this.redisClient.llen(list);
+    if (queueLength < 2) return;
+
+    const p1 = await this.popValidPlayer(list, members);
+    if (!p1) return;
+
+    const p2 = await this.popValidPlayer(list, members);
+    if (!p2) {
+      // Only one valid player found — put p1 back at the back of the line
+      await this.redisClient.lpush(list, JSON.stringify(p1));
+      await this.redisClient.sadd(members, p1.userId);
+      return;
+    }
+
+    if (p1.userId === p2.userId) {
+      // Duplicate entry for the same user — keep one slot, discard the other
+      await this.redisClient.lpush(list, JSON.stringify(p2));
+      await this.redisClient.sadd(members, p2.userId);
+      return;
+    }
+
+    // Mutual exclusivity: destroy any private rooms either player might own
+    await Promise.all([
+      this.cleanupUserPrivateRoom(p1.userId),
+      this.cleanupUserPrivateRoom(p2.userId),
+    ]);
+
+    const gameSessionId = randomUUID();
+    const gameState = await this.initializeGameState(
+      gameSessionId,
+      p1.userId,
+      p2.userId,
+      p1.username,
+      p2.username,
+      isRanked,
+    );
+
+    this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
+    this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
+    this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
+    this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+    this.startTurnTimerFn?.(gameSessionId);
+
+    this.logger.log(
+      `${isRanked ? 'Ranked' : 'Unrated'} match created: ${gameSessionId} ` +
+        `[${p1.userId} vs ${p2.userId}]`,
+    );
+  }
+
+  // ─── Game state ──────────────────────────────────────────────────────────
 
   async initializeGameState(
     gameSessionId: string,
@@ -151,10 +301,11 @@ export class MatchmakingService {
     player2Id: string,
     player1Username?: string,
     player2Username?: string,
+    isRanked = false,
   ) {
     const gameState = {
       players: [player1Id, player2Id],
-      currentTurn: player1Id, // Round 1 starter: players[0]
+      currentTurn: player1Id,
       playerNames: {
         [player1Id]: player1Username ?? String(player1Id),
         [player2Id]: player2Username ?? String(player2Id),
@@ -166,8 +317,66 @@ export class MatchmakingService {
       strikes: { [player1Id]: 0, [player2Id]: 0 },
       guessedPlayers: [],
       currentQuestion: pickRandomFootballQuestion(),
+      isRanked, // consumed by gateway to decide whether to update MMR on completion
     };
     await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
     return gameState;
+  }
+
+  // ─── MMR ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Applies Elo rating changes to both players after a ranked match completes.
+   * Also increments gamesPlayed for both and wins for the winner.
+   */
+  async updateMmrAfterMatch(winnerId: string, loserId: string): Promise<void> {
+    try {
+      const [winner, loser] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: winnerId },
+          select: { mmr: true },
+        }),
+        this.prisma.user.findUnique({
+          where: { id: loserId },
+          select: { mmr: true },
+        }),
+      ]);
+
+      if (!winner || !loser) {
+        this.logger.warn(
+          `MMR update skipped — winner=${winnerId} found=${!!winner}, loser=${loserId} found=${!!loser}`,
+        );
+        return;
+      }
+
+      const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } =
+        calculateElo(winner.mmr, loser.mmr);
+
+      await Promise.all([
+        this.prisma.user.update({
+          where: { id: winnerId },
+          data: {
+            mmr: winnerNewMmr,
+            wins: { increment: 1 },
+            gamesPlayed: { increment: 1 },
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: loserId },
+          data: {
+            mmr: loserNewMmr,
+            gamesPlayed: { increment: 1 },
+          },
+        }),
+      ]);
+
+      this.logger.log(
+        `MMR updated — winner ${winnerId}: ${winner.mmr} → ${winnerNewMmr} (+${winnerDelta}), ` +
+          `loser ${loserId}: ${loser.mmr} → ${loserNewMmr} (${loserDelta})`,
+      );
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`MMR update failed: ${err?.message}`, err?.stack);
+    }
   }
 }
