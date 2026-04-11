@@ -19,10 +19,12 @@
 
 ## 3. Current Architecture State
 
-- **Database:** `User` (id, email, username, mmr, wins), `FootballPlayer` (id, name, aliases).
-- **Matchmaking:** Lazy deletion sets + lists. `ranked_queue`, `unrated_queue`.
+- **Database:** `User` (id, email, username, mmr, wins, gamesPlayed). `FootballPlayer` (id, name, `aliases` text[], clubs, activeYear). **Indexes:** B-tree on `User.mmr` for leaderboard-style reads; GIN + `pg_trgm` (`gin_trgm_ops`) on `FootballPlayer.name` and on `array_to_string(aliases, ' ')` for fast fuzzy name / alias search.
+- **Matchmaking:** Lazy deletion sets + lists. `ranked_queue`, `unrated_queue`. New matches get Redis game state from `MatchmakingService.initializeGameState`, which loads each player’s current `mmr` from Postgres and stores it as `playerMmr` in the serialized state so clients can render **rank badges** in-game.
+- **Rank badges (MMR → tier):** Shared helper `frontend/lib/rank.ts` — Bronze 0–999, Silver 1000–1499, Gold 1500–1999, Diamond 2000+ (Tailwind text/border/glow classes). Used on the lobby navbar and leaderboard and on left/right player cards on the game page.
+- **WebSocket / game gateway:** **15s reconnection resilience** — on disconnect, a per `(gameSessionId, userId)` grace timer starts; the room receives `playerDisconnected` until `joinGameRoom` clears the timer and emits `playerReconnected` (match still in progress). **Guess rate limit:** sliding window (5 guesses / 1s per user) on `submitGuess` to absorb bursts.
 - **State Management:** Redis JSON structures locked by `gameSessionId`.
-- **Fuzzy Search:** Uses `pg_trgm` (similarity, levenshtein) directly in Prisma `$queryRaw`.
+- **Fuzzy Search:** Uses `pg_trgm`, `unaccent`, and `levenshtein` (`fuzzystrmatch`) in Prisma `$queryRaw` against `FootballPlayer` rows; trigram GIN indexes back substring / similarity-style workloads on `name` and flattened `aliases`.
 
 ## 4. Upgrading the Spec
 
