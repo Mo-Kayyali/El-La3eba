@@ -23,6 +23,8 @@ const redis_service_1 = require("../redis/redis.service");
 const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const game_questions_1 = require("./game.questions");
+const GUESS_RATE_LIMIT_MAX = 5;
+const GUESS_RATE_LIMIT_WINDOW_MS = 1000;
 let GameGateway = GameGateway_1 = class GameGateway {
     jwtService;
     matchmakingService;
@@ -32,7 +34,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
     logger = new common_1.Logger(GameGateway_1.name);
     turnTimers = new Map();
     rematchTimers = new Map();
+    disconnectTimers = new Map();
+    guessTimestamps = new Map();
     roundTransitionMs = 4000;
+    DISCONNECT_GRACE_MS = 15_000;
     constructor(jwtService, matchmakingService, gameService, redisClient) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
@@ -45,6 +50,17 @@ let GameGateway = GameGateway_1 = class GameGateway {
     afterInit(server) {
         this.matchmakingService.setServer(server);
         this.matchmakingService.setTurnTimerStarter(this.startTurnTimer.bind(this));
+    }
+    isGuestRateLimited(userId) {
+        const now = Date.now();
+        const recent = (this.guessTimestamps.get(userId) ?? []).filter((t) => now - t < GUESS_RATE_LIMIT_WINDOW_MS);
+        if (recent.length >= GUESS_RATE_LIMIT_MAX) {
+            this.guessTimestamps.set(userId, recent);
+            return true;
+        }
+        recent.push(now);
+        this.guessTimestamps.set(userId, recent);
+        return false;
     }
     clearTurnTimer(gameSessionId) {
         const existing = this.turnTimers.get(gameSessionId);
@@ -81,6 +97,74 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (existing) {
             clearTimeout(existing);
             this.rematchTimers.delete(gameSessionId);
+        }
+    }
+    disconnectTimerKey(gameSessionId, userId) {
+        return `${gameSessionId}:${userId}`;
+    }
+    startDisconnectTimer(gameSessionId, userId) {
+        const key = this.disconnectTimerKey(gameSessionId, userId);
+        this.clearDisconnectTimer(gameSessionId, userId);
+        const timer = setTimeout(async () => {
+            this.disconnectTimers.delete(key);
+            this.logger.log(`Disconnect grace period expired for user ${userId} in game ${gameSessionId} — forfeiting`);
+            const gameKey = `game:${gameSessionId}`;
+            try {
+                await this.redisClient.watch(gameKey);
+                const stateStr = await this.redisClient.get(gameKey);
+                if (!stateStr) {
+                    await this.redisClient.unwatch();
+                    return;
+                }
+                const state = JSON.parse(stateStr);
+                if (state.status === 'match_completed') {
+                    await this.redisClient.unwatch();
+                    return;
+                }
+                const winnerId = state.players.find((p) => p !== userId);
+                state.status = 'match_completed';
+                state.winner = winnerId;
+                if (!Array.isArray(state.roundHistory))
+                    state.roundHistory = [];
+                if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
+                    state.roundHistory.push({
+                        round: state.currentRound,
+                        winner: winnerId,
+                        scores: { ...(state.scores ?? {}) },
+                    });
+                }
+                const multi = this.redisClient.multi();
+                multi.set(gameKey, JSON.stringify(state));
+                const results = await multi.exec();
+                if (!results) {
+                    await this.redisClient.unwatch().catch(() => { });
+                    return;
+                }
+                this.clearTurnTimer(gameSessionId);
+                const payload = { state, forfeit: true, disconnectedUserId: userId };
+                this.server.to(gameSessionId).emit('matchOver', payload);
+                if (state.isRanked && winnerId) {
+                    this.matchmakingService
+                        .updateMmrAfterMatch(winnerId, userId)
+                        .catch((e) => this.logger.error(`MMR update (forfeit) failed: ${e?.message}`));
+                }
+                this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch (forfeit) failed: ${e?.message}`));
+            }
+            catch (error) {
+                this.logger.error(`Error in disconnect forfeit handler: ${error?.message}`, error?.stack);
+            }
+            finally {
+                await this.redisClient.unwatch().catch(() => { });
+            }
+        }, this.DISCONNECT_GRACE_MS);
+        this.disconnectTimers.set(key, timer);
+    }
+    clearDisconnectTimer(gameSessionId, userId) {
+        const key = this.disconnectTimerKey(gameSessionId, userId);
+        const existing = this.disconnectTimers.get(key);
+        if (existing) {
+            clearTimeout(existing);
+            this.disconnectTimers.delete(key);
         }
     }
     startTurnTimer(gameSessionId) {
@@ -229,7 +313,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             const token = client.handshake.auth?.token ||
                 client.handshake.headers?.authorization?.split(' ')[1];
             if (!token) {
-                console.log(`Connection rejected: Missing token for client ${client.id}`);
+                this.logger.log(`Connection rejected: Missing token for client ${client.id}`);
                 client.disconnect();
                 return;
             }
@@ -237,16 +321,16 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 secret: process.env.JWT_SECRET || 'super-secret-jwt-key',
             });
             client.data.user = payload;
-            console.log(`Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`);
+            this.logger.log(`Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`);
         }
-        catch (error) {
-            console.log(`Connection rejected: Invalid token for client ${client.id}`);
+        catch {
+            this.logger.log(`Connection rejected: Invalid token for client ${client.id}`);
             client.disconnect();
         }
     }
     async handleDisconnect(client) {
-        console.log(`Client disconnected: ${client.id}`);
-        const userId = client.data?.user?.sub || client.data?.user?.userId;
+        this.logger.log(`Client disconnected: ${client.id}`);
+        const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
         if (userId) {
             this.matchmakingService.cancelSearch(userId).catch(() => { });
             this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
@@ -254,11 +338,20 @@ let GameGateway = GameGateway_1 = class GameGateway {
         try {
             const rooms = Array.from(client.rooms ?? []);
             for (const room of rooms) {
-                if (room && room !== client.id)
-                    this.clearTurnTimer(room);
+                if (!room || room === client.id)
+                    continue;
+                const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
+                if (!stateExists)
+                    continue;
+                if (userId) {
+                    this.startDisconnectTimer(room, userId);
+                    this.server.to(room).emit('playerDisconnected', { userId, gameSessionId: room });
+                    this.logger.log(`User ${userId} disconnected from game ${room} — grace period started`);
+                }
             }
         }
-        catch {
+        catch (e) {
+            this.logger.error(`Error in handleDisconnect cleanup: ${e?.message}`);
         }
     }
     async handleJoinQueue(client, mode = 'ranked') {
@@ -361,13 +454,33 @@ let GameGateway = GameGateway_1 = class GameGateway {
         }
     }
     async handleJoinGameRoom(client, gameSessionId) {
-        const userId = client.data?.user?.sub || client.data?.user?.userId;
+        const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
         if (!gameSessionId)
             return { status: 'error', message: 'gameSessionId required' };
         client.join(gameSessionId);
         this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
+        const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
+        if (hadDisconnectTimer) {
+            this.clearDisconnectTimer(gameSessionId, userId);
+            try {
+                const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+                if (stateStr) {
+                    const state = JSON.parse(stateStr);
+                    if (state.status !== 'match_completed') {
+                        this.server
+                            .to(gameSessionId)
+                            .emit('playerReconnected', { userId, gameSessionId });
+                        this.startTurnTimer(gameSessionId);
+                        this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
+                    }
+                }
+            }
+            catch (err) {
+                this.logger.error(`Error during reconnect timer restore: ${err?.message}`);
+            }
+        }
         try {
             const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
             if (stateStr) {
@@ -375,7 +488,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
         }
         catch (err) {
-            this.logger.error(`Error fetching state for reconnecting client: ${err.message}`);
+            this.logger.error(`Error fetching state for reconnecting client: ${err?.message}`);
         }
         return { status: 'success', message: `Joined room ${gameSessionId}` };
     }
@@ -386,6 +499,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
             if (!userId) {
                 this.logger.error(`Unauthorized access attempt by client ${client.id}`);
                 return { status: 'error', message: 'Unauthorized' };
+            }
+            if (this.isGuestRateLimited(String(userId))) {
+                this.logger.warn(`Rate limit hit for user ${userId}`);
+                client.emit('error', { message: 'Too many guesses — slow down.' });
+                return { status: 'error', message: 'Rate limit exceeded' };
             }
             const { gameSessionId, guessName } = payload;
             if (!gameSessionId || !guessName) {
@@ -473,6 +591,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             const results = await multi.exec();
             if (!results) {
                 this.logger.error(`Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`);
+                await this.redisClient.unwatch().catch(() => { });
                 this.startTurnTimer(gameSessionId);
                 return {
                     status: 'error',

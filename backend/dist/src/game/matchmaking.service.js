@@ -175,12 +175,22 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             `[${p1.userId} vs ${p2.userId}]`);
     }
     async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false) {
+        const [p1Result, p2Result] = await Promise.allSettled([
+            this.prisma.user.findUnique({ where: { id: player1Id }, select: { mmr: true } }),
+            this.prisma.user.findUnique({ where: { id: player2Id }, select: { mmr: true } }),
+        ]);
+        const p1Mmr = p1Result.status === 'fulfilled' ? (p1Result.value?.mmr ?? 1000) : 1000;
+        const p2Mmr = p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;
         const gameState = {
             players: [player1Id, player2Id],
             currentTurn: player1Id,
             playerNames: {
                 [player1Id]: player1Username ?? String(player1Id),
                 [player2Id]: player2Username ?? String(player2Id),
+            },
+            playerMmr: {
+                [player1Id]: p1Mmr,
+                [player2Id]: p2Mmr,
             },
             roundHistory: [],
             scores: { [player1Id]: 0, [player2Id]: 0 },

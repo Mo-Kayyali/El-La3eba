@@ -11,6 +11,7 @@ export declare class AuthController {
             username: any;
             email: any;
             isVerified: any;
+            mmr: any;
         };
     }>;
     login(loginDto: LoginDto): Promise<{
@@ -20,6 +21,7 @@ export declare class AuthController {
             username: any;
             email: any;
             isVerified: any;
+            mmr: any;
         };
     }>;
     requestVerification(req: any): Promise<{

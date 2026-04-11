@@ -15,6 +15,7 @@ export declare class AuthService {
             username: any;
             email: any;
             isVerified: any;
+            mmr: any;
         };
     }>;
     login(dto: LoginDto): Promise<{
@@ -24,6 +25,7 @@ export declare class AuthService {
             username: any;
             email: any;
             isVerified: any;
+            mmr: any;
         };
     }>;
     private generateToken;

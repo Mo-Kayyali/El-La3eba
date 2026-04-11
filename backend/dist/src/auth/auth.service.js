@@ -102,6 +102,7 @@ let AuthService = class AuthService {
                 username: user.username,
                 email: user.email,
                 isVerified: user.isVerified,
+                mmr: user.mmr,
             }
         };
     }

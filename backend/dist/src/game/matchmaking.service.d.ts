@@ -36,6 +36,10 @@ export declare class MatchmakingService {
             [player1Id]: string;
             [player2Id]: string;
         };
+        playerMmr: {
+            [player1Id]: number;
+            [player2Id]: number;
+        };
         roundHistory: never[];
         scores: {
             [player1Id]: number;
