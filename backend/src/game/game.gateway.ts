@@ -838,6 +838,7 @@ export class GameGateway
         this.logger.error(
           `Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`,
         );
+        await this.redisClient.unwatch().catch(() => {});
         // Restart timer for whoever currently has the turn (best-effort).
         this.startTurnTimer(gameSessionId);
         return {
