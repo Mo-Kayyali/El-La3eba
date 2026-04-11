@@ -177,7 +177,9 @@ export default function LobbyPage() {
             </div>
             {/* User chip with rank badge */}
             {(() => {
-              const myMmr = leaderboard.find((e) => String(e.id) === String(user?.id))?.mmr;
+              const fromProfile = typeof user?.mmr === "number" ? user.mmr : undefined;
+              const fromBoard = leaderboard.find((e) => String(e.id) === String(user?.id))?.mmr;
+              const myMmr = fromProfile ?? fromBoard;
               const rank = myMmr !== undefined ? getRank(myMmr) : null;
               return (
                 <div className={`flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-3 py-1.5 ${rank ? rank.borderClass : "border-white/[0.08]"}`}>

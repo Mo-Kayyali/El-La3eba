@@ -5,6 +5,7 @@ export type AuthUser = {
   id?: string | number;
   username?: string;
   email?: string;
+  mmr?: number;
   [key: string]: unknown;
 };
 

@@ -257,14 +257,24 @@ export default function GamePage() {
       router.push("/lobby");
     };
 
-    const onPlayerDisconnected = (payload: { userId: string }) => {
-      setDisconnectedUserId(payload?.userId ?? null);
+    const onPlayerDisconnected = (payload: {
+      userId: string;
+      gameSessionId?: string;
+    }) => {
+      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId) return;
+      const dropped = payload?.userId ? String(payload.userId) : "";
+      if (!dropped) return;
+      if (userId !== undefined && dropped === String(userId)) return;
+      setDisconnectedUserId(dropped);
     };
 
-    const onPlayerReconnected = (payload: { userId: string }) => {
-      if (String(payload?.userId) === disconnectedUserId) {
-        setDisconnectedUserId(null);
-      }
+    const onPlayerReconnected = (payload: {
+      userId: string;
+      gameSessionId?: string;
+    }) => {
+      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId) return;
+      const uid = payload?.userId ? String(payload.userId) : "";
+      setDisconnectedUserId((prev) => (uid && uid === prev ? null : prev));
     };
 
     socket.on("gameStateUpdated", onGameStateUpdated);
@@ -1044,15 +1054,18 @@ export default function GamePage() {
               <div className="mb-4 flex justify-center">
                 <span className="inline-flex h-12 w-12 animate-spin rounded-full border-4 border-amber-400/20 border-t-amber-400" />
               </div>
-              <h3 className="text-lg font-extrabold text-white">Opponent Disconnected</h3>
+              <h3 className="text-lg font-extrabold text-white">
+                Waiting for opponent to reconnect…
+              </h3>
               <p className="mt-2 text-sm text-slate-400">
-                Waiting for{" "}
                 <span className="font-semibold text-amber-300">
-                  {playerNames[disconnectedUserId] ?? "opponent"}
+                  {playerNames[disconnectedUserId] ?? "Opponent"}
                 </span>{" "}
-                to reconnect…
+                dropped from the match. The game resumes when they return.
               </p>
-              <p className="mt-1 text-xs text-slate-600">They have 15 seconds before forfeiting.</p>
+              <p className="mt-3 text-xs text-slate-600">
+                15-second reconnection window before forfeit.
+              </p>
             </div>
           </div>
         )}
