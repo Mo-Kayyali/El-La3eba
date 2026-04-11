@@ -18,6 +18,14 @@ import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
 
+// ─── In-gateway sliding-window rate limiter ────────────────────────────────
+// Limits submitGuess to MAX_GUESSES_PER_WINDOW per user per WINDOW_MS.
+// This runs in-process (no extra dependency) and is reset on server restart,
+// which is acceptable — the goal is to stop DDoS bursts, not persistent abuse.
+const GUESS_RATE_LIMIT_MAX = 5;
+const GUESS_RATE_LIMIT_WINDOW_MS = 1000; // 1 second
+// ─────────────────────────────────────────────────────────────────────────────
+
 @WebSocketGateway({ cors: { origin: '*' } })
 export class GameGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
@@ -26,9 +34,29 @@ export class GameGateway
   server: Server;
 
   private readonly logger = new Logger(GameGateway.name);
+
+  /** Turn timers keyed by gameSessionId. */
   private readonly turnTimers = new Map<string, NodeJS.Timeout>();
+
+  /** Rematch countdown timers keyed by gameSessionId. */
   private readonly rematchTimers = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * Reconnection grace-period timers.
+   * Key: `${gameSessionId}:${userId}` — avoids collisions when both players drop.
+   */
+  private readonly disconnectTimers = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * Rate-limiter state: userId → sorted array of timestamp (ms) of recent guesses.
+   * Entries older than GUESS_RATE_LIMIT_WINDOW_MS are pruned on each check.
+   */
+  private readonly guessTimestamps = new Map<string, number[]>();
+
   private readonly roundTransitionMs = 4000;
+
+  /** Disconnect grace period before a forfeit is issued (ms). */
+  private readonly DISCONNECT_GRACE_MS = 15_000;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -48,6 +76,28 @@ export class GameGateway
     );
   }
 
+  // ─── Rate limiter ─────────────────────────────────────────────────────────
+
+  /**
+   * Returns true if the user has exceeded the guess rate limit.
+   * Prunes stale timestamps as a side-effect to keep the Map compact.
+   */
+  private isGuestRateLimited(userId: string): boolean {
+    const now = Date.now();
+    const recent = (this.guessTimestamps.get(userId) ?? []).filter(
+      (t) => now - t < GUESS_RATE_LIMIT_WINDOW_MS,
+    );
+    if (recent.length >= GUESS_RATE_LIMIT_MAX) {
+      this.guessTimestamps.set(userId, recent);
+      return true;
+    }
+    recent.push(now);
+    this.guessTimestamps.set(userId, recent);
+    return false;
+  }
+
+  // ─── Turn timer ───────────────────────────────────────────────────────────
+
   private clearTurnTimer(gameSessionId: string) {
     const existing = this.turnTimers.get(gameSessionId);
     if (existing) {
@@ -56,7 +106,7 @@ export class GameGateway
     }
   }
 
-  // ─── Rematch helpers ─────────────────────────────────────────────────────
+  // ─── Rematch helpers ──────────────────────────────────────────────────────
 
   private async initializeRematch(gameSessionId: string, state: any) {
     const p1Id = String(state.players[0]);
@@ -93,7 +143,103 @@ export class GameGateway
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─── Reconnection helpers ─────────────────────────────────────────────────
+
+  private disconnectTimerKey(gameSessionId: string, userId: string) {
+    return `${gameSessionId}:${userId}`;
+  }
+
+  /**
+   * Starts the 15-second reconnection grace timer for a disconnected player.
+   * If the timer fires the game is forfeited for that player.
+   * If the player reconnects first, clearDisconnectTimer() cancels it.
+   */
+  private startDisconnectTimer(gameSessionId: string, userId: string) {
+    const key = this.disconnectTimerKey(gameSessionId, userId);
+    this.clearDisconnectTimer(gameSessionId, userId);
+
+    const timer = setTimeout(async () => {
+      this.disconnectTimers.delete(key);
+      this.logger.log(
+        `Disconnect grace period expired for user ${userId} in game ${gameSessionId} — forfeiting`,
+      );
+
+      const gameKey = `game:${gameSessionId}`;
+      try {
+        await this.redisClient.watch(gameKey);
+        const stateStr = await this.redisClient.get(gameKey);
+        if (!stateStr) {
+          await this.redisClient.unwatch();
+          return;
+        }
+        const state = JSON.parse(stateStr);
+        if (state.status === 'match_completed') {
+          await this.redisClient.unwatch();
+          return;
+        }
+
+        // Forfeit: the disconnected player loses the match.
+        const winnerId = state.players.find((p: string) => p !== userId) as string;
+        state.status = 'match_completed';
+        state.winner = winnerId;
+
+        // Record final round snapshot if not already captured.
+        if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
+        if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+          state.roundHistory.push({
+            round: state.currentRound,
+            winner: winnerId,
+            scores: { ...(state.scores ?? {}) },
+          });
+        }
+
+        const multi = this.redisClient.multi();
+        multi.set(gameKey, JSON.stringify(state));
+        const results = await multi.exec();
+
+        if (!results) {
+          await this.redisClient.unwatch().catch(() => {});
+          return;
+        }
+
+        // Stop the turn timer — the game is over.
+        this.clearTurnTimer(gameSessionId);
+
+        const payload = { state, forfeit: true, disconnectedUserId: userId };
+        this.server.to(gameSessionId).emit('matchOver', payload);
+
+        if (state.isRanked && winnerId) {
+          this.matchmakingService
+            .updateMmrAfterMatch(winnerId, userId)
+            .catch((e) => this.logger.error(`MMR update (forfeit) failed: ${e?.message}`));
+        }
+
+        this.initializeRematch(gameSessionId, state).catch((e) =>
+          this.logger.error(`initializeRematch (forfeit) failed: ${e?.message}`),
+        );
+      } catch (error) {
+        this.logger.error(
+          `Error in disconnect forfeit handler: ${error?.message}`,
+          error?.stack,
+        );
+      } finally {
+        await this.redisClient.unwatch().catch(() => {});
+      }
+    }, this.DISCONNECT_GRACE_MS);
+
+    this.disconnectTimers.set(key, timer);
+  }
+
+  private clearDisconnectTimer(gameSessionId: string, userId: string) {
+    const key = this.disconnectTimerKey(gameSessionId, userId);
+    const existing = this.disconnectTimers.get(key);
+    if (existing) {
+      clearTimeout(existing);
+      this.disconnectTimers.delete(key);
+    }
+  }
+
+  // ─── Turn timer (full implementation) ────────────────────────────────────
 
   private startTurnTimer(gameSessionId: string) {
     this.clearTurnTimer(gameSessionId);
@@ -265,6 +411,8 @@ export class GameGateway
     this.turnTimers.set(gameSessionId, timeout);
   }
 
+  // ─── Connection lifecycle ─────────────────────────────────────────────────
+
   async handleConnection(client: Socket) {
     try {
       const token =
@@ -272,7 +420,7 @@ export class GameGateway
         client.handshake.headers?.authorization?.split(' ')[1];
 
       if (!token) {
-        console.log(
+        this.logger.log(
           `Connection rejected: Missing token for client ${client.id}`,
         );
         client.disconnect();
@@ -283,36 +431,52 @@ export class GameGateway
         secret: process.env.JWT_SECRET || 'super-secret-jwt-key',
       });
 
-      // Attach user info to socket (optional, for later use)
       client.data.user = payload;
-      console.log(
+      this.logger.log(
         `Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`,
       );
-    } catch (error) {
-      console.log(`Connection rejected: Invalid token for client ${client.id}`);
+    } catch {
+      this.logger.log(`Connection rejected: Invalid token for client ${client.id}`);
       client.disconnect();
     }
   }
 
   async handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
-    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    this.logger.log(`Client disconnected: ${client.id}`);
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+
     if (userId) {
       // Best-effort cleanup — fire-and-forget is fine on disconnect
       this.matchmakingService.cancelSearch(userId).catch(() => {});
       this.matchmakingService.cancelPrivateRoom(userId).catch(() => {});
     }
 
-    // Clear any per-session timers for rooms this socket was in
+    // For each game room the socket was in, start the reconnect grace period.
+    // DO NOT clear the turn timer here — it keeps running fairly.
+    // The disconnect timer will forfeit after DISCONNECT_GRACE_MS if they don't return.
     try {
       const rooms = Array.from(client.rooms ?? []);
       for (const room of rooms) {
-        if (room && room !== client.id) this.clearTurnTimer(room);
+        if (!room || room === client.id) continue;
+
+        // Only act on rooms that look like active game sessions (have a live game state)
+        const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
+        if (!stateExists) continue;
+
+        if (userId) {
+          this.startDisconnectTimer(room, userId);
+          this.server.to(room).emit('playerDisconnected', { userId, gameSessionId: room });
+          this.logger.log(
+            `User ${userId} disconnected from game ${room} — grace period started`,
+          );
+        }
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      this.logger.error(`Error in handleDisconnect cleanup: ${(e as Error)?.message}`);
     }
   }
+
+  // ─── Message handlers ─────────────────────────────────────────────────────
 
   @SubscribeMessage('joinQueue')
   async handleJoinQueue(
@@ -478,29 +642,58 @@ export class GameGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('gameSessionId') gameSessionId: string,
   ) {
-    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
     if (!gameSessionId)
       return { status: 'error', message: 'gameSessionId required' };
 
-    // 1. Put the new socket into the room
+    // 1. Put the new socket into the room.
     client.join(gameSessionId);
     this.logger.log(
       `User ${userId} joined game room ${gameSessionId} (socket ${client.id})`,
     );
 
-    // 2. NEW: Fetch the current state from Redis and give it to the client immediately!
+    // 2. Reconnection check: if there's a pending disconnect timer for this player,
+    //    cancel it and notify the room that they're back.
+    const hadDisconnectTimer =
+      this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
+    if (hadDisconnectTimer) {
+      this.clearDisconnectTimer(gameSessionId, userId);
+
+      // Re-fetch state to check it's still in progress before restarting timer.
+      try {
+        const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+        if (stateStr) {
+          const state = JSON.parse(stateStr);
+          if (state.status !== 'match_completed') {
+            this.server
+              .to(gameSessionId)
+              .emit('playerReconnected', { userId, gameSessionId });
+            // Resume the turn timer so the game continues.
+            this.startTurnTimer(gameSessionId);
+            this.logger.log(
+              `User ${userId} reconnected to game ${gameSessionId} — timer resumed`,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          `Error during reconnect timer restore: ${(err as Error)?.message}`,
+        );
+      }
+    }
+
+    // 3. Fetch the current state from Redis and send it to this client immediately.
     try {
       const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
       if (stateStr) {
-        // Send it ONLY to this specific client who just joined/reconnected.
-        // Frontend expects the raw game state object.
+        // Send only to this specific client who just joined/reconnected.
         client.emit('gameStateUpdated', JSON.parse(stateStr));
       }
     } catch (err) {
       this.logger.error(
-        `Error fetching state for reconnecting client: ${err.message}`,
+        `Error fetching state for reconnecting client: ${(err as Error)?.message}`,
       );
     }
 
@@ -522,6 +715,14 @@ export class GameGateway
         this.logger.error(`Unauthorized access attempt by client ${client.id}`);
         return { status: 'error', message: 'Unauthorized' };
       }
+
+      // ── Rate limit check ──────────────────────────────────────────────────
+      if (this.isGuestRateLimited(String(userId))) {
+        this.logger.warn(`Rate limit hit for user ${userId}`);
+        client.emit('error', { message: 'Too many guesses — slow down.' });
+        return { status: 'error', message: 'Rate limit exceeded' };
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
       const { gameSessionId, guessName } = payload;
       if (!gameSessionId || !guessName) {

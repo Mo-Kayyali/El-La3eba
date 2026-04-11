@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { X, Crown, Swords, ArrowLeft, Trophy } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
+import { getRank } from "@/lib/rank";
 
 type Player = {
   id?: string | number;
@@ -28,6 +29,7 @@ type GameState = {
   status?: "in_progress" | "match_completed" | string;
   winner?: Player | string | number | null;
   playerNames?: Record<string, string>;
+  playerMmr?: Record<string, number>;
   roundHistory?: Array<{
     round: number;
     winner: string | number;
@@ -130,6 +132,9 @@ export default function GamePage() {
   const [flashRight, setFlashRight] = useState<FlashState>(null);
   const flashLeftTimer = useRef<number | null>(null);
   const flashRightTimer = useRef<number | null>(null);
+
+  // Disconnect overlay state
+  const [disconnectedUserId, setDisconnectedUserId] = useState<string | null>(null);
 
   // Rematch state
   const [rematchSecondsLeft, setRematchSecondsLeft] = useState(30);
@@ -252,6 +257,16 @@ export default function GamePage() {
       router.push("/lobby");
     };
 
+    const onPlayerDisconnected = (payload: { userId: string }) => {
+      setDisconnectedUserId(payload?.userId ?? null);
+    };
+
+    const onPlayerReconnected = (payload: { userId: string }) => {
+      if (String(payload?.userId) === disconnectedUserId) {
+        setDisconnectedUserId(null);
+      }
+    };
+
     socket.on("gameStateUpdated", onGameStateUpdated);
     socket.on("nextRoundStarted", onNextRoundStarted);
     socket.on("matchOver", onMatchOver);
@@ -259,6 +274,8 @@ export default function GamePage() {
     socket.on("rematchRequested", onRematchRequested);
     socket.on("rematchStarting", onRematchStarting);
     socket.on("rematchExpired", onRematchExpired);
+    socket.on("playerDisconnected", onPlayerDisconnected);
+    socket.on("playerReconnected", onPlayerReconnected);
 
     return () => {
       socket.off("gameStateUpdated", onGameStateUpdated);
@@ -268,6 +285,8 @@ export default function GamePage() {
       socket.off("rematchRequested", onRematchRequested);
       socket.off("rematchStarting", onRematchStarting);
       socket.off("rematchExpired", onRematchExpired);
+      socket.off("playerDisconnected", onPlayerDisconnected);
+      socket.off("playerReconnected", onPlayerReconnected);
     };
   }, [gameSessionId, isConnected, router, socket, userId]);
 
@@ -505,6 +524,7 @@ export default function GamePage() {
     overallScore,
     strikes,
     flash,
+    mmr,
   }: {
     playerId: string | number | undefined;
     isLeft: boolean;
@@ -514,6 +534,7 @@ export default function GamePage() {
     overallScore: number;
     strikes: number;
     flash: FlashState;
+    mmr?: number;
   }) {
     const flashClass =
       flash === "correct"
@@ -565,6 +586,18 @@ export default function GamePage() {
               <h2 className="mt-1 text-lg font-bold text-white">
                 {displayName(playerId, "Waiting…")}
               </h2>
+              {/* MMR rank badge */}
+              {mmr !== undefined && (() => {
+                const r = getRank(mmr);
+                return (
+                  <div className={`mt-1 inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 ${r.borderClass} ${r.glowClass}`}>
+                    <span className={`text-[10px] font-extrabold tracking-wide ${r.colorClass}`}>
+                      {r.name.toUpperCase()}
+                    </span>
+                    <span className="text-[10px] text-slate-500 tabular-nums">{mmr}</span>
+                  </div>
+                );
+              })()}
               <p className="mt-1 text-sm text-slate-400">
                 Round pts:{" "}
                 <span className="font-bold text-white">{roundScore}</span>
@@ -817,6 +850,7 @@ export default function GamePage() {
             overallScore={leftOverall}
             strikes={leftStrikes}
             flash={flashLeft}
+            mmr={leftId ? (gameState?.playerMmr as Record<string, number> | undefined)?.[leftId] : undefined}
           />
 
           {/* Centre: question + guess input + activity feed */}
@@ -999,8 +1033,29 @@ export default function GamePage() {
             overallScore={rightOverall}
             strikes={rightStrikes}
             flash={flashRight}
+            mmr={rightId ? (gameState?.playerMmr as Record<string, number> | undefined)?.[rightId] : undefined}
           />
         </main>
+
+        {/* ── Disconnect overlay ── */}
+        {disconnectedUserId && !isMatchOver && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-3xl border border-amber-400/20 bg-[#030712] p-8 text-center shadow-[0_0_60px_rgba(251,191,36,0.15)]">
+              <div className="mb-4 flex justify-center">
+                <span className="inline-flex h-12 w-12 animate-spin rounded-full border-4 border-amber-400/20 border-t-amber-400" />
+              </div>
+              <h3 className="text-lg font-extrabold text-white">Opponent Disconnected</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                Waiting for{" "}
+                <span className="font-semibold text-amber-300">
+                  {playerNames[disconnectedUserId] ?? "opponent"}
+                </span>{" "}
+                to reconnect…
+              </p>
+              <p className="mt-1 text-xs text-slate-600">They have 15 seconds before forfeiting.</p>
+            </div>
+          </div>
+        )}
 
         {/* No game state yet */}
         {!gameState && (

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Trophy, Swords, Users, Lock, LogOut, Crown, Star } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
+import { getRank } from "@/lib/rank";
 
 interface LeaderboardEntry {
   id: string;
@@ -174,9 +175,21 @@ export default function LobbyPage() {
                 {socket?.connected ? "Online" : "Connecting…"}
               </span>
             </div>
-            <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300">
-              {username}
-            </div>
+            {/* User chip with rank badge */}
+            {(() => {
+              const myMmr = leaderboard.find((e) => String(e.id) === String(user?.id))?.mmr;
+              const rank = myMmr !== undefined ? getRank(myMmr) : null;
+              return (
+                <div className={`flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-3 py-1.5 ${rank ? rank.borderClass : "border-white/[0.08]"}`}>
+                  {rank && (
+                    <span className={`text-[10px] font-extrabold tracking-wide ${rank.colorClass} ${rank.glowClass}`}>
+                      {rank.name.toUpperCase()}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-slate-300">{username}</span>
+                </div>
+              );
+            })()}
             <button
               onClick={() => { disconnectSocket(); logout(); router.replace("/"); }}
               className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
@@ -396,46 +409,51 @@ export default function LobbyPage() {
               <div className="space-y-1">
                 {leaderboard.map((entry, i) => {
                   const isMe = String(entry.id) === String(user?.id);
-                  const rank = i + 1;
+                  const leaderPos = i + 1;
+                  const mmrRank = getRank(entry.mmr);
                   return (
                     <div
                       key={entry.id}
                       className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${
                         isMe
-                          ? "border border-blue-500/20 bg-blue-500/8"
-                          : rank <= 3
+                          ? `border ${mmrRank.borderClass} bg-blue-500/8`
+                          : leaderPos <= 3
                           ? "bg-white/[0.04]"
                           : "hover:bg-white/[0.03]"
                       }`}
                     >
-                      {/* Rank badge */}
+                      {/* Leaderboard position badge */}
                       <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-extrabold ${
-                        rank === 1
+                        leaderPos === 1
                           ? "bg-amber-400/20 text-amber-300"
-                          : rank === 2
+                          : leaderPos === 2
                           ? "bg-slate-400/20 text-slate-300"
-                          : rank === 3
+                          : leaderPos === 3
                           ? "bg-orange-600/20 text-orange-300"
                           : "bg-white/[0.04] text-slate-500"
                       }`}>
-                        {rank === 1 ? <Crown className="h-3.5 w-3.5" /> : rank}
+                        {leaderPos === 1 ? <Crown className="h-3.5 w-3.5" /> : leaderPos}
                       </div>
 
-                      {/* Name */}
+                      {/* Name + MMR rank */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isMe ? "text-blue-200" : "text-white"}`}>
-                          {entry.username}
-                          {isMe && <span className="ml-1 text-xs text-blue-400">(you)</span>}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-sm font-semibold truncate ${isMe ? "text-blue-200" : "text-white"}`}>
+                            {entry.username}
+                          </p>
+                          {/* MMR tier badge */}
+                          <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide ${mmrRank.colorClass} ${mmrRank.borderClass} ${mmrRank.glowClass}`}>
+                            {mmrRank.name.toUpperCase()}
+                          </span>
+                          {isMe && <span className="shrink-0 text-[10px] text-blue-400">(you)</span>}
+                        </div>
                         <p className="text-[10px] text-slate-500">
                           {entry.wins}W · {entry.gamesPlayed}G
                         </p>
                       </div>
 
-                      {/* MMR */}
-                      <div className={`text-sm font-extrabold tabular-nums ${
-                        rank === 1 ? "text-amber-300" : rank <= 3 ? "text-slate-300" : "text-slate-400"
-                      }`}>
+                      {/* MMR number */}
+                      <div className={`text-sm font-extrabold tabular-nums ${mmrRank.colorClass}`}>
                         {entry.mmr}
                       </div>
                     </div>
