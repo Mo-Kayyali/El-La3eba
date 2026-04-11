@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 import { randomUUID, randomBytes } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
 import { calculateElo } from './elo.util';
+import type { ChainableCommander } from 'ioredis';
 
 export type QueueMode = 'ranked' | 'unrated';
 
@@ -332,8 +333,70 @@ export class MatchmakingService {
       currentQuestion: pickRandomFootballQuestion(),
       isRanked, // consumed by gateway to decide whether to update MMR on completion
     };
-    await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
+    const gameKey = `game:${gameSessionId}`;
+    const stateJson = JSON.stringify(gameState);
+    const multi = this.redisClient.multi();
+    multi.set(gameKey, stateJson);
+    multi.set(`active_game:${player1Id}`, gameSessionId);
+    multi.set(`active_game:${player2Id}`, gameSessionId);
+    await multi.exec();
     return gameState;
+  }
+
+  /**
+   * Queues DELs for `active_game:{playerId}` inside an existing MULTI (same EXEC as game state writes).
+   */
+  deleteActiveGameKeysInMulti(
+    multi: ChainableCommander,
+    playerIds: Array<string | number | undefined | null>,
+  ): void {
+    for (const raw of playerIds) {
+      if (raw === undefined || raw === null) continue;
+      const id = String(raw);
+      if (!id) continue;
+      multi.del(`active_game:${id}`);
+    }
+  }
+
+  /**
+   * Returns the user's current in-progress game session id from Redis, or null.
+   */
+  async getActiveGameSessionIdForUser(userId: string): Promise<string | null> {
+    const uid = String(userId);
+    const key = `active_game:${uid}`;
+    const sessionId = await this.redisClient.get(key);
+    if (!sessionId) return null;
+
+    const gameKey = `game:${sessionId}`;
+    const stateStr = await this.redisClient.get(gameKey);
+    if (!stateStr) {
+      await this.redisClient.del(key).catch(() => {});
+      return null;
+    }
+
+    let state: { status?: string; players?: string[] };
+    try {
+      state = JSON.parse(stateStr) as { status?: string; players?: string[] };
+    } catch {
+      await this.redisClient.del(key).catch(() => {});
+      return null;
+    }
+
+    if (state.status === 'match_completed') {
+      const players = (state.players ?? []).map((p) => String(p));
+      const m = this.redisClient.multi();
+      this.deleteActiveGameKeysInMulti(m, players);
+      await m.exec().catch(() => {});
+      return null;
+    }
+
+    const players = (state.players ?? []).map((p) => String(p));
+    if (!players.includes(uid)) {
+      await this.redisClient.del(key).catch(() => {});
+      return null;
+    }
+
+    return sessionId;
   }
 
   // ─── MMR ─────────────────────────────────────────────────────────────────
@@ -341,8 +404,13 @@ export class MatchmakingService {
   /**
    * Applies Elo rating changes to both players after a ranked match completes.
    * Also increments gamesPlayed for both and wins for the winner.
+   * @returns Exact MMR deltas applied (winner positive, loser negative), or null if skipped.
    */
-  async updateMmrAfterMatch(winnerId: string, loserId: string): Promise<void> {
+  async updateMmrAfterMatch(
+    winnerId: string,
+    loserId: string,
+    options?: { marginMultiplier?: number },
+  ): Promise<{ winnerDelta: number; loserDelta: number } | null> {
     try {
       const [winner, loser] = await Promise.all([
         this.prisma.user.findUnique({
@@ -359,11 +427,16 @@ export class MatchmakingService {
         this.logger.warn(
           `MMR update skipped — winner=${winnerId} found=${!!winner}, loser=${loserId} found=${!!loser}`,
         );
-        return;
+        return null;
       }
 
-      const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } =
-        calculateElo(winner.mmr, loser.mmr);
+      const margin = options?.marginMultiplier ?? 1;
+      const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } = calculateElo(
+        winner.mmr,
+        loser.mmr,
+        32,
+        margin,
+      );
 
       await Promise.all([
         this.prisma.user.update({
@@ -387,9 +460,12 @@ export class MatchmakingService {
         `MMR updated — winner ${winnerId}: ${winner.mmr} → ${winnerNewMmr} (+${winnerDelta}), ` +
           `loser ${loserId}: ${loser.mmr} → ${loserNewMmr} (${loserDelta})`,
       );
+
+      return { winnerDelta, loserDelta };
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error(`MMR update failed: ${err?.message}`, err?.stack);
+      return null;
     }
   }
 }

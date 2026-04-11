@@ -17,6 +17,7 @@ import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
+import { scoreMarginMultiplier } from './elo.util';
 
 // ─── In-gateway sliding-window rate limiter ────────────────────────────────
 // Limits submitGuess to MAX_GUESSES_PER_WINDOW per user per WINDOW_MS.
@@ -69,6 +70,26 @@ export class GameGateway
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  /**
+   * Ranked-only: persists MMR (with margin / forfeit rules) and returns per-user deltas for clients.
+   */
+  private async resolveMmrDeltasForMatch(
+    state: any,
+    winnerId: string,
+    loserId: string,
+    forfeited: boolean,
+  ): Promise<Record<string, number> | undefined> {
+    if (!state?.isRanked || !winnerId || !loserId) return undefined;
+    const w = Number(state.overallScores?.[winnerId] ?? 0);
+    const l = Number(state.overallScores?.[loserId] ?? 0);
+    const margin = forfeited ? 1.2 : scoreMarginMultiplier(w, l);
+    const res = await this.matchmakingService.updateMmrAfterMatch(winnerId, loserId, {
+      marginMultiplier: margin,
+    });
+    if (!res) return undefined;
+    return { [winnerId]: res.winnerDelta, [loserId]: res.loserDelta };
+  }
+
   afterInit(server: Server) {
     this.matchmakingService.setServer(server);
     this.matchmakingService.setTurnTimerStarter(
@@ -116,7 +137,13 @@ export class GameGateway
     const p2Name = names[p2Id] ?? p2Id;
 
     const rematchData = JSON.stringify({
-      p1Id, p2Id, p1Name, p2Name, p1Ready: false, p2Ready: false,
+      p1Id,
+      p2Id,
+      p1Name,
+      p2Name,
+      p1Ready: false,
+      p2Ready: false,
+      isRanked: !!state.isRanked,
     });
     // 35 s TTL — slightly longer than the 30 s app-level timer for safety.
     await this.redisClient.set(`rematch:${gameSessionId}`, rematchData, 'EX', 35);
@@ -195,6 +222,7 @@ export class GameGateway
 
         const multi = this.redisClient.multi();
         multi.set(gameKey, JSON.stringify(state));
+        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
         const results = await multi.exec();
 
         if (!results) {
@@ -205,14 +233,20 @@ export class GameGateway
         // Stop the turn timer — the game is over.
         this.clearTurnTimer(gameSessionId);
 
-        const payload = { state, forfeit: true, disconnectedUserId: userId };
+        const mmrDeltas = await this.resolveMmrDeltasForMatch(
+          state,
+          winnerId,
+          userId,
+          true,
+        );
+        const payload = {
+          state,
+          forfeit: true,
+          disconnectedUserId: userId,
+          forfeitedByUserId: userId,
+          mmrDeltas,
+        };
         this.server.to(gameSessionId).emit('matchOver', payload);
-
-        if (state.isRanked && winnerId) {
-          this.matchmakingService
-            .updateMmrAfterMatch(winnerId, userId)
-            .catch((e) => this.logger.error(`MMR update (forfeit) failed: ${e?.message}`));
-        }
 
         this.initializeRematch(gameSessionId, state).catch((e) =>
           this.logger.error(`initializeRematch (forfeit) failed: ${e?.message}`),
@@ -319,6 +353,9 @@ export class GameGateway
 
         const multi = this.redisClient.multi();
         multi.set(key, JSON.stringify(state));
+        if (isMatchOver) {
+          this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+        }
         const results = await multi.exec();
 
         if (!results) {
@@ -342,14 +379,19 @@ export class GameGateway
         this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
 
         if (isMatchOver) {
-          this.server.to(gameSessionId).emit('matchOver', updatePayload);
           this.clearTurnTimer(gameSessionId);
-          if (state.isRanked && state.winner) {
-            const loserId = state.players.find((p: string) => p !== state.winner) as string;
-            this.matchmakingService
-              .updateMmrAfterMatch(state.winner, loserId)
-              .catch((e) => this.logger.error(`MMR update failed: ${e?.message}`));
-          }
+          const loserId = state.players.find((p: string) => p !== state.winner) as string;
+          const mmrDeltas = await this.resolveMmrDeltasForMatch(
+            state,
+            state.winner,
+            loserId,
+            false,
+          );
+          this.server.to(gameSessionId).emit('matchOver', {
+            ...updatePayload,
+            forfeit: false,
+            mmrDeltas,
+          });
           this.initializeRematch(gameSessionId, state).catch((e) =>
             this.logger.error(`initializeRematch failed: ${e?.message}`),
           );
@@ -462,6 +504,25 @@ export class GameGateway
         // Only act on rooms that look like active game sessions (have a live game state)
         const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
         if (!stateExists) continue;
+
+        let endedMatch = false;
+        try {
+          const stateStr = await this.redisClient.get(`game:${room}`);
+          if (stateStr) {
+            const parsed = JSON.parse(stateStr) as { status?: string };
+            endedMatch = parsed?.status === 'match_completed';
+          }
+        } catch {
+          /* ignore */
+        }
+
+        if (endedMatch && userId) {
+          this.server.to(room).emit('opponentLeft', { userId, gameSessionId: room });
+          this.logger.log(
+            `User ${userId} left ended game ${room} — opponentLeft emitted`,
+          );
+          continue;
+        }
 
         if (userId) {
           this.startDisconnectTimer(room, userId);
@@ -579,8 +640,13 @@ export class GameGateway
       }
 
       const rematch = JSON.parse(rematchStr) as {
-        p1Id: string; p2Id: string; p1Name: string; p2Name: string;
-        p1Ready: boolean; p2Ready: boolean;
+        p1Id: string;
+        p2Id: string;
+        p1Name: string;
+        p2Name: string;
+        p1Ready: boolean;
+        p2Ready: boolean;
+        isRanked?: boolean;
       };
 
       if (rematch.p1Id === userId) {
@@ -617,6 +683,7 @@ export class GameGateway
           rematch.p2Id,
           rematch.p1Name,
           rematch.p2Name,
+          rematch.isRanked === true,
         );
 
         // Move all sockets still in the old room into the new one.
@@ -634,6 +701,34 @@ export class GameGateway
       return { status: 'error', message: 'Internal server error' };
     } finally {
       await this.redisClient.unwatch().catch(() => {});
+    }
+  }
+
+  @SubscribeMessage('leaveEndedMatch')
+  async handleLeaveEndedMatch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    if (!userId || !gameSessionId) {
+      return { status: 'error', message: 'Invalid request' };
+    }
+
+    try {
+      const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+      if (!stateStr) {
+        return { status: 'ok' };
+      }
+      const state = JSON.parse(stateStr) as { status?: string };
+      if (state?.status !== 'match_completed') {
+        return { status: 'error', message: 'Match is not finished' };
+      }
+      this.server.to(gameSessionId).emit('opponentLeft', { userId, gameSessionId });
+      this.logger.log(`User ${userId} acknowledged leaving ended match ${gameSessionId}`);
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error(`leaveEndedMatch failed: ${error?.message}`, error?.stack);
+      return { status: 'error', message: 'Internal server error' };
     }
   }
 
@@ -689,7 +784,7 @@ export class GameGateway
       const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
       if (stateStr) {
         // Send only to this specific client who just joined/reconnected.
-        client.emit('gameStateUpdated', JSON.parse(stateStr));
+        client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
       }
     } catch (err) {
       this.logger.error(
@@ -832,6 +927,9 @@ export class GameGateway
       this.logger.log(`Executing Redis transaction to update state`);
       const multi = this.redisClient.multi();
       multi.set(key, JSON.stringify(state));
+      if (isMatchOver) {
+        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+      }
       const results = await multi.exec();
 
       if (!results) {
@@ -863,14 +961,19 @@ export class GameGateway
 
       if (isMatchOver) {
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
-        this.server.to(gameSessionId).emit('matchOver', updatePayload);
         this.clearTurnTimer(gameSessionId);
-        if (state.isRanked && state.winner) {
-          const loserId = state.players.find((p: string) => p !== state.winner) as string;
-          this.matchmakingService
-            .updateMmrAfterMatch(state.winner, loserId)
-            .catch((e) => this.logger.error(`MMR update failed: ${e?.message}`));
-        }
+        const loserId = state.players.find((p: string) => p !== state.winner) as string;
+        const mmrDeltas = await this.resolveMmrDeltasForMatch(
+          state,
+          state.winner,
+          loserId,
+          false,
+        );
+        this.server.to(gameSessionId).emit('matchOver', {
+          ...updatePayload,
+          forfeit: false,
+          mmrDeltas,
+        });
         this.initializeRematch(gameSessionId, state).catch((e) =>
           this.logger.error(`initializeRematch failed: ${e?.message}`),
         );
@@ -949,6 +1052,87 @@ export class GameGateway
       await this.redisClient.unwatch().catch(() => {});
       if (payload?.gameSessionId) this.startTurnTimer(payload.gameSessionId);
       return { status: 'error', message: 'Internal server error' };
+    }
+  }
+
+  @SubscribeMessage('forfeitMatch')
+  async handleForfeitMatch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    if (!userId || !gameSessionId) {
+      return { status: 'error', message: 'Invalid request' };
+    }
+
+    this.clearTurnTimer(gameSessionId);
+
+    const gameKey = `game:${gameSessionId}`;
+    try {
+      await this.redisClient.watch(gameKey);
+      const stateStr = await this.redisClient.get(gameKey);
+      if (!stateStr) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Game not found' };
+      }
+      const state = JSON.parse(stateStr);
+      if (state.status === 'match_completed') {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Match already finished' };
+      }
+      if (!state.players?.includes(userId)) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Not a player in this game' };
+      }
+
+      const winnerId = state.players.find((p: string) => p !== userId) as string;
+      state.status = 'match_completed';
+      state.winner = winnerId;
+
+      if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
+      if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+        state.roundHistory.push({
+          round: state.currentRound,
+          winner: winnerId,
+          scores: { ...(state.scores ?? {}) },
+        });
+      }
+
+      const multi = this.redisClient.multi();
+      multi.set(gameKey, JSON.stringify(state));
+      this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+      const results = await multi.exec();
+
+      if (!results) {
+        await this.redisClient.unwatch().catch(() => {});
+        return { status: 'error', message: 'Concurrent update, try again' };
+      }
+
+      this.clearTurnTimer(gameSessionId);
+
+      const mmrDeltas = await this.resolveMmrDeltasForMatch(
+        state,
+        winnerId,
+        userId,
+        true,
+      );
+      this.server.to(gameSessionId).emit('matchOver', {
+        state,
+        forfeit: true,
+        forfeitedByUserId: userId,
+        mmrDeltas,
+      });
+
+      this.initializeRematch(gameSessionId, state).catch((e) =>
+        this.logger.error(`initializeRematch (manual forfeit) failed: ${e?.message}`),
+      );
+
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error(`Error in forfeitMatch: ${error?.message}`, error?.stack);
+      return { status: 'error', message: 'Internal server error' };
+    } finally {
+      await this.redisClient.unwatch().catch(() => {});
     }
   }
 }

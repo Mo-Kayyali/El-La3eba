@@ -18,7 +18,7 @@ export class LeaderboardService {
   /** Redis key where the cached leaderboard JSON is stored. */
   static readonly CACHE_KEY = 'global_leaderboard';
 
-  /** Cache TTL in seconds — 2 hours, so a cache miss between hourly refreshes is covered. */
+  /** Cache TTL in seconds — 2 hours, so a cache miss between cron refreshes is covered. */
   private readonly CACHE_TTL = 7200;
 
   constructor(
@@ -27,11 +27,11 @@ export class LeaderboardService {
   ) {}
 
   /**
-   * Runs every hour and refreshes the top-10 leaderboard in Redis.
-   * The frontend can read `global_leaderboard` from Redis (via a future REST endpoint)
+   * Runs every 10 minutes and refreshes the top-10 leaderboard in Redis.
+   * The frontend can read `global_leaderboard` from Redis (via a REST endpoint)
    * without touching PostgreSQL on every request.
    */
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async refreshLeaderboard(): Promise<void> {
     try {
       const topUsers = await this.prisma.user.findMany({

@@ -1,6 +1,7 @@
 import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Server } from 'socket.io';
+import type { ChainableCommander } from 'ioredis';
 export type QueueMode = 'ranked' | 'unrated';
 export declare class MatchmakingService {
     private readonly redisClient;
@@ -58,5 +59,12 @@ export declare class MatchmakingService {
         currentQuestion: "Name a football player who played in 2026" | "Name a player who has won the Champions League" | "Name a player who has played in the Premier League" | "Name a player who has won the World Cup" | "Name a player who has won the Ballon d’Or" | "Name a player who has played for Barcelona" | "Name a player who has played for Real Madrid";
         isRanked: boolean;
     }>;
-    updateMmrAfterMatch(winnerId: string, loserId: string): Promise<void>;
+    deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;
+    getActiveGameSessionIdForUser(userId: string): Promise<string | null>;
+    updateMmrAfterMatch(winnerId: string, loserId: string, options?: {
+        marginMultiplier?: number;
+    }): Promise<{
+        winnerDelta: number;
+        loserDelta: number;
+    } | null>;
 }

@@ -20,6 +20,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly DISCONNECT_GRACE_MS;
     constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService);
     private sleep;
+    private resolveMmrDeltasForMatch;
     afterInit(server: Server): void;
     private isGuestRateLimited;
     private clearTurnTimer;
@@ -83,6 +84,13 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         status: string;
         message?: undefined;
     }>;
+    handleLeaveEndedMatch(client: Socket, gameSessionId: string): Promise<{
+        status: string;
+        message: string;
+    } | {
+        status: string;
+        message?: undefined;
+    }>;
     handleJoinGameRoom(client: Socket, gameSessionId: string): Promise<{
         status: string;
         message: string;
@@ -99,6 +107,13 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         status: string;
         isCorrect: boolean;
         matchedPlayer: any;
+        message?: undefined;
+    }>;
+    handleForfeitMatch(client: Socket, gameSessionId: string): Promise<{
+        status: string;
+        message: string;
+    } | {
+        status: string;
         message?: undefined;
     }>;
 }

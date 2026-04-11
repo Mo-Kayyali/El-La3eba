@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { X, Crown, Swords, ArrowLeft, Trophy } from "lucide-react";
+import { X, Crown, Swords, Trophy } from "lucide-react";
+import { toast } from "sonner";
 import { useAuthStore } from "@/lib/auth-store";
+import { refreshAuthProfile } from "@/lib/api";
 import { useSocketStore } from "@/src/store/socketStore";
 import { getRank } from "@/lib/rank";
+import type { Socket } from "socket.io-client";
 
 type Player = {
   id?: string | number;
@@ -35,6 +38,7 @@ type GameState = {
     winner: string | number;
     scores: Record<string, number>;
   }>;
+  isRanked?: boolean;
   [key: string]: unknown;
 };
 
@@ -106,11 +110,88 @@ function Logo() {
   );
 }
 
+function emitLeaveEndedMatch(
+  socket: Socket | null,
+  gameSessionId: string | undefined
+) {
+  if (socket?.connected && gameSessionId) {
+    socket.emit("leaveEndedMatch", { gameSessionId });
+  }
+}
+
+function YouForfeitedEndScreen({
+  mmrDelta,
+  gameSessionId,
+  socket,
+}: {
+  mmrDelta: number | undefined;
+  gameSessionId: string | undefined;
+  socket: Socket | null;
+}) {
+  const router = useRouter();
+  const [secondsLeft, setSecondsLeft] = useState(10);
+  const navigated = useRef(false);
+
+  const goLobby = useCallback(() => {
+    if (navigated.current) return;
+    navigated.current = true;
+    emitLeaveEndedMatch(socket, gameSessionId);
+    void refreshAuthProfile();
+    router.replace("/lobby");
+  }, [socket, gameSessionId, router]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setSecondsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => {
+      window.clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (secondsLeft > 0) return;
+    goLobby();
+  }, [secondsLeft, goLobby]);
+
+  const lossLabel =
+    typeof mmrDelta === "number" ? `${mmrDelta} MMR` : null;
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-[#030712] text-slate-100 flex flex-col items-center justify-center px-6 py-12">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(239,68,68,0.12),transparent_60%)]" />
+      </div>
+      <div className="relative w-full max-w-md text-center">
+        <h2 className="text-4xl font-extrabold tracking-tight text-white">You Forfeited</h2>
+        <p className="mt-3 text-sm text-slate-400">
+          This match counts as a loss
+          {typeof mmrDelta === "number" ? " — your rating was adjusted." : "."}
+        </p>
+        {lossLabel !== null && (
+          <p className="mt-6 text-4xl font-extrabold tabular-nums text-red-500">{lossLabel}</p>
+        )}
+        <p className="mt-8 text-sm text-slate-500">
+          Returning to the lobby in{" "}
+          <span className="font-bold text-white tabular-nums">{secondsLeft}</span>s
+        </p>
+        <button
+          type="button"
+          onClick={goLobby}
+          className="mt-6 w-full rounded-3xl border border-white/[0.1] bg-white/[0.06] px-6 py-4 text-sm font-bold text-white hover:bg-white/[0.1] transition"
+        >
+          Return to Lobby
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function GamePage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
 
-  const { user, accessToken, isAuthenticated } = useAuthStore();
+  const { user, accessToken, isAuthenticated, bootstrapped } = useAuthStore();
   const { socket, isConnected, connectSocket } = useSocketStore();
 
   const gameSessionId = useMemo(() => {
@@ -121,7 +202,6 @@ export default function GamePage() {
   const userId = toId(user?.id);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [guess, setGuess] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
   const [turnSecondsLeft, setTurnSecondsLeft] = useState(10);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionSecondsLeft, setTransitionSecondsLeft] = useState<number>(0);
@@ -141,12 +221,11 @@ export default function GamePage() {
   const [hasRequestedRematch, setHasRequestedRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
 
-  const toastTimer = useRef<number | null>(null);
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 1600);
-  };
+  /** Populated from `matchOver` payload (ranked). */
+  const [mmrDeltas, setMmrDeltas] = useState<Record<string, number> | null>(null);
+  const [showForfeitModal, setShowForfeitModal] = useState(false);
+  const [opponentLeftRematch, setOpponentLeftRematch] = useState(false);
+  const [matchEndedByForfeit, setMatchEndedByForfeit] = useState(false);
 
   const triggerFlash = (
     side: "left" | "right",
@@ -164,20 +243,29 @@ export default function GamePage() {
   };
 
   useEffect(() => {
+    setMmrDeltas(null);
+    setShowForfeitModal(false);
+    setHasRequestedRematch(false);
+    setOpponentWantsRematch(false);
+    setOpponentLeftRematch(false);
+    setMatchEndedByForfeit(false);
+  }, [gameSessionId]);
+
+  useEffect(() => {
     return () => {
-      if (toastTimer.current) window.clearTimeout(toastTimer.current);
       if (flashLeftTimer.current) window.clearTimeout(flashLeftTimer.current);
       if (flashRightTimer.current) window.clearTimeout(flashRightTimer.current);
     };
   }, []);
 
   useEffect(() => {
+    if (!bootstrapped) return;
     if (!accessToken || !isAuthenticated) {
       router.replace("/");
       return;
     }
     connectSocket(accessToken);
-  }, [accessToken, connectSocket, isAuthenticated, router]);
+  }, [bootstrapped, accessToken, connectSocket, isAuthenticated, router]);
 
   // Stable refs for player IDs (needed inside socket handlers without stale closures)
   const leftPlayerIdRef = useRef<string | number | undefined>(undefined);
@@ -209,7 +297,7 @@ export default function GamePage() {
       setIsTransitioning(false);
       setTransitionSecondsLeft(0);
       const round = (actualState as any)?.currentRound;
-      showToast(`Round ${typeof round === "number" ? round : "?"} Started!`);
+      toast.success(`Round ${typeof round === "number" ? round : "?"} started!`);
     };
 
     const onMatchOver = (payload: GameState) => {
@@ -217,6 +305,19 @@ export default function GamePage() {
       setGameState(actualState ?? null);
       setIsTransitioning(false);
       setTransitionSecondsLeft(0);
+
+      const rawForfeit = (payload as { forfeit?: boolean })?.forfeit === true;
+      setMatchEndedByForfeit(rawForfeit);
+
+      const rawDeltas = (payload as any)?.mmrDeltas as
+        | Record<string, number>
+        | undefined;
+      setMmrDeltas(rawDeltas ?? null);
+
+      if (rawDeltas && userId !== undefined) {
+        const mine = rawDeltas[String(userId)];
+        if (typeof mine === "number") useAuthStore.getState().applyMmrDelta(mine);
+      }
 
       // Flash on last guess before match over
       const lastGuess = (payload as any)?.lastGuess as LastGuess | undefined;
@@ -227,7 +328,13 @@ export default function GamePage() {
         if (isLeft) triggerFlash("left", lastGuess.correct ? "correct" : "wrong");
         if (isRight) triggerFlash("right", lastGuess.correct ? "correct" : "wrong");
       }
-      showToast("Match Over");
+      toast.message("Match over");
+
+      const forfeitedBy = (payload as { forfeitedByUserId?: string })
+        ?.forfeitedByUserId;
+      if (forfeitedBy && userId !== undefined && String(forfeitedBy) === String(userId)) {
+        setShowForfeitModal(false);
+      }
     };
 
     const onRoundOver = (payload: any) => {
@@ -236,7 +343,7 @@ export default function GamePage() {
       setIsTransitioning(true);
       setTransitionSecondsLeft(Math.max(0, Math.floor(nextRoundIn)));
       const winner = payload?.winner;
-      showToast(
+      toast.message(
         `Round over${winner ? ` • Winner: ${String(winner)}` : ""} — next round soon`
       );
     };
@@ -254,7 +361,18 @@ export default function GamePage() {
     };
 
     const onRematchExpired = () => {
+      emitLeaveEndedMatch(socket, gameSessionId);
+      void refreshAuthProfile();
       router.push("/lobby");
+    };
+
+    const onOpponentLeft = (payload: { gameSessionId?: string; userId?: string }) => {
+      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId) return;
+      const leftId = payload?.userId ? String(payload.userId) : "";
+      if (!leftId) return;
+      if (userId !== undefined && leftId === String(userId)) return;
+      setOpponentLeftRematch(true);
+      setOpponentWantsRematch(false);
     };
 
     const onPlayerDisconnected = (payload: {
@@ -284,6 +402,7 @@ export default function GamePage() {
     socket.on("rematchRequested", onRematchRequested);
     socket.on("rematchStarting", onRematchStarting);
     socket.on("rematchExpired", onRematchExpired);
+    socket.on("opponentLeft", onOpponentLeft);
     socket.on("playerDisconnected", onPlayerDisconnected);
     socket.on("playerReconnected", onPlayerReconnected);
 
@@ -295,6 +414,7 @@ export default function GamePage() {
       socket.off("rematchRequested", onRematchRequested);
       socket.off("rematchStarting", onRematchStarting);
       socket.off("rematchExpired", onRematchExpired);
+      socket.off("opponentLeft", onOpponentLeft);
       socket.off("playerDisconnected", onPlayerDisconnected);
       socket.off("playerReconnected", onPlayerReconnected);
     };
@@ -596,6 +716,12 @@ export default function GamePage() {
               <h2 className="mt-1 text-lg font-bold text-white">
                 {displayName(playerId, "Waiting…")}
               </h2>
+              {mmr !== undefined && (
+                <p className="mt-1 text-xs text-slate-400">
+                  MMR:{" "}
+                  <span className="font-bold tabular-nums text-slate-100">{mmr}</span>
+                </p>
+              )}
               {/* MMR rank badge */}
               {mmr !== undefined && (() => {
                 const r = getRank(mmr);
@@ -671,6 +797,17 @@ export default function GamePage() {
   }
 
   function GameOverScreen() {
+    const isRanked = gameState?.isRanked === true;
+    const myMmrDelta =
+      userId !== undefined && mmrDeltas
+        ? mmrDeltas[String(userId)]
+        : undefined;
+    const iWon =
+      userId !== undefined &&
+      winnerId !== undefined &&
+      String(winnerId) === String(userId);
+    const hidePlayAgain = matchEndedByForfeit === true && iWon;
+
     return (
       <div className="relative min-h-screen overflow-hidden bg-[#030712] text-slate-100 flex flex-col items-center justify-center px-6 py-12">
         {/* Background */}
@@ -689,6 +826,24 @@ export default function GamePage() {
             <h2 className="text-5xl font-extrabold tracking-tight text-white">
               {winnerLabel || "Winner"}
             </h2>
+            {userId !== undefined && winnerId !== undefined && (
+              <p
+                className={`mt-3 text-lg font-bold ${
+                  iWon ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {iWon ? "You won" : "You lost"}
+              </p>
+            )}
+            {isRanked && typeof myMmrDelta === "number" && (
+              <p
+                className={`mt-2 text-3xl font-extrabold tabular-nums ${
+                  myMmrDelta >= 0 ? "text-green-400" : "text-red-400"
+                }`}
+              >
+                {myMmrDelta > 0 ? `+${myMmrDelta}` : myMmrDelta} MMR
+              </p>
+            )}
             <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm text-slate-300">
               <Crown className="h-4 w-4 text-amber-300" />
               <span className="font-semibold text-white">Best of 3</span>
@@ -730,22 +885,24 @@ export default function GamePage() {
 
           {/* Rematch panel */}
           <div className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-            <div className="flex items-center justify-center gap-3 mb-5">
-              <div
-                className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl font-extrabold ${
-                  rematchSecondsLeft <= 5
-                    ? "border-red-500/60 text-red-300"
-                    : rematchSecondsLeft <= 10
-                    ? "border-amber-400/60 text-amber-200"
-                    : "border-white/20 text-white"
-                }`}
-              >
-                {rematchSecondsLeft}
+            {!hidePlayAgain && (
+              <div className="flex items-center justify-center gap-3 mb-5">
+                <div
+                  className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl font-extrabold ${
+                    rematchSecondsLeft <= 5
+                      ? "border-red-500/60 text-red-300"
+                      : rematchSecondsLeft <= 10
+                      ? "border-amber-400/60 text-amber-200"
+                      : "border-white/20 text-white"
+                  }`}
+                >
+                  {rematchSecondsLeft}
+                </div>
+                <p className="text-sm text-slate-400">seconds to decide</p>
               </div>
-              <p className="text-sm text-slate-400">seconds to decide</p>
-            </div>
+            )}
 
-            {opponentWantsRematch && !hasRequestedRematch && (
+            {opponentWantsRematch && !hasRequestedRematch && !opponentLeftRematch && (
               <div className="mb-4 flex justify-center">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-4 py-2 text-sm font-semibold text-emerald-300">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
@@ -754,33 +911,60 @@ export default function GamePage() {
               </div>
             )}
 
+            {opponentLeftRematch && (
+              <div className="mb-4 flex justify-center">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200">
+                  Opponent Left
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <button
-                disabled={hasRequestedRematch || rematchSecondsLeft === 0}
-                onClick={() => {
-                  if (!socket?.connected || !gameSessionId || hasRequestedRematch)
-                    return;
-                  setHasRequestedRematch(true);
-                  socket.emit("requestRematch", { gameSessionId });
-                }}
-                className={`flex-1 rounded-3xl px-6 py-4 text-sm font-bold transition sm:max-w-[240px] ${
-                  hasRequestedRematch || rematchSecondsLeft === 0
-                    ? "cursor-not-allowed bg-white/[0.06] text-slate-400"
-                    : "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:brightness-110"
-                }`}
-              >
-                {hasRequestedRematch ? (
-                  <span className="inline-flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400/30 border-t-slate-300" />
-                    Waiting…
-                  </span>
-                ) : (
-                  "Play Again"
-                )}
-              </button>
+              {!hidePlayAgain && (
+                <button
+                  disabled={
+                    hasRequestedRematch ||
+                    rematchSecondsLeft === 0 ||
+                    opponentLeftRematch
+                  }
+                  onClick={() => {
+                    if (
+                      !socket?.connected ||
+                      !gameSessionId ||
+                      hasRequestedRematch ||
+                      opponentLeftRematch
+                    )
+                      return;
+                    setHasRequestedRematch(true);
+                    socket.emit("requestRematch", { gameSessionId });
+                  }}
+                  className={`flex-1 rounded-3xl px-6 py-4 text-sm font-bold transition sm:max-w-[240px] ${
+                    hasRequestedRematch ||
+                    rematchSecondsLeft === 0 ||
+                    opponentLeftRematch
+                      ? "cursor-not-allowed bg-white/[0.06] text-slate-400"
+                      : "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:brightness-110"
+                  }`}
+                >
+                  {opponentLeftRematch ? (
+                    "Opponent Left"
+                  ) : hasRequestedRematch ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400/30 border-t-slate-300" />
+                      Waiting…
+                    </span>
+                  ) : (
+                    "Play Again"
+                  )}
+                </button>
+              )}
 
               <button
-                onClick={() => router.replace("/lobby")}
+                onClick={() => {
+                  emitLeaveEndedMatch(socket, gameSessionId);
+                  void refreshAuthProfile();
+                  router.replace("/lobby");
+                }}
                 className="flex-1 rounded-3xl border border-white/[0.08] bg-white/[0.04] px-6 py-4 text-sm font-bold text-white hover:bg-white/[0.07] transition sm:max-w-[240px]"
               >
                 Return to Lobby
@@ -792,7 +976,33 @@ export default function GamePage() {
     );
   }
 
+  if (!bootstrapped) {
+    return (
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-blue-400/30 border-t-blue-400" />
+          <p className="text-sm text-slate-400">Restoring session…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (gameState?.status === "match_completed") {
+    const iWon =
+      userId !== undefined &&
+      winnerId !== undefined &&
+      String(winnerId) === String(userId);
+    if (matchEndedByForfeit && !iWon) {
+      const delta =
+        userId !== undefined && mmrDeltas ? mmrDeltas[String(userId)] : undefined;
+      return (
+        <YouForfeitedEndScreen
+          mmrDelta={delta}
+          gameSessionId={gameSessionId}
+          socket={socket}
+        />
+      );
+    }
     return <GameOverScreen />;
   }
 
@@ -831,19 +1041,61 @@ export default function GamePage() {
           </div>
 
           <button
-            onClick={() => router.push("/lobby")}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/[0.07] transition"
+            type="button"
+            onClick={() => setShowForfeitModal(true)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Lobby
+            Forfeit Match
           </button>
         </header>
 
-        {/* Toast */}
-        {toast && (
-          <div className="mt-4 flex justify-center">
-            <div className="rounded-2xl border border-white/[0.08] bg-black/60 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-xl">
-              {toast}
+        {showForfeitModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="forfeit-title"
+              className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#030712] p-8 shadow-[0_0_60px_rgba(239,68,68,0.12)]"
+            >
+              <h3
+                id="forfeit-title"
+                className="text-lg font-extrabold text-white"
+              >
+                Forfeit this match?
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                Are you sure? This counts as a loss and will drop your MMR in
+                ranked games.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowForfeitModal(false)}
+                  className="rounded-2xl border border-white/[0.1] bg-white/[0.05] px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/[0.08] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!socket?.connected || !gameSessionId) return;
+                    socket.emit(
+                      "forfeitMatch",
+                      { gameSessionId },
+                      (res: { status?: string; message?: string }) => {
+                        if (res?.status === "ok") {
+                          setShowForfeitModal(false);
+                        } else {
+                          toast.error(res?.message ?? "Could not forfeit.");
+                        }
+                      }
+                    );
+                  }}
+                  className="rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(239,68,68,0.25)] hover:brightness-110 transition"
+                >
+                  Yes, forfeit
+                </button>
+              </div>
             </div>
           </div>
         )}

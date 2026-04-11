@@ -60,7 +60,7 @@ let LeaderboardService = class LeaderboardService {
 };
 exports.LeaderboardService = LeaderboardService;
 __decorate([
-    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_HOUR),
+    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_10_MINUTES),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

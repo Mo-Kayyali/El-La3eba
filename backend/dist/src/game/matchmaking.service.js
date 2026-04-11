@@ -201,10 +201,60 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             currentQuestion: (0, game_questions_1.pickRandomFootballQuestion)(),
             isRanked,
         };
-        await this.redisClient.set(`game:${gameSessionId}`, JSON.stringify(gameState));
+        const gameKey = `game:${gameSessionId}`;
+        const stateJson = JSON.stringify(gameState);
+        const multi = this.redisClient.multi();
+        multi.set(gameKey, stateJson);
+        multi.set(`active_game:${player1Id}`, gameSessionId);
+        multi.set(`active_game:${player2Id}`, gameSessionId);
+        await multi.exec();
         return gameState;
     }
-    async updateMmrAfterMatch(winnerId, loserId) {
+    deleteActiveGameKeysInMulti(multi, playerIds) {
+        for (const raw of playerIds) {
+            if (raw === undefined || raw === null)
+                continue;
+            const id = String(raw);
+            if (!id)
+                continue;
+            multi.del(`active_game:${id}`);
+        }
+    }
+    async getActiveGameSessionIdForUser(userId) {
+        const uid = String(userId);
+        const key = `active_game:${uid}`;
+        const sessionId = await this.redisClient.get(key);
+        if (!sessionId)
+            return null;
+        const gameKey = `game:${sessionId}`;
+        const stateStr = await this.redisClient.get(gameKey);
+        if (!stateStr) {
+            await this.redisClient.del(key).catch(() => { });
+            return null;
+        }
+        let state;
+        try {
+            state = JSON.parse(stateStr);
+        }
+        catch {
+            await this.redisClient.del(key).catch(() => { });
+            return null;
+        }
+        if (state.status === 'match_completed') {
+            const players = (state.players ?? []).map((p) => String(p));
+            const m = this.redisClient.multi();
+            this.deleteActiveGameKeysInMulti(m, players);
+            await m.exec().catch(() => { });
+            return null;
+        }
+        const players = (state.players ?? []).map((p) => String(p));
+        if (!players.includes(uid)) {
+            await this.redisClient.del(key).catch(() => { });
+            return null;
+        }
+        return sessionId;
+    }
+    async updateMmrAfterMatch(winnerId, loserId, options) {
         try {
             const [winner, loser] = await Promise.all([
                 this.prisma.user.findUnique({
@@ -218,9 +268,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             ]);
             if (!winner || !loser) {
                 this.logger.warn(`MMR update skipped — winner=${winnerId} found=${!!winner}, loser=${loserId} found=${!!loser}`);
-                return;
+                return null;
             }
-            const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } = (0, elo_util_1.calculateElo)(winner.mmr, loser.mmr);
+            const margin = options?.marginMultiplier ?? 1;
+            const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } = (0, elo_util_1.calculateElo)(winner.mmr, loser.mmr, 32, margin);
             await Promise.all([
                 this.prisma.user.update({
                     where: { id: winnerId },
@@ -240,10 +291,12 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             ]);
             this.logger.log(`MMR updated — winner ${winnerId}: ${winner.mmr} → ${winnerNewMmr} (+${winnerDelta}), ` +
                 `loser ${loserId}: ${loser.mmr} → ${loserNewMmr} (${loserDelta})`);
+            return { winnerDelta, loserDelta };
         }
         catch (error) {
             const err = error;
             this.logger.error(`MMR update failed: ${err?.message}`, err?.stack);
+            return null;
         }
     }
 };

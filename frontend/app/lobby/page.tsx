@@ -1,12 +1,13 @@
 "use client";
 
-import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Swords, Users, Lock, LogOut, Crown, Star } from "lucide-react";
+import { Trophy, Swords, Users, LogOut, Crown, Star } from "lucide-react";
+import { api, refreshAuthProfile } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
 import { getRank } from "@/lib/rank";
+import { RankTierLegend } from "@/components/rank-tier-legend";
 
 interface LeaderboardEntry {
   id: string;
@@ -43,7 +44,7 @@ function Logo() {
 
 export default function LobbyPage() {
   const router = useRouter();
-  const { user, accessToken, isAuthenticated, logout } = useAuthStore();
+  const { user, accessToken, isAuthenticated, logout, bootstrapped } = useAuthStore();
   const { socket, connectSocket, disconnectSocket } = useSocketStore();
 
   const username = useMemo(
@@ -64,25 +65,31 @@ export default function LobbyPage() {
   const [roomCode, setRoomCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const [showJoinInput, setShowJoinInput] = useState(false);
-
   // Leaderboard
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
   useEffect(() => {
+    if (!bootstrapped) return;
     if (!accessToken) {
       router.replace("/");
       return;
     }
     connectSocket(accessToken);
-    return () => { disconnectSocket(); };
+    return () => {
+      disconnectSocket();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, router]);
+  }, [bootstrapped, accessToken, router]);
 
   useEffect(() => {
-    axios
-      .get<LeaderboardEntry[]>("http://localhost:3000/game/leaderboard")
+    if (!bootstrapped || !accessToken) return;
+    void refreshAuthProfile();
+  }, [bootstrapped, accessToken]);
+
+  useEffect(() => {
+    api
+      .get<LeaderboardEntry[]>("/game/leaderboard")
       .then((res) => setLeaderboard(res.data ?? []))
       .catch(() => setLeaderboard([]))
       .finally(() => setLeaderboardLoading(false));
@@ -136,7 +143,18 @@ export default function LobbyPage() {
     setSearchMode(null);
   }
 
-  if (!isAuthenticated) {
+  if (!bootstrapped) {
+    return (
+      <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-3">
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-blue-400/30 border-t-blue-400" />
+          <p className="text-sm text-slate-400">Restoring session…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !accessToken) {
     return (
       <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-6">
         <div className="w-full max-w-sm rounded-3xl border border-white/[0.08] bg-white/[0.04] p-8 text-center backdrop-blur-xl">
@@ -177,15 +195,17 @@ export default function LobbyPage() {
             </div>
             {/* User chip with rank badge */}
             {(() => {
-              const fromProfile = typeof user?.mmr === "number" ? user.mmr : undefined;
-              const fromBoard = leaderboard.find((e) => String(e.id) === String(user?.id))?.mmr;
-              const myMmr = fromProfile ?? fromBoard;
+              const myMmr = typeof user?.mmr === "number" ? user.mmr : undefined;
               const rank = myMmr !== undefined ? getRank(myMmr) : null;
               return (
                 <div className={`flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-3 py-1.5 ${rank ? rank.borderClass : "border-white/[0.08]"}`}>
-                  {rank && (
+                  {rank ? (
                     <span className={`text-[10px] font-extrabold tracking-wide ${rank.colorClass} ${rank.glowClass}`}>
                       {rank.name.toUpperCase()}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-extrabold tracking-wide text-slate-500">
+                      —
                     </span>
                   )}
                   <span className="text-xs font-semibold text-slate-300">{username}</span>
@@ -236,7 +256,7 @@ export default function LobbyPage() {
             )}
 
             {/* Mode cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Ranked */}
               <ModeCard
                 icon={<Swords className="h-6 w-6" />}
@@ -248,6 +268,14 @@ export default function LobbyPage() {
                 disabled={isSearching || !socket?.connected}
                 active={isSearching && searchMode === "ranked"}
                 onClick={() => startSearch("ranked")}
+                footer={
+                  typeof user?.mmr === "number" ? (
+                    <span className="mt-3 inline-flex items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-bold tracking-wide text-blue-200">
+                      Current MMR:{" "}
+                      <span className="ml-1.5 tabular-nums text-white">{user.mmr}</span>
+                    </span>
+                  ) : null
+                }
               />
 
               {/* Unrated */}
@@ -261,23 +289,6 @@ export default function LobbyPage() {
                 disabled={isSearching || !socket?.connected}
                 active={isSearching && searchMode === "unrated"}
                 onClick={() => startSearch("unrated")}
-              />
-
-              {/* Private Room */}
-              <ModeCard
-                icon={<Lock className="h-6 w-6" />}
-                title="Private Room"
-                description="Play with a friend using a shared room code."
-                accentFrom="from-indigo-600"
-                accentTo="to-cyan-500"
-                glowColor="rgba(99,102,241,0.35)"
-                disabled={isSearching || !socket?.connected}
-                onClick={() => {
-                  if (isSearching) return;
-                  setIsWaitingForFriend(false);
-                  setCreatedRoomCode(null);
-                  setShowJoinInput((p) => !p);
-                }}
               />
             </div>
 
@@ -464,8 +475,10 @@ export default function LobbyPage() {
               </div>
             )}
 
+            <RankTierLegend />
+
             <p className="mt-4 text-[10px] text-slate-600 text-center">
-              MMR refreshes hourly
+              Leaderboard cache refreshes about every 10 minutes
             </p>
           </div>
         </div>
@@ -485,6 +498,7 @@ function ModeCard({
   disabled,
   active,
   onClick,
+  footer,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -495,6 +509,7 @@ function ModeCard({
   disabled?: boolean;
   active?: boolean;
   onClick: () => void;
+  footer?: React.ReactNode;
 }) {
   return (
     <button
@@ -520,6 +535,8 @@ function ModeCard({
 
       <h3 className="text-base font-bold text-white">{title}</h3>
       <p className="mt-1 text-xs leading-5 text-slate-400">{description}</p>
+
+      {footer}
 
       {active && (
         <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-blue-300">

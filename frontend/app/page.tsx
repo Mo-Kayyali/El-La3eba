@@ -4,6 +4,7 @@ import axios, { AxiosError } from "axios";
 import { Lock, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { syncAxiosAuthFromStore } from "@/lib/api";
 import { useAuthStore } from "../lib/auth-store";
 
 type Mode = "login" | "register";
@@ -75,6 +76,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
 
   const title = useMemo(
     () => (mode === "login" ? "Welcome back" : "Create account"),
@@ -92,6 +94,7 @@ export default function AuthPage() {
         const res = await axios.post("http://localhost:3000/auth/login", {
           email,
           password,
+          rememberMe,
         });
 
         const accessToken: string | undefined = res.data?.access_token;
@@ -99,6 +102,7 @@ export default function AuthPage() {
         if (!accessToken || !user) throw new Error("Unexpected server response.");
 
         setAuth({ accessToken, user });
+        syncAxiosAuthFromStore();
         router.push("/lobby");
         return;
       }
@@ -285,6 +289,20 @@ export default function AuthPage() {
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 icon={<Lock className="h-4 w-4" />}
               />
+
+              {mode === "login" && (
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-black/30 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/20 bg-black/50 text-blue-500 focus:ring-blue-500/40"
+                  />
+                  <span className="text-sm text-slate-300">
+                    Remember me <span className="text-slate-500">(stay signed in 30 days)</span>
+                  </span>
+                </label>
+              )}
 
               {error && (
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-300">

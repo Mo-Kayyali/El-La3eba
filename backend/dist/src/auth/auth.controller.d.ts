@@ -24,6 +24,20 @@ export declare class AuthController {
             mmr: any;
         };
     }>;
+    me(req: {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        id: string;
+        email: string;
+        username: string;
+        isVerified: boolean;
+        mmr: number;
+        gamesPlayed: number;
+        wins: number;
+        createdAt: Date;
+    }>;
     requestVerification(req: any): Promise<{
         success: boolean;
         message: string;
