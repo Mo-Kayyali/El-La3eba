@@ -29,6 +29,7 @@ export declare class AuthController {
             userId: string;
         };
     }): Promise<{
+        pendingIncomingFriendRequests: number;
         id: string;
         email: string;
         username: string;

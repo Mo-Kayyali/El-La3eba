@@ -56,6 +56,7 @@ export type MeProfile = {
   gamesPlayed: number;
   isVerified: boolean;
   createdAt: string;
+  pendingIncomingFriendRequests: number;
 };
 
 export const API_BASE =
@@ -86,17 +87,19 @@ export function syncAxiosAuthFromStore() {
   }
 }
 
-export async function refreshAuthProfile(): Promise<void> {
+export async function refreshAuthProfile(): Promise<MeProfile | null> {
   const { accessToken, setUser, logout } = useAuthStore.getState();
-  if (!accessToken) return;
+  if (!accessToken) return null;
   try {
-    const { data } = await api.get("/auth/me");
+    const { data } = await api.get<MeProfile>("/auth/me");
     setUser(data);
+    return data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err) && err.response?.status === 401) {
       logout();
       syncAxiosAuthFromStore();
     }
+    return null;
   }
 }
 
@@ -142,6 +145,24 @@ export async function rejectFriendRequest(
 ): Promise<{ rejected: boolean }> {
   const { data } = await api.post<{ rejected: boolean }>(
     `/friends/${requestId}/reject`,
+  );
+  return data;
+}
+
+export async function cancelOutgoingRequest(
+  requestId: string,
+): Promise<{ cancelled: boolean }> {
+  const { data } = await api.post<{ cancelled: boolean }>(
+    `/friends/${requestId}/cancel`,
+  );
+  return data;
+}
+
+export async function removeFriend(
+  friendshipId: string,
+): Promise<{ removed: boolean }> {
+  const { data } = await api.post<{ removed: boolean }>(
+    `/friends/${friendshipId}/remove`,
   );
   return data;
 }

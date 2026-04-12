@@ -18,6 +18,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly rematchTimers;
     private readonly disconnectTimers;
     private readonly guessTimestamps;
+    private readonly inviteExpiryTimers;
     private readonly roundTransitionMs;
     private readonly DISCONNECT_GRACE_MS;
     private readonly INVITE_COOLDOWN_SECONDS;
@@ -26,7 +27,11 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private sleep;
     private inviteCooldownKey;
     private inviteKey;
+    private inviteTimerKey;
+    private clearInviteExpiryTimer;
+    private scheduleInviteExpiry;
     private cancelActiveInvitesByInviter;
+    private cancelPendingInvitesForInvitee;
     emitFriendRequestReceived(recipientId: string, payload: {
         requestId: string;
         senderId: string;

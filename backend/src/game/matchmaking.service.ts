@@ -21,6 +21,10 @@ export class MatchmakingService {
   private readonly logger = new Logger(MatchmakingService.name);
   private server!: Server;
   private startTurnTimerFn?: (gameSessionId: string) => void;
+  private readonly searchExpiryTimers = new Map<string, NodeJS.Timeout>();
+  private readonly roomExpiryTimers = new Map<string, NodeJS.Timeout>();
+  private readonly SEARCH_TTL_SECONDS = 60;
+  private readonly PRIVATE_ROOM_TTL_SECONDS = 60;
 
   /** Redis key pairs for each queue mode. */
   private readonly QUEUES: Record<
@@ -42,6 +46,72 @@ export class MatchmakingService {
 
   setTurnTimerStarter(fn: (gameSessionId: string) => void) {
     this.startTurnTimerFn = fn;
+  }
+
+  private queueSearchKey(userId: string) {
+    return `queue_search:${userId}`;
+  }
+
+  private clearSearchExpiryTimer(userId: string) {
+    const timer = this.searchExpiryTimers.get(userId);
+    if (!timer) return;
+    clearTimeout(timer);
+    this.searchExpiryTimers.delete(userId);
+  }
+
+  private scheduleSearchExpiry(
+    userId: string,
+    socketId: string,
+    mode: QueueMode,
+  ) {
+    this.clearSearchExpiryTimer(userId);
+
+    const timeout = setTimeout(async () => {
+      this.searchExpiryTimers.delete(userId);
+      const key = this.queueSearchKey(userId);
+      const stillSearching = await this.redisClient.exists(key).catch(() => 0);
+      if (!stillSearching) return;
+
+      await this.cancelSearch(userId).catch(() => {});
+      this.server?.to(userId).emit('searchExpired', { mode });
+      this.server?.to(socketId).emit('searchExpired', { mode });
+    }, this.SEARCH_TTL_SECONDS * 1000);
+
+    this.searchExpiryTimers.set(userId, timeout);
+  }
+
+  private clearRoomExpiryTimer(userId: string) {
+    const timer = this.roomExpiryTimers.get(userId);
+    if (!timer) return;
+    clearTimeout(timer);
+    this.roomExpiryTimers.delete(userId);
+  }
+
+  private schedulePrivateRoomExpiry(userId: string, roomCode: string) {
+    this.clearRoomExpiryTimer(userId);
+
+    const timeout = setTimeout(async () => {
+      this.roomExpiryTimers.delete(userId);
+
+      const userRoomKey = `user_room:${userId}`;
+      const privateRoomKey = `private_room:${roomCode}`;
+      const currentRoomCode = await this.redisClient.get(userRoomKey);
+      if (currentRoomCode !== roomCode) return;
+
+      const roomExists = await this.redisClient
+        .exists(privateRoomKey)
+        .catch(() => 0);
+      if (!roomExists) return;
+
+      const multi = this.redisClient.multi();
+      multi.del(privateRoomKey);
+      multi.del(userRoomKey);
+      await multi.exec();
+
+      this.server?.to(userId).emit('roomExpired', { roomCode });
+    }, this.PRIVATE_ROOM_TTL_SECONDS * 1000);
+
+    this.roomExpiryTimers.set(userId, timeout);
   }
 
   // ─── Queue management ────────────────────────────────────────────────────
@@ -71,8 +141,17 @@ export class MatchmakingService {
     await this.redisClient.srem(members, userId);
 
     const entry: QueueEntry = { userId, socketId, username };
-    await this.redisClient.lpush(list, JSON.stringify(entry));
-    await this.redisClient.sadd(members, userId);
+    await Promise.all([
+      this.redisClient.lpush(list, JSON.stringify(entry)),
+      this.redisClient.sadd(members, userId),
+      this.redisClient.set(
+        this.queueSearchKey(userId),
+        JSON.stringify({ mode, socketId, createdAt: new Date().toISOString() }),
+        'EX',
+        this.SEARCH_TTL_SECONDS,
+      ),
+    ]);
+    this.scheduleSearchExpiry(userId, socketId, mode);
 
     this.logger.log(`User ${userId} joined ${mode} queue`);
   }
@@ -82,9 +161,11 @@ export class MatchmakingService {
    * Stale list entries are silently discarded when the queue is processed.
    */
   async cancelSearch(userId: string): Promise<void> {
+    this.clearSearchExpiryTimer(userId);
     await Promise.all([
       this.redisClient.srem(this.QUEUES.ranked.members, userId),
       this.redisClient.srem(this.QUEUES.unrated.members, userId),
+      this.redisClient.del(this.queueSearchKey(userId)),
     ]);
     this.logger.log(`User ${userId} removed from all queues`);
   }
@@ -109,8 +190,27 @@ export class MatchmakingService {
       const entry: QueueEntry = JSON.parse(entryStr);
       const isMember = await this.redisClient.sismember(members, entry.userId);
       if (isMember) {
+        const searchExists = await this.redisClient
+          .exists(this.queueSearchKey(entry.userId))
+          .catch(() => 0);
+        if (!searchExists) {
+          await this.redisClient.srem(members, entry.userId);
+          this.clearSearchExpiryTimer(entry.userId);
+          this.server?.to(entry.userId).emit('searchExpired', {
+            mode: members === this.QUEUES.ranked.members ? 'ranked' : 'unrated',
+          });
+          this.server?.to(entry.socketId).emit('searchExpired', {
+            mode: members === this.QUEUES.ranked.members ? 'ranked' : 'unrated',
+          });
+          continue;
+        }
+
         // Atomically claim this slot
-        await this.redisClient.srem(members, entry.userId);
+        await Promise.all([
+          this.redisClient.srem(members, entry.userId),
+          this.redisClient.del(this.queueSearchKey(entry.userId)),
+        ]);
+        this.clearSearchExpiryTimer(entry.userId);
         return entry;
       }
       // else: user cancelled — silently discard and keep popping
@@ -143,12 +243,13 @@ export class MatchmakingService {
       if (!exists) isUnique = true;
     }
 
-    const TTL = 900; // 15 minutes
+    const TTL = this.PRIVATE_ROOM_TTL_SECONDS;
     const roomData = JSON.stringify({ userId, socketId, username });
     await Promise.all([
       this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
       this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
     ]);
+    this.schedulePrivateRoomExpiry(userId, roomCode);
 
     this.logger.log(`Private room ${roomCode} created by user ${userId}`);
     return roomCode;
@@ -175,13 +276,17 @@ export class MatchmakingService {
     const userRoomKey = `user_room:${userId}`;
     const roomCode = await this.redisClient.get(userRoomKey);
 
-    if (!roomCode) return null;
+    if (!roomCode) {
+      this.clearRoomExpiryTimer(userId);
+      return null;
+    }
 
     const privateRoomKey = `private_room:${roomCode}`;
     const multi = this.redisClient.multi();
     multi.del(privateRoomKey);
     multi.del(userRoomKey);
     await multi.exec();
+    this.clearRoomExpiryTimer(userId);
     return roomCode;
   }
 
@@ -224,6 +329,7 @@ export class MatchmakingService {
     }
 
     await this.redisClient.unwatch().catch(() => {});
+    this.clearRoomExpiryTimer(host.userId);
 
     // Both players must leave any public queue they were in
     await Promise.all([

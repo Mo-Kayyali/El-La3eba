@@ -44,6 +44,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
+const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcrypt"));
@@ -91,23 +92,34 @@ let AuthService = class AuthService {
         return this.generateToken(user, dto.rememberMe === true);
     }
     async getProfileById(userId) {
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                username: true,
-                email: true,
-                mmr: true,
-                wins: true,
-                gamesPlayed: true,
-                isVerified: true,
-                createdAt: true,
-            },
-        });
+        const [user, pendingIncomingFriendRequests] = await Promise.all([
+            this.prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    mmr: true,
+                    wins: true,
+                    gamesPlayed: true,
+                    isVerified: true,
+                    createdAt: true,
+                },
+            }),
+            this.prisma.friendship.count({
+                where: {
+                    friendId: userId,
+                    status: client_1.FriendshipStatus.PENDING,
+                },
+            }),
+        ]);
         if (!user) {
             throw new common_1.UnauthorizedException();
         }
-        return user;
+        return {
+            ...user,
+            pendingIncomingFriendRequests,
+        };
     }
     generateToken(user, rememberMe = false) {
         const payload = {

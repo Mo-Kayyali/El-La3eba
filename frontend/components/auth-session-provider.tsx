@@ -37,6 +37,13 @@ export function AuthSessionProvider({
   const clearOutgoingInvite = useNotificationStore(
     (s) => s.clearOutgoingInvite,
   );
+  const setPendingFriendRequests = useNotificationStore(
+    (s) => s.setPendingFriendRequests,
+  );
+  const resetInviteUiState = useNotificationStore((s) => s.resetInviteUiState);
+  const resetAllNotifications = useNotificationStore(
+    (s) => s.resetAllNotifications,
+  );
   const pruneExpiredInvites = useNotificationStore(
     (s) => s.pruneExpiredInvites,
   );
@@ -57,24 +64,52 @@ export function AuthSessionProvider({
       if (cancelled) return;
       syncAxiosAuthFromStore();
       const token = useAuthStore.getState().accessToken;
-      if (token) await refreshAuthProfile();
+      if (!token) {
+        resetAllNotifications();
+      } else {
+        const profile = await refreshAuthProfile();
+        if (!cancelled) {
+          setPendingFriendRequests(profile?.pendingIncomingFriendRequests ?? 0);
+        }
+      }
       if (!cancelled) setBootstrapped(true);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [setBootstrapped]);
+  }, [resetAllNotifications, setBootstrapped, setPendingFriendRequests]);
 
   useEffect(() => {
     if (!bootstrapped) return;
     if (!accessToken) {
       disconnectSocket();
+      resetAllNotifications();
       return;
     }
 
     connectSocket(accessToken);
-  }, [accessToken, bootstrapped, connectSocket, disconnectSocket]);
+  }, [
+    accessToken,
+    bootstrapped,
+    connectSocket,
+    disconnectSocket,
+    resetAllNotifications,
+  ]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const onConnect = () => {
+      resetInviteUiState();
+    };
+
+    socket.on("connect", onConnect);
+
+    return () => {
+      socket.off("connect", onConnect);
+    };
+  }, [resetInviteUiState, socket]);
 
   useEffect(() => {
     if (!socket) return;

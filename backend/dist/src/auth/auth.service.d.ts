@@ -29,6 +29,7 @@ export declare class AuthService {
         };
     }>;
     getProfileById(userId: string): Promise<{
+        pendingIncomingFriendRequests: number;
         id: string;
         email: string;
         username: string;

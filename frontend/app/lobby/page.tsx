@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Swords, Users, User, LogOut, Crown, Star } from "lucide-react";
+import { toast } from "sonner";
+import { Trophy, Swords, Users, Crown, Star } from "lucide-react";
 import { api, refreshAuthProfile } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
@@ -86,11 +86,6 @@ export default function LobbyPage() {
   const socket = useSocketStore((s) => s.socket);
   const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
 
-  const username = useMemo(
-    () => user?.username ?? user?.email ?? "Player",
-    [user?.username, user?.email],
-  );
-
   // Match-finding state
   const [isSearching, setIsSearching] = useState(false);
   const [searchMode, setSearchMode] = useState<"ranked" | "unrated" | null>(
@@ -155,12 +150,29 @@ export default function LobbyPage() {
       }
     };
 
+    const onSearchExpired = () => {
+      setIsSearching(false);
+      setSearchMode(null);
+      toast.message("Search timed out after 60 seconds.");
+    };
+
+    const onRoomExpired = () => {
+      setIsCreatingRoom(false);
+      setIsWaitingForFriend(false);
+      setCreatedRoomCode(null);
+      toast.message("Search timed out after 60 seconds.");
+    };
+
     socket.on("matchFound", onMatchFound);
     socket.on("connect_error", onConnectError);
+    socket.on("searchExpired", onSearchExpired);
+    socket.on("roomExpired", onRoomExpired);
 
     return () => {
       socket.off("matchFound", onMatchFound);
       socket.off("connect_error", onConnectError);
+      socket.off("searchExpired", onSearchExpired);
+      socket.off("roomExpired", onRoomExpired);
     };
   }, [disconnectSocket, logout, router, socket]);
 
@@ -219,72 +231,18 @@ export default function LobbyPage() {
       </div>
 
       <div className="relative mx-auto w-full max-w-7xl px-5 py-8">
-        {/* ── Navbar ── */}
-        <header className="flex items-center justify-between pb-8 border-b border-white/[0.06]">
+        <div className="mb-8 flex items-center justify-between border-b border-white/[0.06] pb-5">
           <Logo />
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
-              <span
-                className={`h-2 w-2 rounded-full ${socket?.connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-500"}`}
-              />
-              <span className="text-xs font-medium text-slate-300">
-                {socket?.connected ? "Online" : "Connecting…"}
-              </span>
-            </div>
-            {/* User chip with rank badge */}
-            {(() => {
-              const myMmr =
-                typeof user?.mmr === "number" ? user.mmr : undefined;
-              const rank = myMmr !== undefined ? getRank(myMmr) : null;
-              return (
-                <div
-                  className={`flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-3 py-1.5 ${rank ? rank.borderClass : "border-white/[0.08]"}`}
-                >
-                  {rank ? (
-                    <span
-                      className={`text-[10px] font-extrabold tracking-wide ${rank.colorClass} ${rank.glowClass}`}
-                    >
-                      {rank.name.toUpperCase()}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-extrabold tracking-wide text-slate-500">
-                      —
-                    </span>
-                  )}
-                  <span className="text-xs font-semibold text-slate-300">
-                    {username}
-                  </span>
-                </div>
-              );
-            })()}
-            <Link
-              href="/profile"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition"
-            >
-              <User className="h-3.5 w-3.5" />
-              Profile
-            </Link>
-            <Link
-              href="/friends"
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition"
-            >
-              <Users className="h-3.5 w-3.5" />
-              Friends
-            </Link>
-            <button
-              onClick={() => {
-                disconnectSocket();
-                logout();
-                router.replace("/");
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Logout
-            </button>
+          <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${socket?.connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-500"}`}
+            />
+            <span className="text-xs font-medium text-slate-300">
+              {socket?.connected ? "Online" : "Connecting…"}
+            </span>
           </div>
-        </header>
+        </div>
 
         {/* ── Main content ── */}
         <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">

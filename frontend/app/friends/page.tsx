@@ -1,25 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
 import { Plus, RefreshCw, Swords, Users, UserRound } from "lucide-react";
 import {
   acceptFriendRequest,
+  cancelOutgoingRequest,
   extractApiErrorMessage,
   fetchFriends,
   FriendEntry,
   FriendPresence,
   FriendsResponse,
   rejectFriendRequest,
+  removeFriend,
+  PresenceStatus,
+  refreshAuthProfile,
   sendFriendRequest,
 } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
 import { useNotificationStore } from "@/src/store/notificationStore";
-import { refreshAuthProfile } from "@/lib/api";
+
+function systemInviteCancelMessage(reason?: string) {
+  switch (reason) {
+    case "invite_expired":
+      return "Invite expired after 60 seconds.";
+    case "invitee_offline":
+      return "Invite cancelled because your friend went offline.";
+    case "invitee_in_game":
+      return "Invite cancelled because your friend joined a game.";
+    case "inviter_in_game":
+      return "Invite cancelled because you joined a game.";
+    case "inviter_offline":
+      return "Invite cancelled because the inviter went offline.";
+    default:
+      return "Invite expired or player went offline.";
+  }
+}
 
 function statusClass(status?: string) {
   switch (status) {
@@ -137,7 +157,27 @@ export default function FriendsPage() {
     };
   }, [socket]);
 
-  const friendCount = useMemo(() => friends.length, [friends]);
+  useEffect(() => {
+    if (!socket) return;
+
+    const onInviteCancelledBySystem = (payload: {
+      inviteeId?: string;
+      reason?: string;
+    }) => {
+      if (!payload?.inviteeId) return;
+      const hadPendingInvite = Boolean(outgoingInvites[payload.inviteeId]);
+      clearOutgoingInvite(payload.inviteeId);
+      if (hadPendingInvite) {
+        toast.message(systemInviteCancelMessage(payload.reason));
+      }
+    };
+
+    socket.on("inviteCancelledBySystem", onInviteCancelledBySystem);
+
+    return () => {
+      socket.off("inviteCancelledBySystem", onInviteCancelledBySystem);
+    };
+  }, [clearOutgoingInvite, outgoingInvites, socket]);
 
   async function handleAddFriend() {
     const value = identifier.trim();
@@ -204,9 +244,50 @@ export default function FriendsPage() {
     }
   }
 
-  function handleInvite(friendId: string, friendName: string) {
+  async function handleCancelOutgoing(requestId: string) {
+    try {
+      await cancelOutgoingRequest(requestId);
+      const refreshed = await fetchFriends();
+      setFriendsData(refreshed);
+      setPendingFriendRequests(refreshed.incomingRequests.length);
+      toast.success("Outgoing request cancelled.");
+    } catch (error) {
+      const message = extractApiErrorMessage(
+        error,
+        "Could not cancel outgoing request.",
+      );
+      setActionMessage(message);
+      toast.error(message);
+    }
+  }
+
+  async function handleRemoveFriend(friendshipId: string) {
+    try {
+      await removeFriend(friendshipId);
+      const refreshed = await fetchFriends();
+      setFriendsData(refreshed);
+      setPendingFriendRequests(refreshed.incomingRequests.length);
+      toast.success("Friend removed.");
+    } catch (error) {
+      const message = extractApiErrorMessage(error, "Could not remove friend.");
+      setActionMessage(message);
+      toast.error(message);
+    }
+  }
+
+  function handleInvite(friend: FriendEntry) {
+    const friendId = String(friend.userId);
+    const friendName = friend.username;
     if (!socket?.connected) return;
+
     const pendingInvite = outgoingInvites[friendId];
+    const presenceStatus: PresenceStatus = friend.presence?.status ?? "offline";
+
+    if (!pendingInvite && presenceStatus !== "online") {
+      toast.message("Player is unavailable for invites right now.");
+      return;
+    }
+
     setActionMessage(null);
 
     if (pendingInvite) {
@@ -315,6 +396,11 @@ export default function FriendsPage() {
                 <input
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    void handleAddFriend();
+                  }}
                   placeholder="Username or UUID"
                   className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-sky-400/40 focus:ring-2 focus:ring-sky-400/10"
                 />
@@ -336,7 +422,7 @@ export default function FriendsPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <MetricCard
                 label="Friends"
-                value={String(friendCount)}
+                value={String(friends.length)}
                 icon={<Users className="h-4 w-4" />}
               />
               <MetricCard
@@ -386,8 +472,9 @@ export default function FriendsPage() {
                       key={friend.friendshipId}
                       friend={friend}
                       invitePending={Boolean(outgoingInvites[friend.userId])}
-                      onInvite={() =>
-                        handleInvite(friend.userId, friend.username)
+                      onInvite={() => handleInvite(friend)}
+                      onRemoveFriend={() =>
+                        void handleRemoveFriend(friend.friendshipId)
                       }
                     />
                   ))
@@ -438,6 +525,16 @@ export default function FriendsPage() {
                       <p className="mt-1 text-xs text-slate-500">
                         Waiting for response
                       </p>
+                      <div className="mt-3">
+                        <button
+                          onClick={() =>
+                            void handleCancelOutgoing(request.friendshipId)
+                          }
+                          className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white transition"
+                        >
+                          Cancel Request
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -484,13 +581,21 @@ function MetricCard({
 function FriendRow({
   friend,
   onInvite,
+  onRemoveFriend,
   invitePending,
 }: {
   friend: FriendEntry;
   onInvite: () => void;
+  onRemoveFriend: () => void;
   invitePending: boolean;
 }) {
   const presenceStatus = friend.presence?.status ?? "offline";
+  const canStartInvite = presenceStatus === "online";
+  const inviteDisabled = !invitePending && !canStartInvite;
+  const inviteTitle =
+    invitePending || canStartInvite
+      ? undefined
+      : "Player must be online to receive invites.";
 
   return (
     <div className="rounded-3xl border border-white/10 bg-black/20 p-4 transition hover:border-white/15 hover:bg-black/30">
@@ -521,6 +626,8 @@ function FriendRow({
           </Link>
           <button
             onClick={onInvite}
+            disabled={inviteDisabled}
+            title={inviteTitle}
             className={`rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${
               invitePending
                 ? "bg-red-500 hover:bg-red-400"
@@ -528,6 +635,12 @@ function FriendRow({
             }`}
           >
             {invitePending ? "Cancel Invite" : "Invite to Game"}
+          </button>
+          <button
+            onClick={onRemoveFriend}
+            className="rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+          >
+            Remove Friend
           </button>
         </div>
       </div>

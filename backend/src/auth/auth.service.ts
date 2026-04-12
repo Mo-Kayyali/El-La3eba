@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
+import { FriendshipStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -65,23 +66,34 @@ export class AuthService {
   }
 
   async getProfileById(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        mmr: true,
-        wins: true,
-        gamesPlayed: true,
-        isVerified: true,
-        createdAt: true,
-      },
-    });
+    const [user, pendingIncomingFriendRequests] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          mmr: true,
+          wins: true,
+          gamesPlayed: true,
+          isVerified: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.friendship.count({
+        where: {
+          friendId: userId,
+          status: FriendshipStatus.PENDING,
+        },
+      }),
+    ]);
     if (!user) {
       throw new UnauthorizedException();
     }
-    return user;
+    return {
+      ...user,
+      pendingIncomingFriendRequests,
+    };
   }
 
   private generateToken(user: any, rememberMe = false) {

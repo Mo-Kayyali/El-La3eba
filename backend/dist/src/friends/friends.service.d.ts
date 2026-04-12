@@ -27,6 +27,12 @@ export declare class FriendsService {
     rejectFriendRequest(currentUserId: string, requestId: string): Promise<{
         rejected: boolean;
     }>;
+    cancelOutgoingRequest(currentUserId: string, requestId: string): Promise<{
+        cancelled: boolean;
+    }>;
+    removeFriend(currentUserId: string, friendshipId: string): Promise<{
+        removed: boolean;
+    }>;
     getFriendsList(currentUserId: string): Promise<{
         friends: {
             presence: {

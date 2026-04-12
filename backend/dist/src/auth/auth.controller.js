@@ -59,7 +59,9 @@ __decorate([
 ], AuthController.prototype, "login", null);
 __decorate([
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Current user profile (from database)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Current user profile (from database), including pending incoming friend request count',
+    }),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('me'),
     __param(0, (0, common_1.Request)()),

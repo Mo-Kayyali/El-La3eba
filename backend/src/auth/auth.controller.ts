@@ -30,7 +30,10 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Current user profile (from database)' })
+  @ApiOperation({
+    summary:
+      'Current user profile (from database), including pending incoming friend request count',
+  })
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Request() req: { user: { userId: string } }) {

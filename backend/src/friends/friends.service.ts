@@ -182,6 +182,40 @@ export class FriendsService {
     return { rejected: true };
   }
 
+  async cancelOutgoingRequest(currentUserId: string, requestId: string) {
+    const request = await this.prisma.friendship.findFirst({
+      where: {
+        id: requestId,
+        userId: currentUserId,
+        status: FriendshipStatus.PENDING,
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Outgoing friend request not found');
+    }
+
+    await this.prisma.friendship.delete({ where: { id: request.id } });
+    return { cancelled: true };
+  }
+
+  async removeFriend(currentUserId: string, friendshipId: string) {
+    const friendship = await this.prisma.friendship.findFirst({
+      where: {
+        id: friendshipId,
+        status: FriendshipStatus.ACCEPTED,
+        OR: [{ userId: currentUserId }, { friendId: currentUserId }],
+      },
+    });
+
+    if (!friendship) {
+      throw new NotFoundException('Friendship not found');
+    }
+
+    await this.prisma.friendship.delete({ where: { id: friendship.id } });
+    return { removed: true };
+  }
+
   async getFriendsList(currentUserId: string) {
     const [friendships, incomingRequests, outgoingRequests] = await Promise.all(
       [

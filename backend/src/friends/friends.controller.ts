@@ -49,6 +49,27 @@ export class FriendsController {
     return this.friendsService.rejectFriendRequest(req.user.userId, requestId);
   }
 
+  @ApiOperation({ summary: 'Cancel your outgoing friend request' })
+  @Post(':requestId/cancel')
+  cancelOutgoingRequest(
+    @Request() req: { user: { userId: string } },
+    @Param('requestId') requestId: string,
+  ) {
+    return this.friendsService.cancelOutgoingRequest(
+      req.user.userId,
+      requestId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Remove an accepted friend' })
+  @Post(':friendshipId/remove')
+  removeFriend(
+    @Request() req: { user: { userId: string } },
+    @Param('friendshipId') friendshipId: string,
+  ) {
+    return this.friendsService.removeFriend(req.user.userId, friendshipId);
+  }
+
   @ApiOperation({ summary: 'List friends and pending requests' })
   @Get()
   listFriends(@Request() req: { user: { userId: string } }) {

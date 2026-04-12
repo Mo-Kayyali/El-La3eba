@@ -32,6 +32,12 @@ let FriendsController = class FriendsController {
     rejectFriendRequest(req, requestId) {
         return this.friendsService.rejectFriendRequest(req.user.userId, requestId);
     }
+    cancelOutgoingRequest(req, requestId) {
+        return this.friendsService.cancelOutgoingRequest(req.user.userId, requestId);
+    }
+    removeFriend(req, friendshipId) {
+        return this.friendsService.removeFriend(req.user.userId, friendshipId);
+    }
     listFriends(req) {
         return this.friendsService.getFriendsList(req.user.userId);
     }
@@ -64,6 +70,24 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], FriendsController.prototype, "rejectFriendRequest", null);
+__decorate([
+    (0, swagger_1.ApiOperation)({ summary: 'Cancel your outgoing friend request' }),
+    (0, common_1.Post)(':requestId/cancel'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('requestId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], FriendsController.prototype, "cancelOutgoingRequest", null);
+__decorate([
+    (0, swagger_1.ApiOperation)({ summary: 'Remove an accepted friend' }),
+    (0, common_1.Post)(':friendshipId/remove'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('friendshipId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], FriendsController.prototype, "removeFriend", null);
 __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'List friends and pending requests' }),
     (0, common_1.Get)(),

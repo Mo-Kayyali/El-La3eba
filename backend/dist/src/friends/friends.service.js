@@ -150,6 +150,34 @@ let FriendsService = class FriendsService {
         await this.prisma.friendship.delete({ where: { id: request.id } });
         return { rejected: true };
     }
+    async cancelOutgoingRequest(currentUserId, requestId) {
+        const request = await this.prisma.friendship.findFirst({
+            where: {
+                id: requestId,
+                userId: currentUserId,
+                status: client_1.FriendshipStatus.PENDING,
+            },
+        });
+        if (!request) {
+            throw new common_1.NotFoundException('Outgoing friend request not found');
+        }
+        await this.prisma.friendship.delete({ where: { id: request.id } });
+        return { cancelled: true };
+    }
+    async removeFriend(currentUserId, friendshipId) {
+        const friendship = await this.prisma.friendship.findFirst({
+            where: {
+                id: friendshipId,
+                status: client_1.FriendshipStatus.ACCEPTED,
+                OR: [{ userId: currentUserId }, { friendId: currentUserId }],
+            },
+        });
+        if (!friendship) {
+            throw new common_1.NotFoundException('Friendship not found');
+        }
+        await this.prisma.friendship.delete({ where: { id: friendship.id } });
+        return { removed: true };
+    }
     async getFriendsList(currentUserId) {
         const [friendships, incomingRequests, outgoingRequests] = await Promise.all([
             this.prisma.friendship.findMany({

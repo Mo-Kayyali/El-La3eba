@@ -27,6 +27,9 @@ type NotificationState = {
   clearIncomingGameInvites: () => void;
   setOutgoingInvite: (invite: OutgoingInvite) => void;
   clearOutgoingInvite: (friendId: string) => void;
+  clearOutgoingInvites: () => void;
+  resetInviteUiState: () => void;
+  resetAllNotifications: () => void;
   pruneExpiredInvites: () => void;
 };
 
@@ -83,6 +86,21 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       const next = { ...state.outgoingInvites };
       delete next[friendId];
       return { outgoingInvites: next };
+    }),
+
+  clearOutgoingInvites: () => set({ outgoingInvites: {} }),
+
+  resetInviteUiState: () =>
+    set({
+      incomingGameInvites: [],
+      outgoingInvites: {},
+    }),
+
+  resetAllNotifications: () =>
+    set({
+      pendingFriendRequests: 0,
+      incomingGameInvites: [],
+      outgoingInvites: {},
     }),
 
   pruneExpiredInvites: () =>

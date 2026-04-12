@@ -32,6 +32,20 @@ export declare class FriendsController {
     }, requestId: string): Promise<{
         rejected: boolean;
     }>;
+    cancelOutgoingRequest(req: {
+        user: {
+            userId: string;
+        };
+    }, requestId: string): Promise<{
+        cancelled: boolean;
+    }>;
+    removeFriend(req: {
+        user: {
+            userId: string;
+        };
+    }, friendshipId: string): Promise<{
+        removed: boolean;
+    }>;
     listFriends(req: {
         user: {
             userId: string;

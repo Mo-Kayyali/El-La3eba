@@ -24,6 +24,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     logger = new common_1.Logger(MatchmakingService_1.name);
     server;
     startTurnTimerFn;
+    searchExpiryTimers = new Map();
+    roomExpiryTimers = new Map();
+    SEARCH_TTL_SECONDS = 60;
+    PRIVATE_ROOM_TTL_SECONDS = 60;
     QUEUES = {
         ranked: { list: 'ranked_queue', members: 'ranked_queue_members' },
         unrated: { list: 'unrated_queue', members: 'unrated_queue_members' },
@@ -38,6 +42,59 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     setTurnTimerStarter(fn) {
         this.startTurnTimerFn = fn;
     }
+    queueSearchKey(userId) {
+        return `queue_search:${userId}`;
+    }
+    clearSearchExpiryTimer(userId) {
+        const timer = this.searchExpiryTimers.get(userId);
+        if (!timer)
+            return;
+        clearTimeout(timer);
+        this.searchExpiryTimers.delete(userId);
+    }
+    scheduleSearchExpiry(userId, socketId, mode) {
+        this.clearSearchExpiryTimer(userId);
+        const timeout = setTimeout(async () => {
+            this.searchExpiryTimers.delete(userId);
+            const key = this.queueSearchKey(userId);
+            const stillSearching = await this.redisClient.exists(key).catch(() => 0);
+            if (!stillSearching)
+                return;
+            await this.cancelSearch(userId).catch(() => { });
+            this.server?.to(userId).emit('searchExpired', { mode });
+            this.server?.to(socketId).emit('searchExpired', { mode });
+        }, this.SEARCH_TTL_SECONDS * 1000);
+        this.searchExpiryTimers.set(userId, timeout);
+    }
+    clearRoomExpiryTimer(userId) {
+        const timer = this.roomExpiryTimers.get(userId);
+        if (!timer)
+            return;
+        clearTimeout(timer);
+        this.roomExpiryTimers.delete(userId);
+    }
+    schedulePrivateRoomExpiry(userId, roomCode) {
+        this.clearRoomExpiryTimer(userId);
+        const timeout = setTimeout(async () => {
+            this.roomExpiryTimers.delete(userId);
+            const userRoomKey = `user_room:${userId}`;
+            const privateRoomKey = `private_room:${roomCode}`;
+            const currentRoomCode = await this.redisClient.get(userRoomKey);
+            if (currentRoomCode !== roomCode)
+                return;
+            const roomExists = await this.redisClient
+                .exists(privateRoomKey)
+                .catch(() => 0);
+            if (!roomExists)
+                return;
+            const multi = this.redisClient.multi();
+            multi.del(privateRoomKey);
+            multi.del(userRoomKey);
+            await multi.exec();
+            this.server?.to(userId).emit('roomExpired', { roomCode });
+        }, this.PRIVATE_ROOM_TTL_SECONDS * 1000);
+        this.roomExpiryTimers.set(userId, timeout);
+    }
     async joinQueue(userId, socketId, username, mode) {
         const { list, members } = this.QUEUES[mode];
         const opposite = mode === 'ranked' ? 'unrated' : 'ranked';
@@ -45,14 +102,20 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         await this.cleanupUserPrivateRoom(userId);
         await this.redisClient.srem(members, userId);
         const entry = { userId, socketId, username };
-        await this.redisClient.lpush(list, JSON.stringify(entry));
-        await this.redisClient.sadd(members, userId);
+        await Promise.all([
+            this.redisClient.lpush(list, JSON.stringify(entry)),
+            this.redisClient.sadd(members, userId),
+            this.redisClient.set(this.queueSearchKey(userId), JSON.stringify({ mode, socketId, createdAt: new Date().toISOString() }), 'EX', this.SEARCH_TTL_SECONDS),
+        ]);
+        this.scheduleSearchExpiry(userId, socketId, mode);
         this.logger.log(`User ${userId} joined ${mode} queue`);
     }
     async cancelSearch(userId) {
+        this.clearSearchExpiryTimer(userId);
         await Promise.all([
             this.redisClient.srem(this.QUEUES.ranked.members, userId),
             this.redisClient.srem(this.QUEUES.unrated.members, userId),
+            this.redisClient.del(this.queueSearchKey(userId)),
         ]);
         this.logger.log(`User ${userId} removed from all queues`);
     }
@@ -65,7 +128,25 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             const entry = JSON.parse(entryStr);
             const isMember = await this.redisClient.sismember(members, entry.userId);
             if (isMember) {
-                await this.redisClient.srem(members, entry.userId);
+                const searchExists = await this.redisClient
+                    .exists(this.queueSearchKey(entry.userId))
+                    .catch(() => 0);
+                if (!searchExists) {
+                    await this.redisClient.srem(members, entry.userId);
+                    this.clearSearchExpiryTimer(entry.userId);
+                    this.server?.to(entry.userId).emit('searchExpired', {
+                        mode: members === this.QUEUES.ranked.members ? 'ranked' : 'unrated',
+                    });
+                    this.server?.to(entry.socketId).emit('searchExpired', {
+                        mode: members === this.QUEUES.ranked.members ? 'ranked' : 'unrated',
+                    });
+                    continue;
+                }
+                await Promise.all([
+                    this.redisClient.srem(members, entry.userId),
+                    this.redisClient.del(this.queueSearchKey(entry.userId)),
+                ]);
+                this.clearSearchExpiryTimer(entry.userId);
                 return entry;
             }
         }
@@ -81,12 +162,13 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             if (!exists)
                 isUnique = true;
         }
-        const TTL = 900;
+        const TTL = this.PRIVATE_ROOM_TTL_SECONDS;
         const roomData = JSON.stringify({ userId, socketId, username });
         await Promise.all([
             this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
             this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
         ]);
+        this.schedulePrivateRoomExpiry(userId, roomCode);
         this.logger.log(`Private room ${roomCode} created by user ${userId}`);
         return roomCode;
     }
@@ -99,13 +181,16 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     async cleanupUserPrivateRoom(userId) {
         const userRoomKey = `user_room:${userId}`;
         const roomCode = await this.redisClient.get(userRoomKey);
-        if (!roomCode)
+        if (!roomCode) {
+            this.clearRoomExpiryTimer(userId);
             return null;
+        }
         const privateRoomKey = `private_room:${roomCode}`;
         const multi = this.redisClient.multi();
         multi.del(privateRoomKey);
         multi.del(userRoomKey);
         await multi.exec();
+        this.clearRoomExpiryTimer(userId);
         return roomCode;
     }
     async joinPrivateRoom(code, userId, socketId, username) {
@@ -131,6 +216,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             return { success: false, error: 'Room not found or expired' };
         }
         await this.redisClient.unwatch().catch(() => { });
+        this.clearRoomExpiryTimer(host.userId);
         await Promise.all([
             this.cancelSearch(host.userId),
             this.cancelSearch(userId),
