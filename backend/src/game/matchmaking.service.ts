@@ -170,11 +170,12 @@ export class MatchmakingService {
     );
     if (!expiredUserIds.length) return;
 
-    const keys = expiredUserIds.map((id) => this.queueSearchKey(id));
-    const rawEntries = keys.length
-      ? await this.redisClient.mget(...keys)
-      : ([] as Array<string | null>);
+    // Notify users before purge so clients always stop searching on timeout.
+    expiredUserIds.forEach((userId) => {
+      this.server?.to(userId).emit('searchExpired', { mode });
+    });
 
+    const keys = expiredUserIds.map((id) => this.queueSearchKey(id));
     await this.redisClient.zremrangebyscore(zset, '-inf', cutoff);
 
     const multi = this.redisClient.multi();
@@ -183,26 +184,6 @@ export class MatchmakingService {
       multi.del(...keys);
     }
     await multi.exec();
-
-    rawEntries.forEach((raw, idx) => {
-      const userId = expiredUserIds[idx];
-      if (!raw || !userId) return;
-      try {
-        const parsed = JSON.parse(raw) as {
-          socketId?: string;
-          userId?: string;
-        };
-        const targetUserId = parsed.userId ?? userId;
-        if (targetUserId) {
-          this.server?.to(targetUserId).emit('searchExpired', { mode });
-        }
-        if (parsed.socketId) {
-          this.server?.to(parsed.socketId).emit('searchExpired', { mode });
-        }
-      } catch {
-        this.server?.to(userId).emit('searchExpired', { mode });
-      }
-    });
   }
 
   /**

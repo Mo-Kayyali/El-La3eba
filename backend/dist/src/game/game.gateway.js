@@ -320,6 +320,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 const results = await multi.exec();
                 if (!results) {
                     await this.redisClient.unwatch().catch(() => { });
+                    this.logger.debug(`Disconnect forfeit skipped due to concurrent update for game ${gameSessionId}`);
                     return;
                 }
                 this.clearTurnTimer(gameSessionId);
@@ -867,6 +868,27 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: 'Unauthorized' };
         if (!gameSessionId)
             return { status: 'error', message: 'gameSessionId required' };
+        let parsedState = null;
+        try {
+            const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+            if (!stateStr) {
+                return { status: 'error', message: 'Game session not found' };
+            }
+            parsedState = JSON.parse(stateStr);
+            if (parsedState?.status === 'match_completed') {
+                this.clearDisconnectTimer(gameSessionId, userId);
+                client.emit('gameStateUpdated', { state: parsedState });
+                return {
+                    status: 'error',
+                    message: 'Match is already completed',
+                    finalState: parsedState,
+                };
+            }
+        }
+        catch (err) {
+            this.logger.error(`Error fetching state before joinGameRoom: ${err?.message}`);
+            return { status: 'error', message: 'Failed to load game state' };
+        }
         client.join(gameSessionId);
         this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
         await Promise.allSettled([
@@ -879,32 +901,35 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
         if (hadDisconnectTimer) {
             this.clearDisconnectTimer(gameSessionId, userId);
-            try {
-                const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
-                if (stateStr) {
-                    const state = JSON.parse(stateStr);
-                    if (state.status !== 'match_completed') {
-                        this.server
-                            .to(gameSessionId)
-                            .emit('playerReconnected', { userId, gameSessionId });
-                        this.startTurnTimer(gameSessionId);
-                        this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
+            const latestStateStr = await this.redisClient
+                .get(`game:${gameSessionId}`)
+                .catch(() => null);
+            if (latestStateStr) {
+                try {
+                    const latestState = JSON.parse(latestStateStr);
+                    if (latestState?.status === 'match_completed') {
+                        client.emit('gameStateUpdated', { state: latestState });
+                        return {
+                            status: 'error',
+                            message: 'Match is already completed',
+                            finalState: latestState,
+                        };
                     }
                 }
+                catch {
+                    return {
+                        status: 'error',
+                        message: 'Failed to load game state',
+                    };
+                }
             }
-            catch (err) {
-                this.logger.error(`Error during reconnect timer restore: ${err?.message}`);
-            }
+            this.server
+                .to(gameSessionId)
+                .emit('playerReconnected', { userId, gameSessionId });
+            this.startTurnTimer(gameSessionId);
+            this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
         }
-        try {
-            const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
-            if (stateStr) {
-                client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
-            }
-        }
-        catch (err) {
-            this.logger.error(`Error fetching state for reconnecting client: ${err?.message}`);
-        }
+        client.emit('gameStateUpdated', { state: parsedState });
         return { status: 'success', message: `Joined room ${gameSessionId}` };
     }
     async handleSubmitGuess(client, payload) {

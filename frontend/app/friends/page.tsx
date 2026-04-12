@@ -82,6 +82,9 @@ export default function FriendsPage() {
   const [identifier, setIdentifier] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [pendingRemovalFriend, setPendingRemovalFriend] =
+    useState<FriendEntry | null>(null);
+  const [isRemovingFriend, setIsRemovingFriend] = useState(false);
 
   const friends = friendsData?.friends ?? [];
   const incomingRequests = friendsData?.incomingRequests ?? [];
@@ -262,17 +265,30 @@ export default function FriendsPage() {
   }
 
   async function handleRemoveFriend(friendshipId: string) {
+    setIsRemovingFriend(true);
     try {
       await removeFriend(friendshipId);
       const refreshed = await fetchFriends();
       setFriendsData(refreshed);
       setPendingFriendRequests(refreshed.incomingRequests.length);
       toast.success("Friend removed.");
+      setPendingRemovalFriend(null);
     } catch (error) {
       const message = extractApiErrorMessage(error, "Could not remove friend.");
       setActionMessage(message);
       toast.error(message);
+    } finally {
+      setIsRemovingFriend(false);
     }
+  }
+
+  function openRemoveFriendConfirmation(friend: FriendEntry) {
+    setPendingRemovalFriend(friend);
+  }
+
+  async function confirmRemoveFriend() {
+    if (!pendingRemovalFriend || isRemovingFriend) return;
+    await handleRemoveFriend(pendingRemovalFriend.friendshipId);
   }
 
   function handleInvite(friend: FriendEntry) {
@@ -474,7 +490,7 @@ export default function FriendsPage() {
                       invitePending={Boolean(outgoingInvites[friend.userId])}
                       onInvite={() => handleInvite(friend)}
                       onRemoveFriend={() =>
-                        void handleRemoveFriend(friend.friendshipId)
+                        openRemoveFriendConfirmation(friend)
                       }
                     />
                   ))
@@ -552,6 +568,46 @@ export default function FriendsPage() {
           </aside>
         </div>
       </main>
+
+      {pendingRemovalFriend && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-friend-title"
+            className="w-full max-w-md rounded-3xl border border-red-400/30 bg-[#071021] p-6 shadow-[0_24px_80px_rgba(239,68,68,0.2)]"
+          >
+            <h2
+              id="remove-friend-title"
+              className="text-lg font-extrabold text-white"
+            >
+              Remove friend?
+            </h2>
+            <p className="mt-3 text-sm text-slate-300">
+              Are you sure you want to remove {pendingRemovalFriend.username}{" "}
+              from your friends list?
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingRemovalFriend(null)}
+                disabled={isRemovingFriend}
+                className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmRemoveFriend()}
+                disabled={isRemovingFriend}
+                className="rounded-xl border border-red-400/30 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isRemovingFriend ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -599,7 +655,7 @@ function FriendRow({
 
   return (
     <div className="rounded-3xl border border-white/10 bg-black/20 p-4 transition hover:border-white/15 hover:bg-black/30">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
         <div className="flex items-center gap-3">
           <span
             className={`h-3 w-3 rounded-full ${statusClass(presenceStatus)}`}
@@ -617,10 +673,10 @@ function FriendRow({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap gap-2 sm:justify-end">
           <Link
             href={`/profile/${friend.userId}`}
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white transition"
+            className="whitespace-nowrap rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
           >
             View Profile
           </Link>
@@ -628,7 +684,7 @@ function FriendRow({
             onClick={onInvite}
             disabled={inviteDisabled}
             title={inviteTitle}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${
+            className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${
               invitePending
                 ? "bg-red-500 hover:bg-red-400"
                 : "bg-gradient-to-r from-sky-600 to-violet-600 hover:brightness-110"
@@ -638,7 +694,7 @@ function FriendRow({
           </button>
           <button
             onClick={onRemoveFriend}
-            className="rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+            className="whitespace-nowrap rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
           >
             Remove Friend
           </button>

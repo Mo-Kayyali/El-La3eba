@@ -118,10 +118,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         const expiredUserIds = await this.redisClient.zrangebyscore(zset, '-inf', cutoff);
         if (!expiredUserIds.length)
             return;
+        expiredUserIds.forEach((userId) => {
+            this.server?.to(userId).emit('searchExpired', { mode });
+        });
         const keys = expiredUserIds.map((id) => this.queueSearchKey(id));
-        const rawEntries = keys.length
-            ? await this.redisClient.mget(...keys)
-            : [];
         await this.redisClient.zremrangebyscore(zset, '-inf', cutoff);
         const multi = this.redisClient.multi();
         if (expiredUserIds.length > 0) {
@@ -129,24 +129,6 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             multi.del(...keys);
         }
         await multi.exec();
-        rawEntries.forEach((raw, idx) => {
-            const userId = expiredUserIds[idx];
-            if (!raw || !userId)
-                return;
-            try {
-                const parsed = JSON.parse(raw);
-                const targetUserId = parsed.userId ?? userId;
-                if (targetUserId) {
-                    this.server?.to(targetUserId).emit('searchExpired', { mode });
-                }
-                if (parsed.socketId) {
-                    this.server?.to(parsed.socketId).emit('searchExpired', { mode });
-                }
-            }
-            catch {
-                this.server?.to(userId).emit('searchExpired', { mode });
-            }
-        });
     }
     async popValidPlayerPair(zset, members) {
         const script = `

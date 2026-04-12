@@ -453,6 +453,9 @@ export class GameGateway
 
         if (!results) {
           await this.redisClient.unwatch().catch(() => {});
+          this.logger.debug(
+            `Disconnect forfeit skipped due to concurrent update for game ${gameSessionId}`,
+          );
           return;
         }
 
@@ -1266,6 +1269,30 @@ export class GameGateway
     if (!gameSessionId)
       return { status: 'error', message: 'gameSessionId required' };
 
+    // Always fetch current Redis state first so completed matches cannot be resurrected.
+    let parsedState: any | null = null;
+    try {
+      const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+      if (!stateStr) {
+        return { status: 'error', message: 'Game session not found' };
+      }
+      parsedState = JSON.parse(stateStr);
+      if (parsedState?.status === 'match_completed') {
+        this.clearDisconnectTimer(gameSessionId, userId);
+        client.emit('gameStateUpdated', { state: parsedState });
+        return {
+          status: 'error',
+          message: 'Match is already completed',
+          finalState: parsedState,
+        };
+      }
+    } catch (err) {
+      this.logger.error(
+        `Error fetching state before joinGameRoom: ${(err as Error)?.message}`,
+      );
+      return { status: 'error', message: 'Failed to load game state' };
+    }
+
     // 1. Put the new socket into the room.
     client.join(gameSessionId);
     this.logger.log(
@@ -1286,42 +1313,40 @@ export class GameGateway
     );
     if (hadDisconnectTimer) {
       this.clearDisconnectTimer(gameSessionId, userId);
-
-      // Re-fetch state to check it's still in progress before restarting timer.
-      try {
-        const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
-        if (stateStr) {
-          const state = JSON.parse(stateStr);
-          if (state.status !== 'match_completed') {
-            this.server
-              .to(gameSessionId)
-              .emit('playerReconnected', { userId, gameSessionId });
-            // Resume the turn timer so the game continues.
-            this.startTurnTimer(gameSessionId);
-            this.logger.log(
-              `User ${userId} reconnected to game ${gameSessionId} — timer resumed`,
-            );
+      const latestStateStr = await this.redisClient
+        .get(`game:${gameSessionId}`)
+        .catch(() => null);
+      if (latestStateStr) {
+        try {
+          const latestState = JSON.parse(latestStateStr);
+          if (latestState?.status === 'match_completed') {
+            client.emit('gameStateUpdated', { state: latestState });
+            return {
+              status: 'error',
+              message: 'Match is already completed',
+              finalState: latestState,
+            };
           }
+        } catch {
+          return {
+            status: 'error',
+            message: 'Failed to load game state',
+          };
         }
-      } catch (err) {
-        this.logger.error(
-          `Error during reconnect timer restore: ${(err as Error)?.message}`,
-        );
       }
+      this.server
+        .to(gameSessionId)
+        .emit('playerReconnected', { userId, gameSessionId });
+      // Resume the turn timer so the game continues.
+      this.startTurnTimer(gameSessionId);
+      this.logger.log(
+        `User ${userId} reconnected to game ${gameSessionId} — timer resumed`,
+      );
     }
 
     // 3. Fetch the current state from Redis and send it to this client immediately.
-    try {
-      const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
-      if (stateStr) {
-        // Send only to this specific client who just joined/reconnected.
-        client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
-      }
-    } catch (err) {
-      this.logger.error(
-        `Error fetching state for reconnecting client: ${(err as Error)?.message}`,
-      );
-    }
+    // Send only to this specific client who just joined/reconnected.
+    client.emit('gameStateUpdated', { state: parsedState });
 
     return { status: 'success', message: `Joined room ${gameSessionId}` };
   }

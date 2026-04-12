@@ -153,7 +153,7 @@ export default function LobbyPage() {
     const onSearchExpired = () => {
       setIsSearching(false);
       setSearchMode(null);
-      toast.message("Search timed out after 60 seconds.");
+      toast.message("Search timed out after 60 seconds. Please try again.");
     };
 
     const onRoomExpired = () => {

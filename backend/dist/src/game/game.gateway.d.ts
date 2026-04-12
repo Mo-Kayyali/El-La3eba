@@ -160,6 +160,11 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     handleJoinGameRoom(client: Socket, gameSessionId: string): Promise<{
         status: string;
         message: string;
+        finalState?: undefined;
+    } | {
+        status: string;
+        message: string;
+        finalState: any;
     }>;
     handleSubmitGuess(client: Socket, payload: {
         gameSessionId: string;
