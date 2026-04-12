@@ -6,6 +6,7 @@ import { RedisModule } from './redis/redis.module';
 import { GameModule } from './game/game.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from './users/users.module';
+import { FriendsModule } from './friends/friends.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { UsersModule } from './users/users.module';
     RedisModule,
     GameModule,
     UsersModule,
+    FriendsModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [],

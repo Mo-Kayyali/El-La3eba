@@ -5,11 +5,13 @@ import { MatchmakingService } from './matchmaking.service';
 import type { QueueMode } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
+import { FriendsService } from '../friends/friends.service';
 export declare class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     private readonly jwtService;
     private readonly matchmakingService;
     private readonly gameService;
     private readonly redisClient;
+    private readonly friendsService;
     server: Server;
     private readonly logger;
     private readonly turnTimers;
@@ -18,8 +20,13 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly guessTimestamps;
     private readonly roundTransitionMs;
     private readonly DISCONNECT_GRACE_MS;
-    constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService);
+    constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService, friendsService: FriendsService);
     private sleep;
+    private setPresenceOnline;
+    private setPresenceInGame;
+    private clearPresence;
+    private emitFriendsPresenceSnapshot;
+    broadcastFriendPresences(): Promise<void>;
     private resolveMmrDeltasForMatch;
     afterInit(server: Server): void;
     private isGuestRateLimited;
@@ -57,6 +64,15 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         message?: undefined;
     }>;
     handleCreatePrivateRoom(client: Socket): Promise<{
+        status: string;
+        message: string;
+        roomCode?: undefined;
+    } | {
+        status: string;
+        roomCode: string;
+        message?: undefined;
+    }>;
+    handleInviteFriendToGame(client: Socket, friendId: string): Promise<{
         status: string;
         message: string;
         roomCode?: undefined;

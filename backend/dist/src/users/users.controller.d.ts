@@ -4,6 +4,7 @@ export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     getPublicProfile(userId: string): Promise<{
+        id: string;
         username: string;
         gamesPlayed: number;
         wins: number;

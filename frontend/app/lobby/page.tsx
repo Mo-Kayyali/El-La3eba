@@ -270,6 +270,13 @@ export default function LobbyPage() {
               <User className="h-3.5 w-3.5" />
               Profile
             </Link>
+            <Link
+              href="/friends"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition"
+            >
+              <Users className="h-3.5 w-3.5" />
+              Friends
+            </Link>
             <button
               onClick={() => {
                 disconnectSocket();
@@ -427,6 +434,9 @@ export default function LobbyPage() {
                           </button>
                           <button
                             onClick={() => {
+                              if (socket?.connected) {
+                                socket.emit("cancelPrivateRoom");
+                              }
                               setIsWaitingForFriend(false);
                               setCreatedRoomCode(null);
                             }}

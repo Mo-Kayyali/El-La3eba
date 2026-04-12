@@ -55,6 +55,7 @@ let UsersService = class UsersService {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: {
+                id: true,
                 username: true,
                 gamesPlayed: true,
                 wins: true,

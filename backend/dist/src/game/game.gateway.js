@@ -15,6 +15,7 @@ var GameGateway_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
+const schedule_1 = require("@nestjs/schedule");
 const socket_io_1 = require("socket.io");
 const jwt_1 = require("@nestjs/jwt");
 const matchmaking_service_1 = require("./matchmaking.service");
@@ -24,6 +25,7 @@ const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const game_questions_1 = require("./game.questions");
 const elo_util_1 = require("./elo.util");
+const friends_service_1 = require("../friends/friends.service");
 const GUESS_RATE_LIMIT_MAX = 5;
 const GUESS_RATE_LIMIT_WINDOW_MS = 1000;
 let GameGateway = GameGateway_1 = class GameGateway {
@@ -31,6 +33,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
     matchmakingService;
     gameService;
     redisClient;
+    friendsService;
     server;
     logger = new common_1.Logger(GameGateway_1.name);
     turnTimers = new Map();
@@ -39,14 +42,46 @@ let GameGateway = GameGateway_1 = class GameGateway {
     guessTimestamps = new Map();
     roundTransitionMs = 4000;
     DISCONNECT_GRACE_MS = 15_000;
-    constructor(jwtService, matchmakingService, gameService, redisClient) {
+    constructor(jwtService, matchmakingService, gameService, redisClient, friendsService) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
         this.gameService = gameService;
         this.redisClient = redisClient;
+        this.friendsService = friendsService;
     }
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    async setPresenceOnline(userId) {
+        await this.redisClient.hset('presence', userId, 'online');
+    }
+    async setPresenceInGame(userId, gameSessionId) {
+        await this.redisClient.hset('presence', userId, `in-game:${gameSessionId}`);
+    }
+    async clearPresence(userId) {
+        await this.redisClient.hdel('presence', userId);
+    }
+    async emitFriendsPresenceSnapshot(userId) {
+        if (!this.server)
+            return;
+        const friends = await this.friendsService.getFriendPresenceSnapshot(userId);
+        this.server.to(userId).emit('friendsPresenceUpdated', { friends });
+    }
+    async broadcastFriendPresences() {
+        if (!this.server)
+            return;
+        const userIds = await this.redisClient.hkeys('presence').catch(() => []);
+        if (!userIds.length)
+            return;
+        await Promise.all(userIds.map(async (userId) => {
+            try {
+                const friends = await this.friendsService.getFriendPresenceSnapshot(userId);
+                this.server.to(userId).emit('friendsPresenceUpdated', { friends });
+            }
+            catch (error) {
+                this.logger.warn(`Presence broadcast skipped for ${userId}: ${error?.message}`);
+            }
+        }));
     }
     async resolveMmrDeltasForMatch(state, winnerId, loserId, forfeited) {
         if (!state?.isRanked || !winnerId || !loserId)
@@ -347,6 +382,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 secret: process.env.JWT_SECRET || 'super-secret-jwt-key',
             });
             client.data.user = payload;
+            const userId = String(payload.sub || payload.userId || '');
+            if (userId) {
+                await client.join(userId);
+                await this.setPresenceOnline(userId);
+                this.emitFriendsPresenceSnapshot(userId).catch(() => { });
+            }
             this.logger.log(`Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`);
         }
         catch {
@@ -394,6 +435,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
         catch (e) {
             this.logger.error(`Error in handleDisconnect cleanup: ${e?.message}`);
         }
+        if (userId) {
+            await this.clearPresence(userId).catch(() => { });
+        }
     }
     async handleJoinQueue(client, mode = 'ranked') {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
@@ -429,6 +473,33 @@ let GameGateway = GameGateway_1 = class GameGateway {
             client.data?.user?.email;
         const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, username);
         return { status: 'success', roomCode };
+    }
+    async handleInviteFriendToGame(client, friendId) {
+        const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!friendId)
+            return { status: 'error', message: 'friendId required' };
+        const inviterUsername = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email ||
+            userId;
+        try {
+            await this.friendsService.ensureUsersAreFriends(userId, friendId);
+            const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername);
+            this.server.to(friendId).emit('friendGameInvite', {
+                inviterId: userId,
+                inviterUsername,
+                roomCode,
+            });
+            return { status: 'success', roomCode };
+        }
+        catch (error) {
+            return {
+                status: 'error',
+                message: error?.message || 'Failed to invite friend',
+            };
+        }
     }
     async handleJoinPrivateRoom(client, roomCode) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
@@ -479,6 +550,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 const newGameSessionId = (0, crypto_1.randomUUID)();
                 const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, rematch.isRanked === true);
                 this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+                await Promise.all([
+                    this.setPresenceInGame(rematch.p1Id, newGameSessionId),
+                    this.setPresenceInGame(rematch.p2Id, newGameSessionId),
+                ]);
                 this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
                 this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
                 this.startTurnTimer(newGameSessionId);
@@ -502,12 +577,15 @@ let GameGateway = GameGateway_1 = class GameGateway {
         try {
             const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
             if (!stateStr) {
+                await this.setPresenceOnline(userId).catch(() => { });
                 return { status: 'ok' };
             }
             const state = JSON.parse(stateStr);
             if (state?.status !== 'match_completed') {
                 return { status: 'error', message: 'Match is not finished' };
             }
+            await this.setPresenceOnline(userId);
+            client.leave(gameSessionId);
             this.server.to(gameSessionId).emit('opponentLeft', { userId, gameSessionId });
             this.logger.log(`User ${userId} acknowledged leaving ended match ${gameSessionId}`);
             return { status: 'ok' };
@@ -525,6 +603,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: 'gameSessionId required' };
         client.join(gameSessionId);
         this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
+        await this.setPresenceInGame(userId, gameSessionId).catch(() => { });
         const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
         if (hadDisconnectTimer) {
             this.clearDisconnectTimer(gameSessionId, userId);
@@ -821,6 +900,12 @@ __decorate([
     __metadata("design:type", socket_io_1.Server)
 ], GameGateway.prototype, "server", void 0);
 __decorate([
+    (0, schedule_1.Interval)(5000),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "broadcastFriendPresences", null);
+__decorate([
     (0, websockets_1.SubscribeMessage)('joinQueue'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)('mode')),
@@ -849,6 +934,14 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleCreatePrivateRoom", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('inviteFriendToGame'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleInviteFriendToGame", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('joinPrivateMatch'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
@@ -902,6 +995,7 @@ exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
     __metadata("design:paramtypes", [jwt_1.JwtService,
         matchmaking_service_1.MatchmakingService,
         game_service_1.GameService,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        friends_service_1.FriendsService])
 ], GameGateway);
 //# sourceMappingURL=game.gateway.js.map

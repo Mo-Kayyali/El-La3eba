@@ -4,6 +4,7 @@ export declare class UsersService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     getPublicProfileById(userId: string): Promise<{
+        id: string;
         username: string;
         gamesPlayed: number;
         wins: number;

@@ -14,6 +14,7 @@ const redis_module_1 = require("./redis/redis.module");
 const game_module_1 = require("./game/game.module");
 const schedule_1 = require("@nestjs/schedule");
 const users_module_1 = require("./users/users.module");
+const friends_module_1 = require("./friends/friends.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -25,6 +26,7 @@ exports.AppModule = AppModule = __decorate([
             redis_module_1.RedisModule,
             game_module_1.GameModule,
             users_module_1.UsersModule,
+            friends_module_1.FriendsModule,
             schedule_1.ScheduleModule.forRoot(),
         ],
         controllers: [],

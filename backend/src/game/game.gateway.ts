@@ -8,6 +8,7 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
+import { Interval } from '@nestjs/schedule';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { MatchmakingService } from './matchmaking.service';
@@ -18,6 +19,7 @@ import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
 import { scoreMarginMultiplier } from './elo.util';
+import { FriendsService } from '../friends/friends.service';
 
 // ─── In-gateway sliding-window rate limiter ────────────────────────────────
 // Limits submitGuess to MAX_GUESSES_PER_WINDOW per user per WINDOW_MS.
@@ -64,10 +66,53 @@ export class GameGateway
     private readonly matchmakingService: MatchmakingService,
     private readonly gameService: GameService,
     private readonly redisClient: RedisService,
+    private readonly friendsService: FriendsService,
   ) {}
 
   private sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async setPresenceOnline(userId: string) {
+    await this.redisClient.hset('presence', userId, 'online');
+  }
+
+  private async setPresenceInGame(userId: string, gameSessionId: string) {
+    await this.redisClient.hset('presence', userId, `in-game:${gameSessionId}`);
+  }
+
+  private async clearPresence(userId: string) {
+    await this.redisClient.hdel('presence', userId);
+  }
+
+  private async emitFriendsPresenceSnapshot(userId: string) {
+    if (!this.server) return;
+    const friends = await this.friendsService.getFriendPresenceSnapshot(userId);
+    this.server.to(userId).emit('friendsPresenceUpdated', { friends });
+  }
+
+  @Interval(5000)
+  async broadcastFriendPresences() {
+    if (!this.server) return;
+
+    const userIds = await this.redisClient
+      .hkeys('presence')
+      .catch(() => [] as string[]);
+    if (!userIds.length) return;
+
+    await Promise.all(
+      userIds.map(async (userId) => {
+        try {
+          const friends =
+            await this.friendsService.getFriendPresenceSnapshot(userId);
+          this.server.to(userId).emit('friendsPresenceUpdated', { friends });
+        } catch (error) {
+          this.logger.warn(
+            `Presence broadcast skipped for ${userId}: ${(error as Error)?.message}`,
+          );
+        }
+      }),
+    );
   }
 
   /**
@@ -83,18 +128,20 @@ export class GameGateway
     const w = Number(state.overallScores?.[winnerId] ?? 0);
     const l = Number(state.overallScores?.[loserId] ?? 0);
     const margin = forfeited ? 1.2 : scoreMarginMultiplier(w, l);
-    const res = await this.matchmakingService.updateMmrAfterMatch(winnerId, loserId, {
-      marginMultiplier: margin,
-    });
+    const res = await this.matchmakingService.updateMmrAfterMatch(
+      winnerId,
+      loserId,
+      {
+        marginMultiplier: margin,
+      },
+    );
     if (!res) return undefined;
     return { [winnerId]: res.winnerDelta, [loserId]: res.loserDelta };
   }
 
   afterInit(server: Server) {
     this.matchmakingService.setServer(server);
-    this.matchmakingService.setTurnTimerStarter(
-      this.startTurnTimer.bind(this),
-    );
+    this.matchmakingService.setTurnTimerStarter(this.startTurnTimer.bind(this));
   }
 
   // ─── Rate limiter ─────────────────────────────────────────────────────────
@@ -146,7 +193,12 @@ export class GameGateway
       isRanked: !!state.isRanked,
     });
     // 35 s TTL — slightly longer than the 30 s app-level timer for safety.
-    await this.redisClient.set(`rematch:${gameSessionId}`, rematchData, 'EX', 35);
+    await this.redisClient.set(
+      `rematch:${gameSessionId}`,
+      rematchData,
+      'EX',
+      35,
+    );
     this.startRematchTimer(gameSessionId);
     this.logger.log(`Rematch window opened for game ${gameSessionId}`);
   }
@@ -206,13 +258,17 @@ export class GameGateway
         }
 
         // Forfeit: the disconnected player loses the match.
-        const winnerId = state.players.find((p: string) => p !== userId) as string;
+        const winnerId = state.players.find(
+          (p: string) => p !== userId,
+        ) as string;
         state.status = 'match_completed';
         state.winner = winnerId;
 
         // Record final round snapshot if not already captured.
         if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
-        if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+        if (
+          !state.roundHistory.some((r: any) => r?.round === state.currentRound)
+        ) {
           state.roundHistory.push({
             round: state.currentRound,
             winner: winnerId,
@@ -222,7 +278,10 @@ export class GameGateway
 
         const multi = this.redisClient.multi();
         multi.set(gameKey, JSON.stringify(state));
-        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+        this.matchmakingService.deleteActiveGameKeysInMulti(
+          multi,
+          state.players,
+        );
         const results = await multi.exec();
 
         if (!results) {
@@ -249,7 +308,9 @@ export class GameGateway
         this.server.to(gameSessionId).emit('matchOver', payload);
 
         this.initializeRematch(gameSessionId, state).catch((e) =>
-          this.logger.error(`initializeRematch (forfeit) failed: ${e?.message}`),
+          this.logger.error(
+            `initializeRematch (forfeit) failed: ${e?.message}`,
+          ),
         );
       } catch (error) {
         this.logger.error(
@@ -304,7 +365,8 @@ export class GameGateway
           return;
         }
 
-        state.strikes[timedOutUserId] = (state.strikes[timedOutUserId] ?? 0) + 1;
+        state.strikes[timedOutUserId] =
+          (state.strikes[timedOutUserId] ?? 0) + 1;
 
         let isRoundOver = false;
         let isMatchOver = false;
@@ -319,7 +381,11 @@ export class GameGateway
 
           // Record the round result snapshot for the Game Over history view
           if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
-          if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+          if (
+            !state.roundHistory.some(
+              (r: any) => r?.round === state.currentRound,
+            )
+          ) {
             state.roundHistory.push({
               round: state.currentRound,
               winner: roundWinner,
@@ -354,7 +420,10 @@ export class GameGateway
         const multi = this.redisClient.multi();
         multi.set(key, JSON.stringify(state));
         if (isMatchOver) {
-          this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+          this.matchmakingService.deleteActiveGameKeysInMulti(
+            multi,
+            state.players,
+          );
         }
         const results = await multi.exec();
 
@@ -380,7 +449,9 @@ export class GameGateway
 
         if (isMatchOver) {
           this.clearTurnTimer(gameSessionId);
-          const loserId = state.players.find((p: string) => p !== state.winner) as string;
+          const loserId = state.players.find(
+            (p: string) => p !== state.winner,
+          ) as string;
           const mmrDeltas = await this.resolveMmrDeltasForMatch(
             state,
             state.winner,
@@ -423,7 +494,8 @@ export class GameGateway
           latest.currentQuestion = pickRandomFootballQuestion();
           // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
           if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
-          else if (latest.currentRound === 3) latest.currentTurn = latest.players[0];
+          else if (latest.currentRound === 3)
+            latest.currentTurn = latest.players[0];
           else latest.currentTurn = latest.players[0];
 
           const multi2 = this.redisClient.multi();
@@ -434,7 +506,10 @@ export class GameGateway
             return;
           }
 
-          const nextPayload = { state: latest, lastGuess: updatePayload.lastGuess };
+          const nextPayload = {
+            state: latest,
+            lastGuess: updatePayload.lastGuess,
+          };
           this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
           this.startTurnTimer(gameSessionId);
         } else {
@@ -474,18 +549,28 @@ export class GameGateway
       });
 
       client.data.user = payload;
+      const userId = String(payload.sub || payload.userId || '');
+      if (userId) {
+        await client.join(userId);
+        await this.setPresenceOnline(userId);
+        this.emitFriendsPresenceSnapshot(userId).catch(() => {});
+      }
       this.logger.log(
         `Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`,
       );
     } catch {
-      this.logger.log(`Connection rejected: Invalid token for client ${client.id}`);
+      this.logger.log(
+        `Connection rejected: Invalid token for client ${client.id}`,
+      );
       client.disconnect();
     }
   }
 
   async handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    const userId = String(
+      client.data?.user?.sub || client.data?.user?.userId || '',
+    );
 
     if (userId) {
       // Best-effort cleanup — fire-and-forget is fine on disconnect
@@ -502,7 +587,9 @@ export class GameGateway
         if (!room || room === client.id) continue;
 
         // Only act on rooms that look like active game sessions (have a live game state)
-        const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
+        const stateExists = await this.redisClient
+          .exists(`game:${room}`)
+          .catch(() => 0);
         if (!stateExists) continue;
 
         let endedMatch = false;
@@ -517,7 +604,9 @@ export class GameGateway
         }
 
         if (endedMatch && userId) {
-          this.server.to(room).emit('opponentLeft', { userId, gameSessionId: room });
+          this.server
+            .to(room)
+            .emit('opponentLeft', { userId, gameSessionId: room });
           this.logger.log(
             `User ${userId} left ended game ${room} — opponentLeft emitted`,
           );
@@ -526,14 +615,22 @@ export class GameGateway
 
         if (userId) {
           this.startDisconnectTimer(room, userId);
-          this.server.to(room).emit('playerDisconnected', { userId, gameSessionId: room });
+          this.server
+            .to(room)
+            .emit('playerDisconnected', { userId, gameSessionId: room });
           this.logger.log(
             `User ${userId} disconnected from game ${room} — grace period started`,
           );
         }
       }
     } catch (e) {
-      this.logger.error(`Error in handleDisconnect cleanup: ${(e as Error)?.message}`);
+      this.logger.error(
+        `Error in handleDisconnect cleanup: ${(e as Error)?.message}`,
+      );
+    }
+
+    if (userId) {
+      await this.clearPresence(userId).catch(() => {});
     }
   }
 
@@ -555,7 +652,12 @@ export class GameGateway
       client.data?.user?.name ||
       client.data?.user?.email;
 
-    await this.matchmakingService.joinQueue(userId, client.id, username, resolvedMode);
+    await this.matchmakingService.joinQueue(
+      userId,
+      client.id,
+      username,
+      resolvedMode,
+    );
     return { status: 'queued', mode: resolvedMode };
   }
 
@@ -595,6 +697,47 @@ export class GameGateway
     return { status: 'success', roomCode };
   }
 
+  @SubscribeMessage('inviteFriendToGame')
+  async handleInviteFriendToGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('friendId') friendId: string,
+  ) {
+    const userId = String(
+      client.data?.user?.sub || client.data?.user?.userId || '',
+    );
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+    if (!friendId) return { status: 'error', message: 'friendId required' };
+
+    const inviterUsername =
+      client.data?.user?.username ||
+      client.data?.user?.name ||
+      client.data?.user?.email ||
+      userId;
+
+    try {
+      await this.friendsService.ensureUsersAreFriends(userId, friendId);
+
+      const roomCode = await this.matchmakingService.createPrivateRoom(
+        userId,
+        client.id,
+        inviterUsername,
+      );
+
+      this.server.to(friendId).emit('friendGameInvite', {
+        inviterId: userId,
+        inviterUsername,
+        roomCode,
+      });
+
+      return { status: 'success', roomCode };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: (error as Error)?.message || 'Failed to invite friend',
+      };
+    }
+  }
+
   @SubscribeMessage('joinPrivateMatch')
   async handleJoinPrivateRoom(
     @ConnectedSocket() client: Socket,
@@ -624,7 +767,9 @@ export class GameGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('gameSessionId') gameSessionId: string,
   ) {
-    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    const userId = String(
+      client.data?.user?.sub || client.data?.user?.userId || '',
+    );
     if (!userId || !gameSessionId) {
       return { status: 'error', message: 'Invalid request' };
     }
@@ -665,7 +810,10 @@ export class GameGateway
 
       if (!results) {
         // Another request modified the key between WATCH and EXEC — ask client to retry.
-        return { status: 'retry', message: 'Concurrent update, please try again' };
+        return {
+          status: 'retry',
+          message: 'Concurrent update, please try again',
+        };
       }
 
       // Tell everyone in the room that this player wants to rematch.
@@ -688,16 +836,29 @@ export class GameGateway
 
         // Move all sockets still in the old room into the new one.
         this.server.in(gameSessionId).socketsJoin(newGameSessionId);
-        this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
-        this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
+        await Promise.all([
+          this.setPresenceInGame(rematch.p1Id, newGameSessionId),
+          this.setPresenceInGame(rematch.p2Id, newGameSessionId),
+        ]);
+        this.server
+          .to(gameSessionId)
+          .emit('rematchStarting', { newGameSessionId });
+        this.server
+          .to(newGameSessionId)
+          .emit('gameStateUpdated', { state: newState });
         this.startTurnTimer(newGameSessionId);
 
-        this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
+        this.logger.log(
+          `Rematch started: ${newGameSessionId} (from ${gameSessionId})`,
+        );
       }
 
       return { status: 'ok' };
     } catch (error) {
-      this.logger.error(`Error in requestRematch: ${error?.message}`, error?.stack);
+      this.logger.error(
+        `Error in requestRematch: ${error?.message}`,
+        error?.stack,
+      );
       return { status: 'error', message: 'Internal server error' };
     } finally {
       await this.redisClient.unwatch().catch(() => {});
@@ -709,7 +870,9 @@ export class GameGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('gameSessionId') gameSessionId: string,
   ) {
-    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    const userId = String(
+      client.data?.user?.sub || client.data?.user?.userId || '',
+    );
     if (!userId || !gameSessionId) {
       return { status: 'error', message: 'Invalid request' };
     }
@@ -717,17 +880,27 @@ export class GameGateway
     try {
       const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
       if (!stateStr) {
+        await this.setPresenceOnline(userId).catch(() => {});
         return { status: 'ok' };
       }
       const state = JSON.parse(stateStr) as { status?: string };
       if (state?.status !== 'match_completed') {
         return { status: 'error', message: 'Match is not finished' };
       }
-      this.server.to(gameSessionId).emit('opponentLeft', { userId, gameSessionId });
-      this.logger.log(`User ${userId} acknowledged leaving ended match ${gameSessionId}`);
+      await this.setPresenceOnline(userId);
+      client.leave(gameSessionId);
+      this.server
+        .to(gameSessionId)
+        .emit('opponentLeft', { userId, gameSessionId });
+      this.logger.log(
+        `User ${userId} acknowledged leaving ended match ${gameSessionId}`,
+      );
       return { status: 'ok' };
     } catch (error) {
-      this.logger.error(`leaveEndedMatch failed: ${error?.message}`, error?.stack);
+      this.logger.error(
+        `leaveEndedMatch failed: ${error?.message}`,
+        error?.stack,
+      );
       return { status: 'error', message: 'Internal server error' };
     }
   }
@@ -737,7 +910,9 @@ export class GameGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('gameSessionId') gameSessionId: string,
   ) {
-    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    const userId = String(
+      client.data?.user?.sub || client.data?.user?.userId || '',
+    );
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
     if (!gameSessionId)
@@ -748,11 +923,13 @@ export class GameGateway
     this.logger.log(
       `User ${userId} joined game room ${gameSessionId} (socket ${client.id})`,
     );
+    await this.setPresenceInGame(userId, gameSessionId).catch(() => {});
 
     // 2. Reconnection check: if there's a pending disconnect timer for this player,
     //    cancel it and notify the room that they're back.
-    const hadDisconnectTimer =
-      this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
+    const hadDisconnectTimer = this.disconnectTimers.has(
+      this.disconnectTimerKey(gameSessionId, userId),
+    );
     if (hadDisconnectTimer) {
       this.clearDisconnectTimer(gameSessionId, userId);
 
@@ -870,12 +1047,20 @@ export class GameGateway
       let isCorrect = !!matchedPlayer;
 
       if (isCorrect) {
-        if (state.guessedPlayers.some((g: any) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
+        if (
+          state.guessedPlayers.some(
+            (g: any) =>
+              (typeof g === 'string' ? g : g?.name) === matchedPlayer.name,
+          )
+        ) {
           // Penalty: treat already-guessed as a WRONG answer (strike) and proceed normally.
           isCorrect = false;
           state.strikes[userId] += 1;
         } else {
-          state.guessedPlayers.push({ name: matchedPlayer.name, guessedBy: userId });
+          state.guessedPlayers.push({
+            name: matchedPlayer.name,
+            guessedBy: userId,
+          });
           state.scores[userId] += 1;
         }
       } else {
@@ -894,7 +1079,9 @@ export class GameGateway
 
         // Record the round result snapshot for the Game Over history view
         if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
-        if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+        if (
+          !state.roundHistory.some((r: any) => r?.round === state.currentRound)
+        ) {
           state.roundHistory.push({
             round: state.currentRound,
             winner: roundWinner,
@@ -928,7 +1115,10 @@ export class GameGateway
       const multi = this.redisClient.multi();
       multi.set(key, JSON.stringify(state));
       if (isMatchOver) {
-        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+        this.matchmakingService.deleteActiveGameKeysInMulti(
+          multi,
+          state.players,
+        );
       }
       const results = await multi.exec();
 
@@ -962,7 +1152,9 @@ export class GameGateway
       if (isMatchOver) {
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
         this.clearTurnTimer(gameSessionId);
-        const loserId = state.players.find((p: string) => p !== state.winner) as string;
+        const loserId = state.players.find(
+          (p: string) => p !== state.winner,
+        ) as string;
         const mmrDeltas = await this.resolveMmrDeltasForMatch(
           state,
           state.winner,
@@ -1008,7 +1200,8 @@ export class GameGateway
         latest.currentQuestion = pickRandomFootballQuestion();
         // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
         if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
-        else if (latest.currentRound === 3) latest.currentTurn = latest.players[0];
+        else if (latest.currentRound === 3)
+          latest.currentTurn = latest.players[0];
         else latest.currentTurn = latest.players[0];
 
         const multi2 = this.redisClient.multi();
@@ -1060,7 +1253,9 @@ export class GameGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('gameSessionId') gameSessionId: string,
   ) {
-    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    const userId = String(
+      client.data?.user?.sub || client.data?.user?.userId || '',
+    );
     if (!userId || !gameSessionId) {
       return { status: 'error', message: 'Invalid request' };
     }
@@ -1085,12 +1280,16 @@ export class GameGateway
         return { status: 'error', message: 'Not a player in this game' };
       }
 
-      const winnerId = state.players.find((p: string) => p !== userId) as string;
+      const winnerId = state.players.find(
+        (p: string) => p !== userId,
+      ) as string;
       state.status = 'match_completed';
       state.winner = winnerId;
 
       if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
-      if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+      if (
+        !state.roundHistory.some((r: any) => r?.round === state.currentRound)
+      ) {
         state.roundHistory.push({
           round: state.currentRound,
           winner: winnerId,
@@ -1124,12 +1323,17 @@ export class GameGateway
       });
 
       this.initializeRematch(gameSessionId, state).catch((e) =>
-        this.logger.error(`initializeRematch (manual forfeit) failed: ${e?.message}`),
+        this.logger.error(
+          `initializeRematch (manual forfeit) failed: ${e?.message}`,
+        ),
       );
 
       return { status: 'ok' };
     } catch (error) {
-      this.logger.error(`Error in forfeitMatch: ${error?.message}`, error?.stack);
+      this.logger.error(
+        `Error in forfeitMatch: ${error?.message}`,
+        error?.stack,
+      );
       return { status: 'error', message: 'Internal server error' };
     } finally {
       await this.redisClient.unwatch().catch(() => {});

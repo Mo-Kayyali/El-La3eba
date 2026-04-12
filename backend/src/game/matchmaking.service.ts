@@ -172,17 +172,17 @@ export class MatchmakingService {
    * Returns the roomCode if one was deleted, otherwise returns null.
    */
   private async cleanupUserPrivateRoom(userId: string): Promise<string | null> {
-    const roomCode = await this.redisClient.get(`user_room:${userId}`);
+    const userRoomKey = `user_room:${userId}`;
+    const roomCode = await this.redisClient.get(userRoomKey);
 
-    if (roomCode) {
-      await Promise.all([
-        this.redisClient.del(`private_room:${roomCode}`),
-        this.redisClient.del(`user_room:${userId}`),
-      ]);
-      return roomCode;
-    }
+    if (!roomCode) return null;
 
-    return null;
+    const privateRoomKey = `private_room:${roomCode}`;
+    const multi = this.redisClient.multi();
+    multi.del(privateRoomKey);
+    multi.del(userRoomKey);
+    await multi.exec();
+    return roomCode;
   }
 
   /**
@@ -196,25 +196,34 @@ export class MatchmakingService {
     username?: string,
   ) {
     const uppercaseCode = code.toUpperCase();
-    const roomDataStr = await this.redisClient.get(
-      `private_room:${uppercaseCode}`,
-    );
+    const privateRoomKey = `private_room:${uppercaseCode}`;
+    await this.redisClient.watch(privateRoomKey);
+    const roomDataStr = await this.redisClient.get(privateRoomKey);
 
     if (!roomDataStr) {
+      await this.redisClient.unwatch();
       return { success: false, error: 'Room not found or expired' };
     }
 
     const host: QueueEntry = JSON.parse(roomDataStr);
 
     if (host.userId === userId) {
+      await this.redisClient.unwatch();
       return { success: false, error: 'You cannot join your own room' };
     }
 
-    // Consume the room atomically to prevent a second guest from joining
-    await Promise.all([
-      this.redisClient.del(`private_room:${uppercaseCode}`),
-      this.redisClient.del(`user_room:${host.userId}`),
-    ]);
+    // Consume the room atomically to prevent a second guest from joining.
+    const multi = this.redisClient.multi();
+    multi.del(privateRoomKey);
+    multi.del(`user_room:${host.userId}`);
+    const consumed = await multi.exec();
+
+    if (!consumed) {
+      await this.redisClient.unwatch();
+      return { success: false, error: 'Room not found or expired' };
+    }
+
+    await this.redisClient.unwatch().catch(() => {});
 
     // Both players must leave any public queue they were in
     await Promise.all([

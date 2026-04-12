@@ -97,30 +97,40 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         }
     }
     async cleanupUserPrivateRoom(userId) {
-        const roomCode = await this.redisClient.get(`user_room:${userId}`);
-        if (roomCode) {
-            await Promise.all([
-                this.redisClient.del(`private_room:${roomCode}`),
-                this.redisClient.del(`user_room:${userId}`),
-            ]);
-            return roomCode;
-        }
-        return null;
+        const userRoomKey = `user_room:${userId}`;
+        const roomCode = await this.redisClient.get(userRoomKey);
+        if (!roomCode)
+            return null;
+        const privateRoomKey = `private_room:${roomCode}`;
+        const multi = this.redisClient.multi();
+        multi.del(privateRoomKey);
+        multi.del(userRoomKey);
+        await multi.exec();
+        return roomCode;
     }
     async joinPrivateRoom(code, userId, socketId, username) {
         const uppercaseCode = code.toUpperCase();
-        const roomDataStr = await this.redisClient.get(`private_room:${uppercaseCode}`);
+        const privateRoomKey = `private_room:${uppercaseCode}`;
+        await this.redisClient.watch(privateRoomKey);
+        const roomDataStr = await this.redisClient.get(privateRoomKey);
         if (!roomDataStr) {
+            await this.redisClient.unwatch();
             return { success: false, error: 'Room not found or expired' };
         }
         const host = JSON.parse(roomDataStr);
         if (host.userId === userId) {
+            await this.redisClient.unwatch();
             return { success: false, error: 'You cannot join your own room' };
         }
-        await Promise.all([
-            this.redisClient.del(`private_room:${uppercaseCode}`),
-            this.redisClient.del(`user_room:${host.userId}`),
-        ]);
+        const multi = this.redisClient.multi();
+        multi.del(privateRoomKey);
+        multi.del(`user_room:${host.userId}`);
+        const consumed = await multi.exec();
+        if (!consumed) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Room not found or expired' };
+        }
+        await this.redisClient.unwatch().catch(() => { });
         await Promise.all([
             this.cancelSearch(host.userId),
             this.cancelSearch(userId),

@@ -28,6 +28,8 @@
 - **State Management:** Redis JSON structures locked by `gameSessionId`.
 - **Fuzzy Search:** Uses `pg_trgm`, `unaccent`, and `levenshtein` (`fuzzystrmatch`) in Prisma `$queryRaw` against `FootballPlayer` rows; trigram GIN indexes back substring / similarity-style workloads on `name` and flattened `aliases`.
 - **Leaderboard cache:** `LeaderboardService` refreshes the Redis `global_leaderboard` key on a **10-minute** cron (`CronExpression.EVERY_10_MINUTES`). The lobby refetches `GET /auth/me` on each visit so the navbar tier tracks fresh `user.mmr` after matches.
+- **Friends + presence:** Friendship rows are stored in Prisma as directional `Friendship` records (`PENDING` / `ACCEPTED`) between two `User` rows. `GET /friends` returns accepted friends plus incoming/outgoing requests; `POST /friends/request`, `POST /friends/:id/accept`, and `POST /friends/:id/reject` power the REST flow. Redis now keeps `presence` hash entries per user (`online`, `in-game:{gameSessionId}`), and the WebSocket gateway periodically emits `friendsPresenceUpdated` to each user’s personal room. The friends page uses this to render live Online / Offline / In-Game indicators and private-room invite notifications.
+- **Private room cleanup:** Cancelling a private room deletes both `user_room:{userId}` and `private_room:{code}`. Joining a private room uses Redis WATCH + MULTI/EXEC around `private_room:{code}` so a stale code is rejected if the host cancels during the join race.
 
 ## 4. Upgrading the Spec
 

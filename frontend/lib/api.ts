@@ -2,9 +2,43 @@ import axios from "axios";
 import { useAuthStore } from "@/lib/auth-store";
 
 export type PublicProfile = {
+  id: string;
   username: string;
   wins: number;
   gamesPlayed: number;
+};
+
+export type PresenceStatus = "offline" | "online" | "in-game";
+
+export type FriendPresence = {
+  userId: string;
+  username: string;
+  status: PresenceStatus;
+  gameSessionId?: string | null;
+};
+
+export type FriendEntry = {
+  friendshipId: string;
+  userId: string;
+  username: string;
+  status: "PENDING" | "ACCEPTED";
+  createdAt: string;
+  presence?: {
+    status: PresenceStatus;
+    gameSessionId: string | null;
+  };
+};
+
+export type FriendsResponse = {
+  friends: FriendEntry[];
+  incomingRequests: FriendEntry[];
+  outgoingRequests: FriendEntry[];
+};
+
+export type FriendRequestResponse = {
+  created: boolean;
+  accepted: boolean;
+  friendship: FriendEntry;
 };
 
 export type UpdateProfilePayload = {
@@ -77,5 +111,37 @@ export async function updateOwnProfile(
   payload: UpdateProfilePayload,
 ): Promise<MeProfile> {
   const { data } = await api.patch<MeProfile>("/users/profile", payload);
+  return data;
+}
+
+export async function fetchFriends(): Promise<FriendsResponse> {
+  const { data } = await api.get<FriendsResponse>("/friends");
+  return data;
+}
+
+export async function sendFriendRequest(
+  identifier: string,
+): Promise<FriendRequestResponse> {
+  const { data } = await api.post<FriendRequestResponse>("/friends/request", {
+    identifier,
+  });
+  return data;
+}
+
+export async function acceptFriendRequest(
+  requestId: string,
+): Promise<{ accepted: boolean }> {
+  const { data } = await api.post<{ accepted: boolean }>(
+    `/friends/${requestId}/accept`,
+  );
+  return data;
+}
+
+export async function rejectFriendRequest(
+  requestId: string,
+): Promise<{ rejected: boolean }> {
+  const { data } = await api.post<{ rejected: boolean }>(
+    `/friends/${requestId}/reject`,
+  );
   return data;
 }

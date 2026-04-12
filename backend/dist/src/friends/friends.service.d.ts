@@ -1,0 +1,63 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
+type PresenceStatus = 'offline' | 'online' | 'in-game';
+export declare class FriendsService {
+    private readonly prisma;
+    private readonly redisClient;
+    constructor(prisma: PrismaService, redisClient: RedisService);
+    private resolveUserByIdentifier;
+    private getPresenceStatus;
+    private mapFriendship;
+    sendFriendRequest(requesterId: string, identifier: string): Promise<{
+        created: boolean;
+        accepted: boolean;
+        friendship: {
+            friendshipId: string;
+            userId: string;
+            username: string;
+            status: import(".prisma/client").$Enums.FriendshipStatus;
+            createdAt: Date;
+        };
+    }>;
+    acceptFriendRequest(currentUserId: string, requestId: string): Promise<{
+        accepted: boolean;
+    }>;
+    rejectFriendRequest(currentUserId: string, requestId: string): Promise<{
+        rejected: boolean;
+    }>;
+    getFriendsList(currentUserId: string): Promise<{
+        friends: {
+            presence: {
+                status: PresenceStatus;
+                gameSessionId: string | null;
+            };
+            friendshipId: string;
+            userId: string;
+            username: string;
+            status: import(".prisma/client").$Enums.FriendshipStatus;
+            createdAt: Date;
+        }[];
+        incomingRequests: {
+            friendshipId: string;
+            userId: string;
+            username: string;
+            status: import(".prisma/client").$Enums.FriendshipStatus;
+            createdAt: Date;
+        }[];
+        outgoingRequests: {
+            friendshipId: string;
+            userId: string;
+            username: string;
+            status: import(".prisma/client").$Enums.FriendshipStatus;
+            createdAt: Date;
+        }[];
+    }>;
+    getFriendPresenceSnapshot(currentUserId: string): Promise<{
+        userId: string;
+        username: string;
+        status: PresenceStatus;
+        gameSessionId: string | null;
+    }[]>;
+    ensureUsersAreFriends(userId: string, otherUserId: string): Promise<void>;
+}
+export {};
