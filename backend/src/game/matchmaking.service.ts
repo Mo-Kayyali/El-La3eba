@@ -24,6 +24,7 @@ export class MatchmakingService {
   private readonly roomExpiryTimers = new Map<string, NodeJS.Timeout>();
   private readonly SEARCH_TTL_SECONDS = 60;
   private readonly PRIVATE_ROOM_TTL_SECONDS = 60;
+  private readonly ACTIVE_GAME_KEY_PREFIX = 'user_active_game:';
 
   /** Redis key pairs for each queue mode. */
   private readonly QUEUES: Record<
@@ -49,6 +50,10 @@ export class MatchmakingService {
 
   private queueSearchKey(userId: string) {
     return `queue_search:${userId}`;
+  }
+
+  private activeGameKey(userId: string) {
+    return `${this.ACTIVE_GAME_KEY_PREFIX}${userId}`;
   }
 
   private clearRoomExpiryTimer(userId: string) {
@@ -502,14 +507,15 @@ return selected
     const stateJson = JSON.stringify(gameState);
     const multi = this.redisClient.multi();
     multi.set(gameKey, stateJson);
-    multi.set(`active_game:${player1Id}`, gameSessionId);
-    multi.set(`active_game:${player2Id}`, gameSessionId);
+    multi.set(this.activeGameKey(player1Id), gameSessionId);
+    multi.set(this.activeGameKey(player2Id), gameSessionId);
     await multi.exec();
     return gameState;
   }
 
   /**
-   * Queues DELs for `active_game:{playerId}` inside an existing MULTI (same EXEC as game state writes).
+   * Queues DELs for active-game user mappings inside an existing MULTI.
+   * Also clears legacy keys for safe rolling migration.
    */
   deleteActiveGameKeysInMulti(
     multi: ChainableCommander,
@@ -519,8 +525,27 @@ return selected
       if (raw === undefined || raw === null) continue;
       const id = String(raw);
       if (!id) continue;
+      multi.del(this.activeGameKey(id));
       multi.del(`active_game:${id}`);
     }
+  }
+
+  setActiveGameSessionIdInMulti(
+    multi: ChainableCommander,
+    userId: string,
+    gameSessionId: string,
+  ): void {
+    multi.set(this.activeGameKey(String(userId)), String(gameSessionId));
+  }
+
+  async setActiveGameSessionIdForUser(
+    userId: string,
+    gameSessionId: string,
+  ): Promise<void> {
+    await this.redisClient.set(
+      this.activeGameKey(String(userId)),
+      String(gameSessionId),
+    );
   }
 
   /**
@@ -528,9 +553,18 @@ return selected
    */
   async getActiveGameSessionIdForUser(userId: string): Promise<string | null> {
     const uid = String(userId);
-    const key = `active_game:${uid}`;
-    const sessionId = await this.redisClient.get(key);
-    if (!sessionId) return null;
+    const key = this.activeGameKey(uid);
+    let sessionId = await this.redisClient.get(key);
+    if (!sessionId) {
+      const legacyKey = `active_game:${uid}`;
+      const legacySessionId = await this.redisClient.get(legacyKey);
+      if (!legacySessionId) return null;
+      sessionId = legacySessionId;
+      const multi = this.redisClient.multi();
+      multi.set(key, sessionId);
+      multi.del(legacyKey);
+      await multi.exec().catch(() => {});
+    }
 
     const gameKey = `game:${sessionId}`;
     const stateStr = await this.redisClient.get(gameKey);

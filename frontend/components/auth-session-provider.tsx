@@ -313,10 +313,13 @@ export function AuthSessionProvider({
         position="top-right"
         theme="dark"
         richColors
+        closeButton
         className="!top-4 !right-4 !z-[100]"
         toastOptions={{
           classNames: {
             toast: "!border-white/10 !bg-zinc-900/95 !backdrop-blur-xl",
+            closeButton:
+              "!border-white/10 !bg-zinc-800/80 !text-zinc-100 hover:!bg-zinc-700",
           },
         }}
       />

@@ -769,48 +769,20 @@ export class GameGateway
       ]);
     }
 
-    // For each game room the socket was in, start the reconnect grace period.
-    // DO NOT clear the turn timer here — it keeps running fairly.
-    // The disconnect timer will forfeit after DISCONNECT_GRACE_MS if they don't return.
+    // Resolve the user's active match from Redis instead of socket rooms.
+    // Socket.io can drop room membership during disconnect teardown.
     try {
-      const rooms = Array.from(client.rooms ?? []);
-      for (const room of rooms) {
-        if (!room || room === client.id) continue;
+      if (userId) {
+        const gameSessionId =
+          await this.matchmakingService.getActiveGameSessionIdForUser(userId);
 
-        // Only act on rooms that look like active game sessions (have a live game state)
-        const stateExists = await this.redisClient
-          .exists(`game:${room}`)
-          .catch(() => 0);
-        if (!stateExists) continue;
-
-        let endedMatch = false;
-        try {
-          const stateStr = await this.redisClient.get(`game:${room}`);
-          if (stateStr) {
-            const parsed = JSON.parse(stateStr) as { status?: string };
-            endedMatch = parsed?.status === 'match_completed';
-          }
-        } catch {
-          /* ignore */
-        }
-
-        if (endedMatch && userId) {
+        if (gameSessionId) {
+          this.startDisconnectTimer(gameSessionId, userId);
           this.server
-            .to(room)
-            .emit('opponentLeft', { userId, gameSessionId: room });
+            .to(gameSessionId)
+            .emit('playerDisconnected', { userId, gameSessionId });
           this.logger.log(
-            `User ${userId} left ended game ${room} — opponentLeft emitted`,
-          );
-          continue;
-        }
-
-        if (userId) {
-          this.startDisconnectTimer(room, userId);
-          this.server
-            .to(room)
-            .emit('playerDisconnected', { userId, gameSessionId: room });
-          this.logger.log(
-            `User ${userId} disconnected from game ${room} — grace period started`,
+            `User ${userId} disconnected from active game ${gameSessionId} — grace period started`,
           );
         }
       }
@@ -1238,6 +1210,10 @@ export class GameGateway
       if (state?.status !== 'match_completed') {
         return { status: 'error', message: 'Match is not finished' };
       }
+      await Promise.allSettled([
+        this.redisClient.del(`user_active_game:${userId}`),
+        this.redisClient.del(`active_game:${userId}`),
+      ]);
       await this.setPresenceOnline(userId);
       client.leave(gameSessionId);
       this.server
@@ -1268,6 +1244,11 @@ export class GameGateway
 
     if (!gameSessionId)
       return { status: 'error', message: 'gameSessionId required' };
+
+    const hadDisconnectTimer = this.disconnectTimers.has(
+      this.disconnectTimerKey(gameSessionId, userId),
+    );
+    this.clearDisconnectTimer(gameSessionId, userId);
 
     // Always fetch current Redis state first so completed matches cannot be resurrected.
     let parsedState: any | null = null;
@@ -1303,16 +1284,16 @@ export class GameGateway
       this.matchmakingService.cancelPrivateRoom(userId),
       this.cancelActiveInvitesByInviter(userId, 'inviter_in_game'),
       this.cancelPendingInvitesForInvitee(userId, 'invitee_in_game'),
+      this.matchmakingService.setActiveGameSessionIdForUser(
+        userId,
+        gameSessionId,
+      ),
     ]);
     await this.setPresenceInGame(userId, gameSessionId).catch(() => {});
 
     // 2. Reconnection check: if there's a pending disconnect timer for this player,
     //    cancel it and notify the room that they're back.
-    const hadDisconnectTimer = this.disconnectTimers.has(
-      this.disconnectTimerKey(gameSessionId, userId),
-    );
     if (hadDisconnectTimer) {
-      this.clearDisconnectTimer(gameSessionId, userId);
       const latestStateStr = await this.redisClient
         .get(`game:${gameSessionId}`)
         .catch(() => null);

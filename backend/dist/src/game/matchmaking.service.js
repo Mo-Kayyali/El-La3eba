@@ -27,6 +27,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     roomExpiryTimers = new Map();
     SEARCH_TTL_SECONDS = 60;
     PRIVATE_ROOM_TTL_SECONDS = 60;
+    ACTIVE_GAME_KEY_PREFIX = 'user_active_game:';
     QUEUES = {
         ranked: { zset: 'ranked_queue', members: 'ranked_queue_members' },
         unrated: { zset: 'unrated_queue', members: 'unrated_queue_members' },
@@ -43,6 +44,9 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     }
     queueSearchKey(userId) {
         return `queue_search:${userId}`;
+    }
+    activeGameKey(userId) {
+        return `${this.ACTIVE_GAME_KEY_PREFIX}${userId}`;
     }
     clearRoomExpiryTimer(userId) {
         const timer = this.roomExpiryTimers.get(userId);
@@ -339,8 +343,8 @@ return selected
         const stateJson = JSON.stringify(gameState);
         const multi = this.redisClient.multi();
         multi.set(gameKey, stateJson);
-        multi.set(`active_game:${player1Id}`, gameSessionId);
-        multi.set(`active_game:${player2Id}`, gameSessionId);
+        multi.set(this.activeGameKey(player1Id), gameSessionId);
+        multi.set(this.activeGameKey(player2Id), gameSessionId);
         await multi.exec();
         return gameState;
     }
@@ -351,15 +355,31 @@ return selected
             const id = String(raw);
             if (!id)
                 continue;
+            multi.del(this.activeGameKey(id));
             multi.del(`active_game:${id}`);
         }
     }
+    setActiveGameSessionIdInMulti(multi, userId, gameSessionId) {
+        multi.set(this.activeGameKey(String(userId)), String(gameSessionId));
+    }
+    async setActiveGameSessionIdForUser(userId, gameSessionId) {
+        await this.redisClient.set(this.activeGameKey(String(userId)), String(gameSessionId));
+    }
     async getActiveGameSessionIdForUser(userId) {
         const uid = String(userId);
-        const key = `active_game:${uid}`;
-        const sessionId = await this.redisClient.get(key);
-        if (!sessionId)
-            return null;
+        const key = this.activeGameKey(uid);
+        let sessionId = await this.redisClient.get(key);
+        if (!sessionId) {
+            const legacyKey = `active_game:${uid}`;
+            const legacySessionId = await this.redisClient.get(legacyKey);
+            if (!legacySessionId)
+                return null;
+            sessionId = legacySessionId;
+            const multi = this.redisClient.multi();
+            multi.set(key, sessionId);
+            multi.del(legacyKey);
+            await multi.exec().catch(() => { });
+        }
         const gameKey = `game:${sessionId}`;
         const stateStr = await this.redisClient.get(gameKey);
         if (!stateStr) {

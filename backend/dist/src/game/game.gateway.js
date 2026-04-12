@@ -553,38 +553,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
             ]);
         }
         try {
-            const rooms = Array.from(client.rooms ?? []);
-            for (const room of rooms) {
-                if (!room || room === client.id)
-                    continue;
-                const stateExists = await this.redisClient
-                    .exists(`game:${room}`)
-                    .catch(() => 0);
-                if (!stateExists)
-                    continue;
-                let endedMatch = false;
-                try {
-                    const stateStr = await this.redisClient.get(`game:${room}`);
-                    if (stateStr) {
-                        const parsed = JSON.parse(stateStr);
-                        endedMatch = parsed?.status === 'match_completed';
-                    }
-                }
-                catch {
-                }
-                if (endedMatch && userId) {
+            if (userId) {
+                const gameSessionId = await this.matchmakingService.getActiveGameSessionIdForUser(userId);
+                if (gameSessionId) {
+                    this.startDisconnectTimer(gameSessionId, userId);
                     this.server
-                        .to(room)
-                        .emit('opponentLeft', { userId, gameSessionId: room });
-                    this.logger.log(`User ${userId} left ended game ${room} — opponentLeft emitted`);
-                    continue;
-                }
-                if (userId) {
-                    this.startDisconnectTimer(room, userId);
-                    this.server
-                        .to(room)
-                        .emit('playerDisconnected', { userId, gameSessionId: room });
-                    this.logger.log(`User ${userId} disconnected from game ${room} — grace period started`);
+                        .to(gameSessionId)
+                        .emit('playerDisconnected', { userId, gameSessionId });
+                    this.logger.log(`User ${userId} disconnected from active game ${gameSessionId} — grace period started`);
                 }
             }
         }
@@ -849,6 +825,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             if (state?.status !== 'match_completed') {
                 return { status: 'error', message: 'Match is not finished' };
             }
+            await Promise.allSettled([
+                this.redisClient.del(`user_active_game:${userId}`),
+                this.redisClient.del(`active_game:${userId}`),
+            ]);
             await this.setPresenceOnline(userId);
             client.leave(gameSessionId);
             this.server
@@ -868,6 +848,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: 'Unauthorized' };
         if (!gameSessionId)
             return { status: 'error', message: 'gameSessionId required' };
+        const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
+        this.clearDisconnectTimer(gameSessionId, userId);
         let parsedState = null;
         try {
             const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
@@ -896,11 +878,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.matchmakingService.cancelPrivateRoom(userId),
             this.cancelActiveInvitesByInviter(userId, 'inviter_in_game'),
             this.cancelPendingInvitesForInvitee(userId, 'invitee_in_game'),
+            this.matchmakingService.setActiveGameSessionIdForUser(userId, gameSessionId),
         ]);
         await this.setPresenceInGame(userId, gameSessionId).catch(() => { });
-        const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
         if (hadDisconnectTimer) {
-            this.clearDisconnectTimer(gameSessionId, userId);
             const latestStateStr = await this.redisClient
                 .get(`game:${gameSessionId}`)
                 .catch(() => null);

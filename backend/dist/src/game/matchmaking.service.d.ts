@@ -12,11 +12,13 @@ export declare class MatchmakingService {
     private readonly roomExpiryTimers;
     private readonly SEARCH_TTL_SECONDS;
     private readonly PRIVATE_ROOM_TTL_SECONDS;
+    private readonly ACTIVE_GAME_KEY_PREFIX;
     private readonly QUEUES;
     constructor(redisClient: RedisService, prisma: PrismaService);
     setServer(server: Server): void;
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
     private queueSearchKey;
+    private activeGameKey;
     private clearRoomExpiryTimer;
     private schedulePrivateRoomExpiry;
     joinQueue(userId: string, socketId: string, username: string | undefined, mode: QueueMode): Promise<void>;
@@ -68,6 +70,8 @@ export declare class MatchmakingService {
         isRanked: boolean;
     }>;
     deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;
+    setActiveGameSessionIdInMulti(multi: ChainableCommander, userId: string, gameSessionId: string): void;
+    setActiveGameSessionIdForUser(userId: string, gameSessionId: string): Promise<void>;
     getActiveGameSessionIdForUser(userId: string): Promise<string | null>;
     updateMmrAfterMatch(winnerId: string, loserId: string, options?: {
         marginMultiplier?: number;
