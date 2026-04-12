@@ -15,6 +15,7 @@ export declare class AuthService {
             username: any;
             email: any;
             isVerified: any;
+            mmr: any;
         };
     }>;
     login(dto: LoginDto): Promise<{
@@ -24,7 +25,18 @@ export declare class AuthService {
             username: any;
             email: any;
             isVerified: any;
+            mmr: any;
         };
+    }>;
+    getProfileById(userId: string): Promise<{
+        id: string;
+        email: string;
+        username: string;
+        isVerified: boolean;
+        mmr: number;
+        gamesPlayed: number;
+        wins: number;
+        createdAt: Date;
     }>;
     private generateToken;
     requestVerification(userId: string, email: string): Promise<{

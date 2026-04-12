@@ -18,11 +18,14 @@ model User {
   wins         Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([mmr])
 }
 
 model FootballPlayer {
   id         String   @id @default(uuid())
   name       String
+  aliases    String[] @default([])
   clubs      String[]
   activeYear Int
 }

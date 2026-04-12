@@ -78,7 +78,7 @@ let AuthService = class AuthService {
                 passwordHash,
             },
         });
-        return this.generateToken(user);
+        return this.generateToken(user, false);
     }
     async login(dto) {
         const user = await this.prisma.user.findUnique({
@@ -91,18 +91,39 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        return this.generateToken(user);
+        return this.generateToken(user, dto.rememberMe === true);
     }
-    generateToken(user) {
+    async getProfileById(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                mmr: true,
+                wins: true,
+                gamesPlayed: true,
+                isVerified: true,
+                createdAt: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.UnauthorizedException();
+        }
+        return user;
+    }
+    generateToken(user, rememberMe = false) {
         const payload = { sub: user.id, username: user.username, email: user.email };
+        const expiresIn = rememberMe ? '30d' : '1d';
         return {
-            access_token: this.jwtService.sign(payload),
+            access_token: this.jwtService.sign(payload, { expiresIn }),
             user: {
                 id: user.id,
                 username: user.username,
                 email: user.email,
                 isVerified: user.isVerified,
-            }
+                mmr: user.mmr,
+            },
         };
     }
     async requestVerification(userId, email) {

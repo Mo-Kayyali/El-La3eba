@@ -11,10 +11,21 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { MatchmakingService } from './matchmaking.service';
+import type { QueueMode } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
+import { scoreMarginMultiplier } from './elo.util';
+
+// ─── In-gateway sliding-window rate limiter ────────────────────────────────
+// Limits submitGuess to MAX_GUESSES_PER_WINDOW per user per WINDOW_MS.
+// This runs in-process (no extra dependency) and is reset on server restart,
+// which is acceptable — the goal is to stop DDoS bursts, not persistent abuse.
+const GUESS_RATE_LIMIT_MAX = 5;
+const GUESS_RATE_LIMIT_WINDOW_MS = 1000; // 1 second
+// ─────────────────────────────────────────────────────────────────────────────
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class GameGateway
@@ -24,8 +35,29 @@ export class GameGateway
   server: Server;
 
   private readonly logger = new Logger(GameGateway.name);
+
+  /** Turn timers keyed by gameSessionId. */
   private readonly turnTimers = new Map<string, NodeJS.Timeout>();
+
+  /** Rematch countdown timers keyed by gameSessionId. */
+  private readonly rematchTimers = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * Reconnection grace-period timers.
+   * Key: `${gameSessionId}:${userId}` — avoids collisions when both players drop.
+   */
+  private readonly disconnectTimers = new Map<string, NodeJS.Timeout>();
+
+  /**
+   * Rate-limiter state: userId → sorted array of timestamp (ms) of recent guesses.
+   * Entries older than GUESS_RATE_LIMIT_WINDOW_MS are pruned on each check.
+   */
+  private readonly guessTimestamps = new Map<string, number[]>();
+
   private readonly roundTransitionMs = 4000;
+
+  /** Disconnect grace period before a forfeit is issued (ms). */
+  private readonly DISCONNECT_GRACE_MS = 15_000;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -38,12 +70,54 @@ export class GameGateway
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  /**
+   * Ranked-only: persists MMR (with margin / forfeit rules) and returns per-user deltas for clients.
+   */
+  private async resolveMmrDeltasForMatch(
+    state: any,
+    winnerId: string,
+    loserId: string,
+    forfeited: boolean,
+  ): Promise<Record<string, number> | undefined> {
+    if (!state?.isRanked || !winnerId || !loserId) return undefined;
+    const w = Number(state.overallScores?.[winnerId] ?? 0);
+    const l = Number(state.overallScores?.[loserId] ?? 0);
+    const margin = forfeited ? 1.2 : scoreMarginMultiplier(w, l);
+    const res = await this.matchmakingService.updateMmrAfterMatch(winnerId, loserId, {
+      marginMultiplier: margin,
+    });
+    if (!res) return undefined;
+    return { [winnerId]: res.winnerDelta, [loserId]: res.loserDelta };
+  }
+
   afterInit(server: Server) {
     this.matchmakingService.setServer(server);
     this.matchmakingService.setTurnTimerStarter(
       this.startTurnTimer.bind(this),
     );
   }
+
+  // ─── Rate limiter ─────────────────────────────────────────────────────────
+
+  /**
+   * Returns true if the user has exceeded the guess rate limit.
+   * Prunes stale timestamps as a side-effect to keep the Map compact.
+   */
+  private isGuestRateLimited(userId: string): boolean {
+    const now = Date.now();
+    const recent = (this.guessTimestamps.get(userId) ?? []).filter(
+      (t) => now - t < GUESS_RATE_LIMIT_WINDOW_MS,
+    );
+    if (recent.length >= GUESS_RATE_LIMIT_MAX) {
+      this.guessTimestamps.set(userId, recent);
+      return true;
+    }
+    recent.push(now);
+    this.guessTimestamps.set(userId, recent);
+    return false;
+  }
+
+  // ─── Turn timer ───────────────────────────────────────────────────────────
 
   private clearTurnTimer(gameSessionId: string) {
     const existing = this.turnTimers.get(gameSessionId);
@@ -52,6 +126,154 @@ export class GameGateway
       this.turnTimers.delete(gameSessionId);
     }
   }
+
+  // ─── Rematch helpers ──────────────────────────────────────────────────────
+
+  private async initializeRematch(gameSessionId: string, state: any) {
+    const p1Id = String(state.players[0]);
+    const p2Id = String(state.players[1]);
+    const names = (state.playerNames ?? {}) as Record<string, string>;
+    const p1Name = names[p1Id] ?? p1Id;
+    const p2Name = names[p2Id] ?? p2Id;
+
+    const rematchData = JSON.stringify({
+      p1Id,
+      p2Id,
+      p1Name,
+      p2Name,
+      p1Ready: false,
+      p2Ready: false,
+      isRanked: !!state.isRanked,
+    });
+    // 35 s TTL — slightly longer than the 30 s app-level timer for safety.
+    await this.redisClient.set(`rematch:${gameSessionId}`, rematchData, 'EX', 35);
+    this.startRematchTimer(gameSessionId);
+    this.logger.log(`Rematch window opened for game ${gameSessionId}`);
+  }
+
+  private startRematchTimer(gameSessionId: string) {
+    this.clearRematchTimer(gameSessionId);
+    const timeout = setTimeout(async () => {
+      this.rematchTimers.delete(gameSessionId);
+      await this.redisClient.del(`rematch:${gameSessionId}`).catch(() => {});
+      this.server.to(gameSessionId).emit('rematchExpired');
+      this.logger.log(`Rematch window expired for game ${gameSessionId}`);
+    }, 30_000);
+    this.rematchTimers.set(gameSessionId, timeout);
+  }
+
+  private clearRematchTimer(gameSessionId: string) {
+    const existing = this.rematchTimers.get(gameSessionId);
+    if (existing) {
+      clearTimeout(existing);
+      this.rematchTimers.delete(gameSessionId);
+    }
+  }
+
+  // ─── Reconnection helpers ─────────────────────────────────────────────────
+
+  private disconnectTimerKey(gameSessionId: string, userId: string) {
+    return `${gameSessionId}:${userId}`;
+  }
+
+  /**
+   * Starts the 15-second reconnection grace timer for a disconnected player.
+   * If the timer fires the game is forfeited for that player.
+   * If the player reconnects first, clearDisconnectTimer() cancels it.
+   */
+  private startDisconnectTimer(gameSessionId: string, userId: string) {
+    const key = this.disconnectTimerKey(gameSessionId, userId);
+    this.clearDisconnectTimer(gameSessionId, userId);
+
+    const timer = setTimeout(async () => {
+      this.disconnectTimers.delete(key);
+      this.logger.log(
+        `Disconnect grace period expired for user ${userId} in game ${gameSessionId} — forfeiting`,
+      );
+
+      const gameKey = `game:${gameSessionId}`;
+      try {
+        await this.redisClient.watch(gameKey);
+        const stateStr = await this.redisClient.get(gameKey);
+        if (!stateStr) {
+          await this.redisClient.unwatch();
+          return;
+        }
+        const state = JSON.parse(stateStr);
+        if (state.status === 'match_completed') {
+          await this.redisClient.unwatch();
+          return;
+        }
+
+        // Forfeit: the disconnected player loses the match.
+        const winnerId = state.players.find((p: string) => p !== userId) as string;
+        state.status = 'match_completed';
+        state.winner = winnerId;
+
+        // Record final round snapshot if not already captured.
+        if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
+        if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+          state.roundHistory.push({
+            round: state.currentRound,
+            winner: winnerId,
+            scores: { ...(state.scores ?? {}) },
+          });
+        }
+
+        const multi = this.redisClient.multi();
+        multi.set(gameKey, JSON.stringify(state));
+        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+        const results = await multi.exec();
+
+        if (!results) {
+          await this.redisClient.unwatch().catch(() => {});
+          return;
+        }
+
+        // Stop the turn timer — the game is over.
+        this.clearTurnTimer(gameSessionId);
+
+        const mmrDeltas = await this.resolveMmrDeltasForMatch(
+          state,
+          winnerId,
+          userId,
+          true,
+        );
+        const payload = {
+          state,
+          forfeit: true,
+          disconnectedUserId: userId,
+          forfeitedByUserId: userId,
+          mmrDeltas,
+        };
+        this.server.to(gameSessionId).emit('matchOver', payload);
+
+        this.initializeRematch(gameSessionId, state).catch((e) =>
+          this.logger.error(`initializeRematch (forfeit) failed: ${e?.message}`),
+        );
+      } catch (error) {
+        this.logger.error(
+          `Error in disconnect forfeit handler: ${error?.message}`,
+          error?.stack,
+        );
+      } finally {
+        await this.redisClient.unwatch().catch(() => {});
+      }
+    }, this.DISCONNECT_GRACE_MS);
+
+    this.disconnectTimers.set(key, timer);
+  }
+
+  private clearDisconnectTimer(gameSessionId: string, userId: string) {
+    const key = this.disconnectTimerKey(gameSessionId, userId);
+    const existing = this.disconnectTimers.get(key);
+    if (existing) {
+      clearTimeout(existing);
+      this.disconnectTimers.delete(key);
+    }
+  }
+
+  // ─── Turn timer (full implementation) ────────────────────────────────────
 
   private startTurnTimer(gameSessionId: string) {
     this.clearTurnTimer(gameSessionId);
@@ -131,6 +353,9 @@ export class GameGateway
 
         const multi = this.redisClient.multi();
         multi.set(key, JSON.stringify(state));
+        if (isMatchOver) {
+          this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+        }
         const results = await multi.exec();
 
         if (!results) {
@@ -154,8 +379,22 @@ export class GameGateway
         this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
 
         if (isMatchOver) {
-          this.server.to(gameSessionId).emit('matchOver', updatePayload);
           this.clearTurnTimer(gameSessionId);
+          const loserId = state.players.find((p: string) => p !== state.winner) as string;
+          const mmrDeltas = await this.resolveMmrDeltasForMatch(
+            state,
+            state.winner,
+            loserId,
+            false,
+          );
+          this.server.to(gameSessionId).emit('matchOver', {
+            ...updatePayload,
+            forfeit: false,
+            mmrDeltas,
+          });
+          this.initializeRematch(gameSessionId, state).catch((e) =>
+            this.logger.error(`initializeRematch failed: ${e?.message}`),
+          );
         } else if (isRoundOver) {
           this.server.to(gameSessionId).emit('roundOver', {
             winner: roundWinner,
@@ -214,6 +453,8 @@ export class GameGateway
     this.turnTimers.set(gameSessionId, timeout);
   }
 
+  // ─── Connection lifecycle ─────────────────────────────────────────────────
+
   async handleConnection(client: Socket) {
     try {
       const token =
@@ -221,7 +462,7 @@ export class GameGateway
         client.handshake.headers?.authorization?.split(' ')[1];
 
       if (!token) {
-        console.log(
+        this.logger.log(
           `Connection rejected: Missing token for client ${client.id}`,
         );
         client.disconnect();
@@ -232,50 +473,111 @@ export class GameGateway
         secret: process.env.JWT_SECRET || 'super-secret-jwt-key',
       });
 
-      // Attach user info to socket (optional, for later use)
       client.data.user = payload;
-      console.log(
+      this.logger.log(
         `Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`,
       );
-    } catch (error) {
-      console.log(`Connection rejected: Invalid token for client ${client.id}`);
+    } catch {
+      this.logger.log(`Connection rejected: Invalid token for client ${client.id}`);
       client.disconnect();
     }
   }
 
   async handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
-    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    this.logger.log(`Client disconnected: ${client.id}`);
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+
     if (userId) {
-      this.matchmakingService.leaveQueue(userId);
+      // Best-effort cleanup — fire-and-forget is fine on disconnect
+      this.matchmakingService.cancelSearch(userId).catch(() => {});
+      this.matchmakingService.cancelPrivateRoom(userId).catch(() => {});
     }
 
-    // Clear any per-session timers for rooms this socket was in
+    // For each game room the socket was in, start the reconnect grace period.
+    // DO NOT clear the turn timer here — it keeps running fairly.
+    // The disconnect timer will forfeit after DISCONNECT_GRACE_MS if they don't return.
     try {
       const rooms = Array.from(client.rooms ?? []);
       for (const room of rooms) {
-        if (room && room !== client.id) this.clearTurnTimer(room);
+        if (!room || room === client.id) continue;
+
+        // Only act on rooms that look like active game sessions (have a live game state)
+        const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
+        if (!stateExists) continue;
+
+        let endedMatch = false;
+        try {
+          const stateStr = await this.redisClient.get(`game:${room}`);
+          if (stateStr) {
+            const parsed = JSON.parse(stateStr) as { status?: string };
+            endedMatch = parsed?.status === 'match_completed';
+          }
+        } catch {
+          /* ignore */
+        }
+
+        if (endedMatch && userId) {
+          this.server.to(room).emit('opponentLeft', { userId, gameSessionId: room });
+          this.logger.log(
+            `User ${userId} left ended game ${room} — opponentLeft emitted`,
+          );
+          continue;
+        }
+
+        if (userId) {
+          this.startDisconnectTimer(room, userId);
+          this.server.to(room).emit('playerDisconnected', { userId, gameSessionId: room });
+          this.logger.log(
+            `User ${userId} disconnected from game ${room} — grace period started`,
+          );
+        }
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      this.logger.error(`Error in handleDisconnect cleanup: ${(e as Error)?.message}`);
     }
   }
 
+  // ─── Message handlers ─────────────────────────────────────────────────────
+
   @SubscribeMessage('joinQueue')
-  async handleJoinQueue(@ConnectedSocket() client: Socket) {
+  async handleJoinQueue(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('mode') mode: QueueMode = 'ranked',
+  ) {
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const resolvedMode: QueueMode =
+      mode === 'ranked' || mode === 'unrated' ? mode : 'ranked';
 
     const username =
       client.data?.user?.username ||
       client.data?.user?.name ||
       client.data?.user?.email;
 
-    await this.matchmakingService.joinQueue(userId, client.id, username);
-    return { status: 'queued' };
+    await this.matchmakingService.joinQueue(userId, client.id, username, resolvedMode);
+    return { status: 'queued', mode: resolvedMode };
   }
 
-  @SubscribeMessage('createPrivateRoom')
+  @SubscribeMessage('cancelSearch')
+  async handleCancelSearch(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    await this.matchmakingService.cancelSearch(userId);
+    return { status: 'ok' };
+  }
+
+  @SubscribeMessage('cancelPrivateRoom')
+  async handleCancelPrivateRoom(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    await this.matchmakingService.cancelPrivateRoom(userId);
+    return { status: 'ok' };
+  }
+
+  @SubscribeMessage('createPrivateMatch')
   async handleCreatePrivateRoom(@ConnectedSocket() client: Socket) {
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
@@ -293,7 +595,7 @@ export class GameGateway
     return { status: 'success', roomCode };
   }
 
-  @SubscribeMessage('joinPrivateRoom')
+  @SubscribeMessage('joinPrivateMatch')
   async handleJoinPrivateRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody('roomCode') roomCode: string,
@@ -317,34 +619,176 @@ export class GameGateway
     return result;
   }
 
+  @SubscribeMessage('requestRematch')
+  async handleRequestRematch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    if (!userId || !gameSessionId) {
+      return { status: 'error', message: 'Invalid request' };
+    }
+
+    const rematchKey = `rematch:${gameSessionId}`;
+    try {
+      await this.redisClient.watch(rematchKey);
+      const rematchStr = await this.redisClient.get(rematchKey);
+
+      if (!rematchStr) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Rematch window has expired' };
+      }
+
+      const rematch = JSON.parse(rematchStr) as {
+        p1Id: string;
+        p2Id: string;
+        p1Name: string;
+        p2Name: string;
+        p1Ready: boolean;
+        p2Ready: boolean;
+        isRanked?: boolean;
+      };
+
+      if (rematch.p1Id === userId) {
+        rematch.p1Ready = true;
+      } else if (rematch.p2Id === userId) {
+        rematch.p2Ready = true;
+      } else {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Not a player in this game' };
+      }
+
+      // Atomically persist the updated readiness via WATCH + MULTI/EXEC.
+      const multi = this.redisClient.multi();
+      multi.set(rematchKey, JSON.stringify(rematch), 'EX', 35);
+      const results = await multi.exec();
+
+      if (!results) {
+        // Another request modified the key between WATCH and EXEC — ask client to retry.
+        return { status: 'retry', message: 'Concurrent update, please try again' };
+      }
+
+      // Tell everyone in the room that this player wants to rematch.
+      this.server.to(gameSessionId).emit('rematchRequested', { userId });
+
+      if (rematch.p1Ready && rematch.p2Ready) {
+        // Both accepted — start a brand-new game for them.
+        this.clearRematchTimer(gameSessionId);
+        await this.redisClient.del(rematchKey);
+
+        const newGameSessionId = randomUUID();
+        const newState = await this.matchmakingService.initializeGameState(
+          newGameSessionId,
+          rematch.p1Id,
+          rematch.p2Id,
+          rematch.p1Name,
+          rematch.p2Name,
+          rematch.isRanked === true,
+        );
+
+        // Move all sockets still in the old room into the new one.
+        this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+        this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
+        this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
+        this.startTurnTimer(newGameSessionId);
+
+        this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
+      }
+
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error(`Error in requestRematch: ${error?.message}`, error?.stack);
+      return { status: 'error', message: 'Internal server error' };
+    } finally {
+      await this.redisClient.unwatch().catch(() => {});
+    }
+  }
+
+  @SubscribeMessage('leaveEndedMatch')
+  async handleLeaveEndedMatch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    if (!userId || !gameSessionId) {
+      return { status: 'error', message: 'Invalid request' };
+    }
+
+    try {
+      const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+      if (!stateStr) {
+        return { status: 'ok' };
+      }
+      const state = JSON.parse(stateStr) as { status?: string };
+      if (state?.status !== 'match_completed') {
+        return { status: 'error', message: 'Match is not finished' };
+      }
+      this.server.to(gameSessionId).emit('opponentLeft', { userId, gameSessionId });
+      this.logger.log(`User ${userId} acknowledged leaving ended match ${gameSessionId}`);
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error(`leaveEndedMatch failed: ${error?.message}`, error?.stack);
+      return { status: 'error', message: 'Internal server error' };
+    }
+  }
+
   @SubscribeMessage('joinGameRoom')
   async handleJoinGameRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody('gameSessionId') gameSessionId: string,
   ) {
-    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
     if (!gameSessionId)
       return { status: 'error', message: 'gameSessionId required' };
 
-    // 1. Put the new socket into the room
+    // 1. Put the new socket into the room.
     client.join(gameSessionId);
     this.logger.log(
       `User ${userId} joined game room ${gameSessionId} (socket ${client.id})`,
     );
 
-    // 2. NEW: Fetch the current state from Redis and give it to the client immediately!
+    // 2. Reconnection check: if there's a pending disconnect timer for this player,
+    //    cancel it and notify the room that they're back.
+    const hadDisconnectTimer =
+      this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
+    if (hadDisconnectTimer) {
+      this.clearDisconnectTimer(gameSessionId, userId);
+
+      // Re-fetch state to check it's still in progress before restarting timer.
+      try {
+        const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
+        if (stateStr) {
+          const state = JSON.parse(stateStr);
+          if (state.status !== 'match_completed') {
+            this.server
+              .to(gameSessionId)
+              .emit('playerReconnected', { userId, gameSessionId });
+            // Resume the turn timer so the game continues.
+            this.startTurnTimer(gameSessionId);
+            this.logger.log(
+              `User ${userId} reconnected to game ${gameSessionId} — timer resumed`,
+            );
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          `Error during reconnect timer restore: ${(err as Error)?.message}`,
+        );
+      }
+    }
+
+    // 3. Fetch the current state from Redis and send it to this client immediately.
     try {
       const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
       if (stateStr) {
-        // Send it ONLY to this specific client who just joined/reconnected.
-        // Frontend expects the raw game state object.
-        client.emit('gameStateUpdated', JSON.parse(stateStr));
+        // Send only to this specific client who just joined/reconnected.
+        client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
       }
     } catch (err) {
       this.logger.error(
-        `Error fetching state for reconnecting client: ${err.message}`,
+        `Error fetching state for reconnecting client: ${(err as Error)?.message}`,
       );
     }
 
@@ -366,6 +810,14 @@ export class GameGateway
         this.logger.error(`Unauthorized access attempt by client ${client.id}`);
         return { status: 'error', message: 'Unauthorized' };
       }
+
+      // ── Rate limit check ──────────────────────────────────────────────────
+      if (this.isGuestRateLimited(String(userId))) {
+        this.logger.warn(`Rate limit hit for user ${userId}`);
+        client.emit('error', { message: 'Too many guesses — slow down.' });
+        return { status: 'error', message: 'Rate limit exceeded' };
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
       const { gameSessionId, guessName } = payload;
       if (!gameSessionId || !guessName) {
@@ -418,12 +870,12 @@ export class GameGateway
       let isCorrect = !!matchedPlayer;
 
       if (isCorrect) {
-        if (state.guessedPlayers.includes(matchedPlayer.name)) {
+        if (state.guessedPlayers.some((g: any) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
           // Penalty: treat already-guessed as a WRONG answer (strike) and proceed normally.
           isCorrect = false;
           state.strikes[userId] += 1;
         } else {
-          state.guessedPlayers.push(matchedPlayer.name);
+          state.guessedPlayers.push({ name: matchedPlayer.name, guessedBy: userId });
           state.scores[userId] += 1;
         }
       } else {
@@ -475,12 +927,16 @@ export class GameGateway
       this.logger.log(`Executing Redis transaction to update state`);
       const multi = this.redisClient.multi();
       multi.set(key, JSON.stringify(state));
+      if (isMatchOver) {
+        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+      }
       const results = await multi.exec();
 
       if (!results) {
         this.logger.error(
           `Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`,
         );
+        await this.redisClient.unwatch().catch(() => {});
         // Restart timer for whoever currently has the turn (best-effort).
         this.startTurnTimer(gameSessionId);
         return {
@@ -505,8 +961,22 @@ export class GameGateway
 
       if (isMatchOver) {
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
-        this.server.to(gameSessionId).emit('matchOver', updatePayload);
         this.clearTurnTimer(gameSessionId);
+        const loserId = state.players.find((p: string) => p !== state.winner) as string;
+        const mmrDeltas = await this.resolveMmrDeltasForMatch(
+          state,
+          state.winner,
+          loserId,
+          false,
+        );
+        this.server.to(gameSessionId).emit('matchOver', {
+          ...updatePayload,
+          forfeit: false,
+          mmrDeltas,
+        });
+        this.initializeRematch(gameSessionId, state).catch((e) =>
+          this.logger.error(`initializeRematch failed: ${e?.message}`),
+        );
       } else if (isRoundOver) {
         this.logger.log(`Broadcasting roundOver to room ${gameSessionId}`);
         this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
@@ -582,6 +1052,87 @@ export class GameGateway
       await this.redisClient.unwatch().catch(() => {});
       if (payload?.gameSessionId) this.startTurnTimer(payload.gameSessionId);
       return { status: 'error', message: 'Internal server error' };
+    }
+  }
+
+  @SubscribeMessage('forfeitMatch')
+  async handleForfeitMatch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('gameSessionId') gameSessionId: string,
+  ) {
+    const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+    if (!userId || !gameSessionId) {
+      return { status: 'error', message: 'Invalid request' };
+    }
+
+    this.clearTurnTimer(gameSessionId);
+
+    const gameKey = `game:${gameSessionId}`;
+    try {
+      await this.redisClient.watch(gameKey);
+      const stateStr = await this.redisClient.get(gameKey);
+      if (!stateStr) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Game not found' };
+      }
+      const state = JSON.parse(stateStr);
+      if (state.status === 'match_completed') {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Match already finished' };
+      }
+      if (!state.players?.includes(userId)) {
+        await this.redisClient.unwatch();
+        return { status: 'error', message: 'Not a player in this game' };
+      }
+
+      const winnerId = state.players.find((p: string) => p !== userId) as string;
+      state.status = 'match_completed';
+      state.winner = winnerId;
+
+      if (!Array.isArray(state.roundHistory)) state.roundHistory = [];
+      if (!state.roundHistory.some((r: any) => r?.round === state.currentRound)) {
+        state.roundHistory.push({
+          round: state.currentRound,
+          winner: winnerId,
+          scores: { ...(state.scores ?? {}) },
+        });
+      }
+
+      const multi = this.redisClient.multi();
+      multi.set(gameKey, JSON.stringify(state));
+      this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+      const results = await multi.exec();
+
+      if (!results) {
+        await this.redisClient.unwatch().catch(() => {});
+        return { status: 'error', message: 'Concurrent update, try again' };
+      }
+
+      this.clearTurnTimer(gameSessionId);
+
+      const mmrDeltas = await this.resolveMmrDeltasForMatch(
+        state,
+        winnerId,
+        userId,
+        true,
+      );
+      this.server.to(gameSessionId).emit('matchOver', {
+        state,
+        forfeit: true,
+        forfeitedByUserId: userId,
+        mmrDeltas,
+      });
+
+      this.initializeRematch(gameSessionId, state).catch((e) =>
+        this.logger.error(`initializeRematch (manual forfeit) failed: ${e?.message}`),
+      );
+
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error(`Error in forfeitMatch: ${error?.message}`, error?.stack);
+      return { status: 'error', message: 'Internal server error' };
+    } finally {
+      await this.redisClient.unwatch().catch(() => {});
     }
   }
 }
