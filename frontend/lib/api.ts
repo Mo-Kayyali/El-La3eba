@@ -57,6 +57,7 @@ export type MeProfile = {
   isVerified: boolean;
   createdAt: string;
   pendingIncomingFriendRequests: number;
+  activeGameSessionId: string | null;
   offlineDisconnectCount: number;
   lastDisconnectAt: string | null;
   pendingOfflinePenalty: {

@@ -61,6 +61,9 @@ let AuthService = class AuthService {
     penaltyKey(userId) {
         return `penalty:${userId}`;
     }
+    activeGameKey(userId) {
+        return `user_active_game:${userId}`;
+    }
     async getPendingOfflinePenalty(userId) {
         const cached = await this.redisService.get(this.penaltyKey(userId));
         if (cached) {
@@ -126,7 +129,7 @@ let AuthService = class AuthService {
         return this.generateToken(user, dto.rememberMe === true);
     }
     async getProfileById(userId) {
-        const [user, pendingIncomingFriendRequests, pendingOfflinePenalty] = await Promise.all([
+        const [user, pendingIncomingFriendRequests, pendingOfflinePenalty, activeGameSessionId,] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
                 select: {
@@ -149,12 +152,28 @@ let AuthService = class AuthService {
                 },
             }),
             this.getPendingOfflinePenalty(userId),
+            (async () => {
+                const primary = await this.redisService.get(this.activeGameKey(userId));
+                if (primary)
+                    return primary;
+                const legacy = await this.redisService.get(`active_game:${userId}`);
+                if (!legacy)
+                    return null;
+                await this.redisService
+                    .multi()
+                    .set(this.activeGameKey(userId), legacy)
+                    .del(`active_game:${userId}`)
+                    .exec()
+                    .catch(() => null);
+                return legacy;
+            })(),
         ]);
         if (!user) {
             throw new common_1.UnauthorizedException();
         }
         return {
             ...user,
+            activeGameSessionId,
             pendingIncomingFriendRequests,
             pendingOfflinePenalty,
         };

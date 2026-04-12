@@ -325,7 +325,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 }
                 this.clearTurnTimer(gameSessionId);
                 const mmrDeltas = await this.resolveMmrDeltasForMatch(state, winnerId, userId, true);
-                const mmrLost = Math.max(0, -(mmrDeltas?.[userId] ?? -15));
+                const mmrLost = state.isRanked
+                    ? Math.max(0, -(mmrDeltas?.[userId] ?? -15))
+                    : 0;
                 await this.usersService
                     .recordOfflinePenalty(userId, gameSessionId, mmrLost)
                     .catch((error) => {

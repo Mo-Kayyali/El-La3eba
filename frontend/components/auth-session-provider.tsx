@@ -7,7 +7,6 @@ import { AppNavbar } from "@/components/app-navbar";
 import { GlobalInviteOverlay } from "@/components/global-invite-overlay";
 import {
   acknowledgeOfflinePenalty,
-  api,
   refreshAuthProfile,
   syncAxiosAuthFromStore,
 } from "@/lib/api";
@@ -23,6 +22,7 @@ export function AuthSessionProvider({
   const router = useRouter();
   const pathname = usePathname();
   const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const bootstrapped = useAuthStore((s) => s.bootstrapped);
   const setBootstrapped = useAuthStore((s) => s.setBootstrapped);
@@ -245,27 +245,23 @@ export function AuthSessionProvider({
 
   useEffect(() => {
     if (!bootstrapped) return;
-    if (pathname !== "/" && pathname !== "/lobby") return;
-    if (!accessToken) return;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const { data } = await api.get<{ gameSessionId: string | null }>(
-          "/game/active-game",
-        );
-        if (cancelled) return;
-        const gid = data?.gameSessionId;
-        if (gid) router.replace(`/game/${gid}`);
-      } catch {
-        /* ignore */
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [bootstrapped, pathname, router, accessToken]);
+    if (!isAuthenticated) return;
+    const gid =
+      typeof user?.activeGameSessionId === "string" &&
+      user.activeGameSessionId.trim().length > 0
+        ? user.activeGameSessionId
+        : null;
+    if (!gid) return;
+    const targetPath = `/game/${gid}`;
+    if (pathname === targetPath) return;
+    router.replace(targetPath);
+  }, [
+    bootstrapped,
+    isAuthenticated,
+    pathname,
+    router,
+    user?.activeGameSessionId,
+  ]);
 
   return (
     <>
@@ -293,11 +289,18 @@ export function AuthSessionProvider({
               You disconnected from an active match.
             </h2>
             <p className="mt-3 text-sm text-zinc-300">
-              You forfeited game {pendingOfflinePenalty.gameSessionId} and lost{" "}
-              <span className="font-bold text-red-300">
-                {pendingOfflinePenalty.mmrLost} MMR
-              </span>
-              .
+              {pendingOfflinePenalty.mmrLost === 0 ? (
+                <>You disconnected from an unrated match and forfeited.</>
+              ) : (
+                <>
+                  You forfeited game {pendingOfflinePenalty.gameSessionId} and
+                  lost{" "}
+                  <span className="font-bold text-red-300">
+                    {pendingOfflinePenalty.mmrLost} MMR
+                  </span>
+                  .
+                </>
+              )}
             </p>
             <button
               onClick={() => void handleAcknowledgeOfflinePenalty()}
@@ -317,9 +320,10 @@ export function AuthSessionProvider({
         className="!top-4 !right-4 !z-[100]"
         toastOptions={{
           classNames: {
-            toast: "!border-white/10 !bg-zinc-900/95 !backdrop-blur-xl",
+            toast:
+              "!relative !border-white/10 !bg-zinc-900/95 !pr-10 !backdrop-blur-xl",
             closeButton:
-              "!border-white/10 !bg-zinc-800/80 !text-zinc-100 hover:!bg-zinc-700",
+              "!absolute !right-2 !left-auto !top-1/2 !translate-x-0 !-translate-y-1/2 !border-white/10 !bg-zinc-800/80 !text-zinc-100 hover:!bg-zinc-700",
           },
         }}
       />

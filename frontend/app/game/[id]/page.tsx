@@ -258,10 +258,13 @@ export default function GamePage() {
   const flashLeftTimer = useRef<number | null>(null);
   const flashRightTimer = useRef<number | null>(null);
 
-  // Disconnect overlay state
+  // Non-blocking disconnect banner state
   const [disconnectedUserId, setDisconnectedUserId] = useState<string | null>(
     null,
   );
+  const [disconnectSecondsLeft, setDisconnectSecondsLeft] = useState<
+    number | null
+  >(null);
 
   // Rematch state
   const [rematchSecondsLeft, setRematchSecondsLeft] = useState(30);
@@ -298,6 +301,8 @@ export default function GamePage() {
     setOpponentWantsRematch(false);
     setOpponentLeftRematch(false);
     setMatchEndedByForfeit(false);
+    setDisconnectedUserId(null);
+    setDisconnectSecondsLeft(null);
   }, [gameSessionId]);
 
   useEffect(() => {
@@ -358,6 +363,8 @@ export default function GamePage() {
       setGameState(actualState ?? null);
       setIsTransitioning(false);
       setTransitionSecondsLeft(0);
+      setDisconnectedUserId(null);
+      setDisconnectSecondsLeft(null);
 
       const rawForfeit = (payload as { forfeit?: boolean })?.forfeit === true;
       setMatchEndedByForfeit(rawForfeit);
@@ -449,6 +456,7 @@ export default function GamePage() {
       if (!dropped) return;
       if (userId !== undefined && dropped === String(userId)) return;
       setDisconnectedUserId(dropped);
+      setDisconnectSecondsLeft(30);
     };
 
     const onPlayerReconnected = (payload: {
@@ -458,7 +466,11 @@ export default function GamePage() {
       if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId)
         return;
       const uid = payload?.userId ? String(payload.userId) : "";
-      setDisconnectedUserId((prev) => (uid && uid === prev ? null : prev));
+      setDisconnectedUserId((prev) => {
+        if (!uid || uid !== prev) return prev;
+        setDisconnectSecondsLeft(null);
+        return null;
+      });
     };
 
     socket.on("gameStateUpdated", onGameStateUpdated);
@@ -632,6 +644,19 @@ export default function GamePage() {
     }, 1000);
     return () => window.clearInterval(id);
   }, [isTransitioning, transitionSecondsLeft]);
+
+  useEffect(() => {
+    if (!disconnectedUserId || isMatchOver) return;
+
+    const id = window.setInterval(() => {
+      setDisconnectSecondsLeft((current) => {
+        if (typeof current !== "number") return 0;
+        return Math.max(0, current - 1);
+      });
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [disconnectedUserId, isMatchOver]);
 
   // 30-second rematch countdown
   useEffect(() => {
@@ -1175,6 +1200,23 @@ export default function GamePage() {
           </div>
         )}
 
+        {disconnectedUserId && !isMatchOver && (
+          <div className="mt-5 flex justify-center">
+            <div className="w-full max-w-3xl rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-center shadow-[0_0_24px_rgba(251,191,36,0.14)]">
+              <p className="text-sm font-semibold text-amber-100">
+                {playerNames[disconnectedUserId] ?? "Opponent"} disconnected.
+                Match will forfeit in{" "}
+                <span className="tabular-nums text-amber-300">
+                  {typeof disconnectSecondsLeft === "number"
+                    ? `${disconnectSecondsLeft}s`
+                    : "30s"}
+                </span>{" "}
+                unless they reconnect.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Main 3-column grid ── */}
         <main className="mt-6 grid gap-5 lg:grid-cols-[1fr_1.3fr_1fr]">
           {/* Left player card */}
@@ -1418,29 +1460,6 @@ export default function GamePage() {
             Forfeit Match
           </button>
         </div>
-
-        {/* ── Disconnect overlay ── */}
-        {disconnectedUserId && !isMatchOver && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="w-full max-w-sm rounded-3xl border border-amber-400/20 bg-[#030712] p-8 text-center shadow-[0_0_60px_rgba(251,191,36,0.15)]">
-              <div className="mb-4 flex justify-center">
-                <span className="inline-flex h-12 w-12 animate-spin rounded-full border-4 border-amber-400/20 border-t-amber-400" />
-              </div>
-              <h3 className="text-lg font-extrabold text-white">
-                Waiting for opponent to reconnect…
-              </h3>
-              <p className="mt-2 text-sm text-slate-400">
-                <span className="font-semibold text-amber-300">
-                  {playerNames[disconnectedUserId] ?? "Opponent"}
-                </span>{" "}
-                dropped from the match. The game resumes when they return.
-              </p>
-              <p className="mt-3 text-xs text-slate-600">
-                30-second reconnection window before forfeit.
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* No game state yet */}
         {!gameState && (

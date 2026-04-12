@@ -468,7 +468,9 @@ export class GameGateway
           userId,
           true,
         );
-        const mmrLost = Math.max(0, -(mmrDeltas?.[userId] ?? -15));
+        const mmrLost = state.isRanked
+          ? Math.max(0, -(mmrDeltas?.[userId] ?? -15))
+          : 0;
         await this.usersService
           .recordOfflinePenalty(userId, gameSessionId, mmrLost)
           .catch((error) => {

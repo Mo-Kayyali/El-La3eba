@@ -23,6 +23,10 @@ export class AuthService {
     return `penalty:${userId}`;
   }
 
+  private activeGameKey(userId: string) {
+    return `user_active_game:${userId}`;
+  }
+
   private async getPendingOfflinePenalty(userId: string): Promise<{
     id: string;
     mmrLost: number;
@@ -120,36 +124,54 @@ export class AuthService {
   }
 
   async getProfileById(userId: string) {
-    const [user, pendingIncomingFriendRequests, pendingOfflinePenalty] =
-      await Promise.all([
-        this.prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            mmr: true,
-            wins: true,
-            gamesPlayed: true,
-            isVerified: true,
-            createdAt: true,
-            offlineDisconnectCount: true,
-            lastDisconnectAt: true,
-          },
-        }),
-        this.prisma.friendship.count({
-          where: {
-            friendId: userId,
-            status: FriendshipStatus.PENDING,
-          },
-        }),
-        this.getPendingOfflinePenalty(userId),
-      ]);
+    const [
+      user,
+      pendingIncomingFriendRequests,
+      pendingOfflinePenalty,
+      activeGameSessionId,
+    ] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          mmr: true,
+          wins: true,
+          gamesPlayed: true,
+          isVerified: true,
+          createdAt: true,
+          offlineDisconnectCount: true,
+          lastDisconnectAt: true,
+        },
+      }),
+      this.prisma.friendship.count({
+        where: {
+          friendId: userId,
+          status: FriendshipStatus.PENDING,
+        },
+      }),
+      this.getPendingOfflinePenalty(userId),
+      (async () => {
+        const primary = await this.redisService.get(this.activeGameKey(userId));
+        if (primary) return primary;
+        const legacy = await this.redisService.get(`active_game:${userId}`);
+        if (!legacy) return null;
+        await this.redisService
+          .multi()
+          .set(this.activeGameKey(userId), legacy)
+          .del(`active_game:${userId}`)
+          .exec()
+          .catch(() => null);
+        return legacy;
+      })(),
+    ]);
     if (!user) {
       throw new UnauthorizedException();
     }
     return {
       ...user,
+      activeGameSessionId,
       pendingIncomingFriendRequests,
       pendingOfflinePenalty,
     };
