@@ -564,3 +564,35 @@ function RequestRow({
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-white">{request.username}</p>
+          <p className="mt-1 text-xs text-slate-500">Friend request received</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onReject}
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white transition"
+          >
+            Reject
+          </button>
+          <button
+            onClick={onAccept}
+            className="rounded-xl bg-emerald-500/90 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LegendRow({ dot, label }: { dot: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`h-3 w-3 rounded-full ${dot}`} />
+      <span>{label}</span>
+    </div>
+  );
+}

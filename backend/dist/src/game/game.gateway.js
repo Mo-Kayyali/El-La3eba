@@ -70,7 +70,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
     async broadcastFriendPresences() {
         if (!this.server)
             return;
-        const userIds = await this.redisClient.hkeys('presence').catch(() => []);
+        const userIds = await this.redisClient
+            .hkeys('presence')
+            .catch(() => []);
         if (!userIds.length)
             return;
         await Promise.all(userIds.map(async (userId) => {
@@ -247,7 +249,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     await this.redisClient.unwatch();
                     return;
                 }
-                state.strikes[timedOutUserId] = (state.strikes[timedOutUserId] ?? 0) + 1;
+                state.strikes[timedOutUserId] =
+                    (state.strikes[timedOutUserId] ?? 0) + 1;
                 let isRoundOver = false;
                 let isMatchOver = false;
                 let roundWinner = null;
@@ -352,7 +355,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         this.startTurnTimer(gameSessionId);
                         return;
                     }
-                    const nextPayload = { state: latest, lastGuess: updatePayload.lastGuess };
+                    const nextPayload = {
+                        state: latest,
+                        lastGuess: updatePayload.lastGuess,
+                    };
                     this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
                     this.startTurnTimer(gameSessionId);
                 }
@@ -407,7 +413,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
             for (const room of rooms) {
                 if (!room || room === client.id)
                     continue;
-                const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
+                const stateExists = await this.redisClient
+                    .exists(`game:${room}`)
+                    .catch(() => 0);
                 if (!stateExists)
                     continue;
                 let endedMatch = false;
@@ -421,13 +429,17 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 catch {
                 }
                 if (endedMatch && userId) {
-                    this.server.to(room).emit('opponentLeft', { userId, gameSessionId: room });
+                    this.server
+                        .to(room)
+                        .emit('opponentLeft', { userId, gameSessionId: room });
                     this.logger.log(`User ${userId} left ended game ${room} — opponentLeft emitted`);
                     continue;
                 }
                 if (userId) {
                     this.startDisconnectTimer(room, userId);
-                    this.server.to(room).emit('playerDisconnected', { userId, gameSessionId: room });
+                    this.server
+                        .to(room)
+                        .emit('playerDisconnected', { userId, gameSessionId: room });
                     this.logger.log(`User ${userId} disconnected from game ${room} — grace period started`);
                 }
             }
@@ -541,7 +553,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             multi.set(rematchKey, JSON.stringify(rematch), 'EX', 35);
             const results = await multi.exec();
             if (!results) {
-                return { status: 'retry', message: 'Concurrent update, please try again' };
+                return {
+                    status: 'retry',
+                    message: 'Concurrent update, please try again',
+                };
             }
             this.server.to(gameSessionId).emit('rematchRequested', { userId });
             if (rematch.p1Ready && rematch.p2Ready) {
@@ -554,8 +569,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     this.setPresenceInGame(rematch.p1Id, newGameSessionId),
                     this.setPresenceInGame(rematch.p2Id, newGameSessionId),
                 ]);
-                this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
-                this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
+                this.server
+                    .to(gameSessionId)
+                    .emit('rematchStarting', { newGameSessionId });
+                this.server
+                    .to(newGameSessionId)
+                    .emit('gameStateUpdated', { state: newState });
                 this.startTurnTimer(newGameSessionId);
                 this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
             }
@@ -586,7 +605,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
             await this.setPresenceOnline(userId);
             client.leave(gameSessionId);
-            this.server.to(gameSessionId).emit('opponentLeft', { userId, gameSessionId });
+            this.server
+                .to(gameSessionId)
+                .emit('opponentLeft', { userId, gameSessionId });
             this.logger.log(`User ${userId} acknowledged leaving ended match ${gameSessionId}`);
             return { status: 'ok' };
         }
@@ -687,7 +708,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     state.strikes[userId] += 1;
                 }
                 else {
-                    state.guessedPlayers.push({ name: matchedPlayer.name, guessedBy: userId });
+                    state.guessedPlayers.push({
+                        name: matchedPlayer.name,
+                        guessedBy: userId,
+                    });
                     state.scores[userId] += 1;
                 }
             }
