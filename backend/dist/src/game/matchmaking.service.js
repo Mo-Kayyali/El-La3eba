@@ -24,13 +24,12 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     logger = new common_1.Logger(MatchmakingService_1.name);
     server;
     startTurnTimerFn;
-    searchExpiryTimers = new Map();
     roomExpiryTimers = new Map();
     SEARCH_TTL_SECONDS = 60;
     PRIVATE_ROOM_TTL_SECONDS = 60;
     QUEUES = {
-        ranked: { list: 'ranked_queue', members: 'ranked_queue_members' },
-        unrated: { list: 'unrated_queue', members: 'unrated_queue_members' },
+        ranked: { zset: 'ranked_queue', members: 'ranked_queue_members' },
+        unrated: { zset: 'unrated_queue', members: 'unrated_queue_members' },
     };
     constructor(redisClient, prisma) {
         this.redisClient = redisClient;
@@ -44,27 +43,6 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     }
     queueSearchKey(userId) {
         return `queue_search:${userId}`;
-    }
-    clearSearchExpiryTimer(userId) {
-        const timer = this.searchExpiryTimers.get(userId);
-        if (!timer)
-            return;
-        clearTimeout(timer);
-        this.searchExpiryTimers.delete(userId);
-    }
-    scheduleSearchExpiry(userId, socketId, mode) {
-        this.clearSearchExpiryTimer(userId);
-        const timeout = setTimeout(async () => {
-            this.searchExpiryTimers.delete(userId);
-            const key = this.queueSearchKey(userId);
-            const stillSearching = await this.redisClient.exists(key).catch(() => 0);
-            if (!stillSearching)
-                return;
-            await this.cancelSearch(userId).catch(() => { });
-            this.server?.to(userId).emit('searchExpired', { mode });
-            this.server?.to(socketId).emit('searchExpired', { mode });
-        }, this.SEARCH_TTL_SECONDS * 1000);
-        this.searchExpiryTimers.set(userId, timeout);
     }
     clearRoomExpiryTimer(userId) {
         const timer = this.roomExpiryTimers.get(userId);
@@ -96,61 +74,134 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         this.roomExpiryTimers.set(userId, timeout);
     }
     async joinQueue(userId, socketId, username, mode) {
-        const { list, members } = this.QUEUES[mode];
+        const { zset, members } = this.QUEUES[mode];
         const opposite = mode === 'ranked' ? 'unrated' : 'ranked';
-        await this.redisClient.srem(this.QUEUES[opposite].members, userId);
+        await this.removeUserFromQueue(opposite, userId);
         await this.cleanupUserPrivateRoom(userId);
-        await this.redisClient.srem(members, userId);
+        await Promise.all([
+            this.redisClient.zrem(zset, userId),
+            this.redisClient.srem(members, userId),
+        ]);
+        const createdAtMs = Date.now();
         const entry = { userId, socketId, username };
         await Promise.all([
-            this.redisClient.lpush(list, JSON.stringify(entry)),
+            this.redisClient.zadd(zset, createdAtMs, userId),
             this.redisClient.sadd(members, userId),
-            this.redisClient.set(this.queueSearchKey(userId), JSON.stringify({ mode, socketId, createdAt: new Date().toISOString() }), 'EX', this.SEARCH_TTL_SECONDS),
+            this.redisClient.set(this.queueSearchKey(userId), JSON.stringify({
+                mode,
+                userId,
+                socketId,
+                username,
+                createdAtMs,
+            }), 'EX', this.SEARCH_TTL_SECONDS),
         ]);
-        this.scheduleSearchExpiry(userId, socketId, mode);
         this.logger.log(`User ${userId} joined ${mode} queue`);
     }
     async cancelSearch(userId) {
-        this.clearSearchExpiryTimer(userId);
         await Promise.all([
-            this.redisClient.srem(this.QUEUES.ranked.members, userId),
-            this.redisClient.srem(this.QUEUES.unrated.members, userId),
+            this.removeUserFromQueue('ranked', userId),
+            this.removeUserFromQueue('unrated', userId),
             this.redisClient.del(this.queueSearchKey(userId)),
         ]);
         this.logger.log(`User ${userId} removed from all queues`);
     }
-    async popValidPlayer(list, members) {
-        const MAX_ATTEMPTS = 50;
-        for (let i = 0; i < MAX_ATTEMPTS; i++) {
-            const entryStr = await this.redisClient.rpop(list);
-            if (!entryStr)
-                return null;
-            const entry = JSON.parse(entryStr);
-            const isMember = await this.redisClient.sismember(members, entry.userId);
-            if (isMember) {
-                const searchExists = await this.redisClient
-                    .exists(this.queueSearchKey(entry.userId))
-                    .catch(() => 0);
-                if (!searchExists) {
-                    await this.redisClient.srem(members, entry.userId);
-                    this.clearSearchExpiryTimer(entry.userId);
-                    this.server?.to(entry.userId).emit('searchExpired', {
-                        mode: members === this.QUEUES.ranked.members ? 'ranked' : 'unrated',
-                    });
-                    this.server?.to(entry.socketId).emit('searchExpired', {
-                        mode: members === this.QUEUES.ranked.members ? 'ranked' : 'unrated',
-                    });
-                    continue;
-                }
-                await Promise.all([
-                    this.redisClient.srem(members, entry.userId),
-                    this.redisClient.del(this.queueSearchKey(entry.userId)),
-                ]);
-                this.clearSearchExpiryTimer(entry.userId);
-                return entry;
-            }
+    async removeUserFromQueue(mode, userId) {
+        const { zset, members } = this.QUEUES[mode];
+        await Promise.all([
+            this.redisClient.zrem(zset, userId),
+            this.redisClient.srem(members, userId),
+        ]);
+    }
+    async purgeExpiredUsers(mode) {
+        const { zset, members } = this.QUEUES[mode];
+        const cutoff = Date.now() - this.SEARCH_TTL_SECONDS * 1000;
+        const expiredUserIds = await this.redisClient.zrangebyscore(zset, '-inf', cutoff);
+        if (!expiredUserIds.length)
+            return;
+        const keys = expiredUserIds.map((id) => this.queueSearchKey(id));
+        const rawEntries = keys.length
+            ? await this.redisClient.mget(...keys)
+            : [];
+        await this.redisClient.zremrangebyscore(zset, '-inf', cutoff);
+        const multi = this.redisClient.multi();
+        if (expiredUserIds.length > 0) {
+            multi.srem(members, ...expiredUserIds);
+            multi.del(...keys);
         }
-        return null;
+        await multi.exec();
+        rawEntries.forEach((raw, idx) => {
+            const userId = expiredUserIds[idx];
+            if (!raw || !userId)
+                return;
+            try {
+                const parsed = JSON.parse(raw);
+                const targetUserId = parsed.userId ?? userId;
+                if (targetUserId) {
+                    this.server?.to(targetUserId).emit('searchExpired', { mode });
+                }
+                if (parsed.socketId) {
+                    this.server?.to(parsed.socketId).emit('searchExpired', { mode });
+                }
+            }
+            catch {
+                this.server?.to(userId).emit('searchExpired', { mode });
+            }
+        });
+    }
+    async popValidPlayerPair(zset, members) {
+        const script = `
+local queueKey = KEYS[1]
+local membersKey = KEYS[2]
+local entries = redis.call('ZRANGE', queueKey, 0, 99)
+local selected = {}
+
+for _, userId in ipairs(entries) do
+  local isMember = redis.call('SISMEMBER', membersKey, userId)
+  if isMember == 1 then
+    local raw = redis.call('GET', 'queue_search:' .. userId)
+    if raw then
+      table.insert(selected, raw)
+      if #selected == 2 then
+        break
+      end
+    else
+      redis.call('SREM', membersKey, userId)
+      redis.call('ZREM', queueKey, userId)
+    end
+  else
+    redis.call('ZREM', queueKey, userId)
+  end
+end
+
+if #selected < 2 then
+  return {}
+end
+
+for _, raw in ipairs(selected) do
+  local data = cjson.decode(raw)
+  local userId = tostring(data.userId)
+  redis.call('ZREM', queueKey, userId)
+  redis.call('SREM', membersKey, userId)
+  redis.call('DEL', 'queue_search:' .. userId)
+end
+
+return selected
+`;
+        const result = await this.redisClient.eval(script, 2, zset, members);
+        if (!Array.isArray(result) || result.length < 2) {
+            return null;
+        }
+        try {
+            const p1 = JSON.parse(String(result[0]));
+            const p2 = JSON.parse(String(result[1]));
+            if (!p1?.userId || !p2?.userId || p1.userId === p2.userId) {
+                return null;
+            }
+            return [p1, p2];
+        }
+        catch {
+            return null;
+        }
     }
     async createPrivateRoom(userId, socketId, username) {
         await this.cancelSearch(userId);
@@ -244,24 +295,15 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         ]);
     }
     async processQueue(mode, isRanked) {
-        const { list, members } = this.QUEUES[mode];
-        const queueLength = await this.redisClient.llen(list);
+        const { zset, members } = this.QUEUES[mode];
+        await this.purgeExpiredUsers(mode);
+        const queueLength = await this.redisClient.zcard(zset);
         if (queueLength < 2)
             return;
-        const p1 = await this.popValidPlayer(list, members);
-        if (!p1)
+        const pair = await this.popValidPlayerPair(zset, members);
+        if (!pair)
             return;
-        const p2 = await this.popValidPlayer(list, members);
-        if (!p2) {
-            await this.redisClient.lpush(list, JSON.stringify(p1));
-            await this.redisClient.sadd(members, p1.userId);
-            return;
-        }
-        if (p1.userId === p2.userId) {
-            await this.redisClient.lpush(list, JSON.stringify(p2));
-            await this.redisClient.sadd(members, p2.userId);
-            return;
-        }
+        const [p1, p2] = pair;
         await Promise.all([
             this.cleanupUserPrivateRoom(p1.userId),
             this.cleanupUserPrivateRoom(p2.userId),

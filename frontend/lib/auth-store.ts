@@ -37,8 +37,12 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       bootstrapped: false,
-      setAuth: ({ accessToken, user }) =>
-        set({ accessToken, user, isAuthenticated: true }),
+      setAuth: ({ accessToken, user }) => {
+        if (typeof document !== "undefined") {
+          document.cookie = `el_la3eba_token=${encodeURIComponent(accessToken)}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
+        }
+        set({ accessToken, user, isAuthenticated: true });
+      },
       setUser: (user) => set({ user, isAuthenticated: true }),
       applyMmrDelta: (delta) =>
         set((s) => {
@@ -46,13 +50,18 @@ export const useAuthStore = create<AuthState>()(
           return { user: { ...s.user, mmr: s.user.mmr + delta } };
         }),
       setBootstrapped: (bootstrapped) => set({ bootstrapped }),
-      logout: () =>
+      logout: () => {
+        if (typeof document !== "undefined") {
+          document.cookie =
+            "el_la3eba_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+        }
         set({
           accessToken: null,
           user: null,
           isAuthenticated: false,
           bootstrapped: true,
-        }),
+        });
+      },
     }),
     {
       name: "el-la3eba-auth",

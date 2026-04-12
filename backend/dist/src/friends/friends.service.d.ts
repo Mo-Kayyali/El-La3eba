@@ -67,5 +67,6 @@ export declare class FriendsService {
         gameSessionId: string | null;
     }[]>;
     ensureUsersAreFriends(userId: string, otherUserId: string): Promise<void>;
+    countIncomingFriendRequests(userId: string): Promise<number>;
 }
 export {};

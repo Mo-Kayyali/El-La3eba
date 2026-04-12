@@ -9,7 +9,6 @@ export declare class MatchmakingService {
     private readonly logger;
     private server;
     private startTurnTimerFn?;
-    private readonly searchExpiryTimers;
     private readonly roomExpiryTimers;
     private readonly SEARCH_TTL_SECONDS;
     private readonly PRIVATE_ROOM_TTL_SECONDS;
@@ -18,13 +17,13 @@ export declare class MatchmakingService {
     setServer(server: Server): void;
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
     private queueSearchKey;
-    private clearSearchExpiryTimer;
-    private scheduleSearchExpiry;
     private clearRoomExpiryTimer;
     private schedulePrivateRoomExpiry;
     joinQueue(userId: string, socketId: string, username: string | undefined, mode: QueueMode): Promise<void>;
     cancelSearch(userId: string): Promise<void>;
-    private popValidPlayer;
+    private removeUserFromQueue;
+    private purgeExpiredUsers;
+    private popValidPlayerPair;
     createPrivateRoom(userId: string, socketId: string, username?: string): Promise<string>;
     cancelPrivateRoom(userId: string): Promise<void>;
     private cleanupUserPrivateRoom;

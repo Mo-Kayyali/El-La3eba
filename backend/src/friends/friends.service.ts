@@ -283,4 +283,13 @@ export class FriendsService {
       throw new BadRequestException('You can only invite accepted friends');
     }
   }
+
+  async countIncomingFriendRequests(userId: string): Promise<number> {
+    return this.prisma.friendship.count({
+      where: {
+        friendId: userId,
+        status: FriendshipStatus.PENDING,
+      },
+    });
+  }
 }

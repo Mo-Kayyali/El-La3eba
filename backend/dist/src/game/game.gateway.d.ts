@@ -6,12 +6,14 @@ import type { QueueMode } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { FriendsService } from '../friends/friends.service';
+import { UsersService } from '../users/users.service';
 export declare class GameGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
     private readonly jwtService;
     private readonly matchmakingService;
     private readonly gameService;
     private readonly redisClient;
     private readonly friendsService;
+    private readonly usersService;
     server: Server;
     private readonly logger;
     private readonly turnTimers;
@@ -23,7 +25,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly DISCONNECT_GRACE_MS;
     private readonly INVITE_COOLDOWN_SECONDS;
     private readonly INVITE_TTL_SECONDS;
-    constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService, friendsService: FriendsService);
+    constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService, friendsService: FriendsService, usersService: UsersService);
     private sleep;
     private inviteCooldownKey;
     private inviteKey;

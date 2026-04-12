@@ -231,6 +231,14 @@ let FriendsService = class FriendsService {
             throw new common_1.BadRequestException('You can only invite accepted friends');
         }
     }
+    async countIncomingFriendRequests(userId) {
+        return this.prisma.friendship.count({
+            where: {
+                friendId: userId,
+                status: client_1.FriendshipStatus.PENDING,
+            },
+        });
+    }
 };
 exports.FriendsService = FriendsService;
 exports.FriendsService = FriendsService = __decorate([

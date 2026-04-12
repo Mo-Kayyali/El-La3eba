@@ -26,22 +26,24 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         return;
       }
 
-      // If it's already in the process of connecting/reconnecting, do nothing.
-      if ((currentSocket as unknown as { active?: boolean }).active) return;
-
-      // Otherwise, attempt to reconnect without recreating the instance.
+      // Attempt to reconnect first, then recreate only if that fails.
       try {
         currentSocket.connect();
+        return;
       } catch {
-        // If connect() throws for any reason, fall through and recreate below.
+        currentSocket.disconnect();
+        set({ socket: null, isConnected: false });
       }
-      return;
     }
 
     // Initialize the socket
     const socket = io("http://localhost:3000", {
       auth: { token },
       autoConnect: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10,
     });
 
     // Listeners to update our global state
@@ -53,6 +55,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.on("disconnect", () => {
       console.log("⚠️ Socket disconnected!");
       set({ isConnected: false });
+    });
+
+    socket.io.on("reconnect", () => {
+      set({ isConnected: true });
     });
 
     set({ socket });

@@ -26,6 +26,7 @@ const crypto_1 = require("crypto");
 const game_questions_1 = require("./game.questions");
 const elo_util_1 = require("./elo.util");
 const friends_service_1 = require("../friends/friends.service");
+const users_service_1 = require("../users/users.service");
 const GUESS_RATE_LIMIT_MAX = 5;
 const GUESS_RATE_LIMIT_WINDOW_MS = 1000;
 let GameGateway = GameGateway_1 = class GameGateway {
@@ -34,6 +35,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
     gameService;
     redisClient;
     friendsService;
+    usersService;
     server;
     logger = new common_1.Logger(GameGateway_1.name);
     turnTimers = new Map();
@@ -42,15 +44,16 @@ let GameGateway = GameGateway_1 = class GameGateway {
     guessTimestamps = new Map();
     inviteExpiryTimers = new Map();
     roundTransitionMs = 4000;
-    DISCONNECT_GRACE_MS = 15_000;
+    DISCONNECT_GRACE_MS = 30_000;
     INVITE_COOLDOWN_SECONDS = 5;
     INVITE_TTL_SECONDS = 60;
-    constructor(jwtService, matchmakingService, gameService, redisClient, friendsService) {
+    constructor(jwtService, matchmakingService, gameService, redisClient, friendsService, usersService) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
         this.gameService = gameService;
         this.redisClient = redisClient;
         this.friendsService = friendsService;
+        this.usersService = usersService;
     }
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
@@ -321,6 +324,13 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 }
                 this.clearTurnTimer(gameSessionId);
                 const mmrDeltas = await this.resolveMmrDeltasForMatch(state, winnerId, userId, true);
+                const mmrLost = Math.max(0, -(mmrDeltas?.[userId] ?? -15));
+                await this.usersService
+                    .recordOfflinePenalty(userId, gameSessionId, mmrLost)
+                    .catch((error) => {
+                    const err = error;
+                    this.logger.error(`Failed to persist offline penalty for ${userId}: ${err?.message}`);
+                });
                 const payload = {
                     state,
                     forfeit: true,
@@ -514,6 +524,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 await client.join(userId);
                 await this.setPresenceOnline(userId);
                 this.emitFriendsPresenceSnapshot(userId).catch(() => { });
+                this.friendsService
+                    .countIncomingFriendRequests(userId)
+                    .then((pendingIncomingFriendRequests) => {
+                    client.emit('friendRequestCountSnapshot', {
+                        pendingIncomingFriendRequests,
+                    });
+                })
+                    .catch(() => { });
             }
             this.logger.log(`Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`);
         }
@@ -1285,6 +1303,7 @@ exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
         matchmaking_service_1.MatchmakingService,
         game_service_1.GameService,
         redis_service_1.RedisService,
-        friends_service_1.FriendsService])
+        friends_service_1.FriendsService,
+        users_service_1.UsersService])
 ], GameGateway);
 //# sourceMappingURL=game.gateway.js.map

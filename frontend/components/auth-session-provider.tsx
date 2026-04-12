@@ -1,11 +1,16 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { AppNavbar } from "@/components/app-navbar";
 import { GlobalInviteOverlay } from "@/components/global-invite-overlay";
-import { api, refreshAuthProfile, syncAxiosAuthFromStore } from "@/lib/api";
+import {
+  acknowledgeOfflinePenalty,
+  api,
+  refreshAuthProfile,
+  syncAxiosAuthFromStore,
+} from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
 import { useNotificationStore } from "@/src/store/notificationStore";
@@ -47,6 +52,13 @@ export function AuthSessionProvider({
   const pruneExpiredInvites = useNotificationStore(
     (s) => s.pruneExpiredInvites,
   );
+  const [pendingOfflinePenalty, setPendingOfflinePenalty] = useState<{
+    id: string;
+    mmrLost: number;
+    gameSessionId: string;
+    createdAt: string;
+  } | null>(null);
+  const [acknowledgingPenalty, setAcknowledgingPenalty] = useState(false);
 
   useEffect(() => {
     const unsub = useAuthStore.subscribe(() => {
@@ -65,11 +77,15 @@ export function AuthSessionProvider({
       syncAxiosAuthFromStore();
       const token = useAuthStore.getState().accessToken;
       if (!token) {
+        document.cookie =
+          "el_la3eba_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
         resetAllNotifications();
       } else {
+        document.cookie = `el_la3eba_token=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
         const profile = await refreshAuthProfile();
         if (!cancelled) {
           setPendingFriendRequests(profile?.pendingIncomingFriendRequests ?? 0);
+          setPendingOfflinePenalty(profile?.pendingOfflinePenalty ?? null);
         }
       }
       if (!cancelled) setBootstrapped(true);
@@ -104,12 +120,44 @@ export function AuthSessionProvider({
       resetInviteUiState();
     };
 
+    const onFriendRequestCountSnapshot = (payload: {
+      pendingIncomingFriendRequests?: number;
+    }) => {
+      if (typeof payload?.pendingIncomingFriendRequests === "number") {
+        setPendingFriendRequests(payload.pendingIncomingFriendRequests);
+      }
+    };
+
     socket.on("connect", onConnect);
+    socket.on("friendRequestCountSnapshot", onFriendRequestCountSnapshot);
 
     return () => {
       socket.off("connect", onConnect);
+      socket.off("friendRequestCountSnapshot", onFriendRequestCountSnapshot);
     };
-  }, [resetInviteUiState, socket]);
+  }, [resetInviteUiState, setPendingFriendRequests, socket]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      disconnectSocket();
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [disconnectSocket]);
+
+  async function handleAcknowledgeOfflinePenalty() {
+    if (acknowledgingPenalty) return;
+    setAcknowledgingPenalty(true);
+    try {
+      await acknowledgeOfflinePenalty();
+      setPendingOfflinePenalty(null);
+    } finally {
+      setAcknowledgingPenalty(false);
+    }
+  }
 
   useEffect(() => {
     if (!socket) return;
@@ -235,6 +283,32 @@ export function AuthSessionProvider({
         {children}
       </div>
       <GlobalInviteOverlay />
+      {pendingOfflinePenalty && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-red-400/25 bg-zinc-950 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">
+            <p className="text-xs uppercase tracking-[0.2em] text-red-300">
+              Offline Forfeit
+            </p>
+            <h2 className="mt-2 text-xl font-extrabold text-white">
+              You disconnected from an active match.
+            </h2>
+            <p className="mt-3 text-sm text-zinc-300">
+              You forfeited game {pendingOfflinePenalty.gameSessionId} and lost{" "}
+              <span className="font-bold text-red-300">
+                {pendingOfflinePenalty.mmrLost} MMR
+              </span>
+              .
+            </p>
+            <button
+              onClick={() => void handleAcknowledgeOfflinePenalty()}
+              disabled={acknowledgingPenalty}
+              className="mt-5 w-full rounded-2xl bg-red-500/90 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {acknowledgingPenalty ? "Acknowledging..." : "Acknowledge"}
+            </button>
+          </div>
+        </div>
+      )}
       <Toaster
         position="top-right"
         theme="dark"

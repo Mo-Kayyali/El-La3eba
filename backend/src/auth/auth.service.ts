@@ -19,6 +19,60 @@ export class AuthService {
     private redisService: RedisService,
   ) {}
 
+  private penaltyKey(userId: string) {
+    return `penalty:${userId}`;
+  }
+
+  private async getPendingOfflinePenalty(userId: string): Promise<{
+    id: string;
+    mmrLost: number;
+    gameSessionId: string;
+    createdAt: string;
+  } | null> {
+    const cached = await this.redisService.get(this.penaltyKey(userId));
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as {
+          id: string;
+          mmrLost: number;
+          gameSessionId: string;
+          createdAt: string;
+        };
+        if (parsed?.id && parsed?.gameSessionId) {
+          return parsed;
+        }
+      } catch {
+        await this.redisService.del(this.penaltyKey(userId)).catch(() => 0);
+      }
+    }
+
+    const penalty = await this.prisma.offlinePenalty.findFirst({
+      where: {
+        userId,
+        acknowledgedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!penalty) return null;
+
+    const payload = {
+      id: penalty.id,
+      mmrLost: penalty.mmrLost,
+      gameSessionId: penalty.gameSessionId,
+      createdAt: penalty.createdAt.toISOString(),
+    };
+
+    await this.redisService.set(
+      this.penaltyKey(userId),
+      JSON.stringify(payload),
+      'EX',
+      60 * 60 * 24 * 7,
+    );
+
+    return payload;
+  }
+
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findFirst({
       where: {
@@ -66,33 +120,54 @@ export class AuthService {
   }
 
   async getProfileById(userId: string) {
-    const [user, pendingIncomingFriendRequests] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          mmr: true,
-          wins: true,
-          gamesPlayed: true,
-          isVerified: true,
-          createdAt: true,
-        },
-      }),
-      this.prisma.friendship.count({
-        where: {
-          friendId: userId,
-          status: FriendshipStatus.PENDING,
-        },
-      }),
-    ]);
+    const [user, pendingIncomingFriendRequests, pendingOfflinePenalty] =
+      await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            mmr: true,
+            wins: true,
+            gamesPlayed: true,
+            isVerified: true,
+            createdAt: true,
+            offlineDisconnectCount: true,
+            lastDisconnectAt: true,
+          },
+        }),
+        this.prisma.friendship.count({
+          where: {
+            friendId: userId,
+            status: FriendshipStatus.PENDING,
+          },
+        }),
+        this.getPendingOfflinePenalty(userId),
+      ]);
     if (!user) {
       throw new UnauthorizedException();
     }
     return {
       ...user,
       pendingIncomingFriendRequests,
+      pendingOfflinePenalty,
+    };
+  }
+
+  async acknowledgeOfflinePenalty(userId: string) {
+    const acknowledgedAt = new Date();
+    const result = await this.prisma.offlinePenalty.updateMany({
+      where: {
+        userId,
+        acknowledgedAt: null,
+      },
+      data: { acknowledgedAt },
+    });
+    await this.redisService.del(this.penaltyKey(userId)).catch(() => 0);
+    return {
+      success: true,
+      cleared: result.count,
     };
   }
 

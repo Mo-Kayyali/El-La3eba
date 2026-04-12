@@ -58,4 +58,12 @@ export class AuthController {
   verifyEmail(@Request() req: any, @Body('code') code: string) {
     return this.authService.verifyEmail(req.user.userId, code);
   }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Acknowledge and clear pending offline penalty' })
+  @UseGuards(JwtAuthGuard)
+  @Post('acknowledge-offline-penalty')
+  acknowledgeOfflinePenalty(@Request() req: { user: { userId: string } }) {
+    return this.authService.acknowledgeOfflinePenalty(req.user.userId);
+  }
 }

@@ -20,6 +20,7 @@ import { randomUUID } from 'crypto';
 import { pickRandomFootballQuestion } from './game.questions';
 import { scoreMarginMultiplier } from './elo.util';
 import { FriendsService } from '../friends/friends.service';
+import { UsersService } from '../users/users.service';
 
 // ─── In-gateway sliding-window rate limiter ────────────────────────────────
 // Limits submitGuess to MAX_GUESSES_PER_WINDOW per user per WINDOW_MS.
@@ -60,7 +61,7 @@ export class GameGateway
   private readonly roundTransitionMs = 4000;
 
   /** Disconnect grace period before a forfeit is issued (ms). */
-  private readonly DISCONNECT_GRACE_MS = 15_000;
+  private readonly DISCONNECT_GRACE_MS = 30_000;
   private readonly INVITE_COOLDOWN_SECONDS = 5;
   private readonly INVITE_TTL_SECONDS = 60;
 
@@ -70,6 +71,7 @@ export class GameGateway
     private readonly gameService: GameService,
     private readonly redisClient: RedisService,
     private readonly friendsService: FriendsService,
+    private readonly usersService: UsersService,
   ) {}
 
   private sleep(ms: number) {
@@ -394,7 +396,7 @@ export class GameGateway
   }
 
   /**
-   * Starts the 15-second reconnection grace timer for a disconnected player.
+   * Starts the 30-second reconnection grace timer for a disconnected player.
    * If the timer fires the game is forfeited for that player.
    * If the player reconnects first, clearDisconnectTimer() cancels it.
    */
@@ -463,6 +465,15 @@ export class GameGateway
           userId,
           true,
         );
+        const mmrLost = Math.max(0, -(mmrDeltas?.[userId] ?? -15));
+        await this.usersService
+          .recordOfflinePenalty(userId, gameSessionId, mmrLost)
+          .catch((error) => {
+            const err = error as Error;
+            this.logger.error(
+              `Failed to persist offline penalty for ${userId}: ${err?.message}`,
+            );
+          });
         const payload = {
           state,
           forfeit: true,
@@ -719,6 +730,14 @@ export class GameGateway
         await client.join(userId);
         await this.setPresenceOnline(userId);
         this.emitFriendsPresenceSnapshot(userId).catch(() => {});
+        this.friendsService
+          .countIncomingFriendRequests(userId)
+          .then((pendingIncomingFriendRequests) => {
+            client.emit('friendRequestCountSnapshot', {
+              pendingIncomingFriendRequests,
+            });
+          })
+          .catch(() => {});
       }
       this.logger.log(
         `Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`,

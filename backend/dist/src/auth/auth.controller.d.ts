@@ -30,6 +30,12 @@ export declare class AuthController {
         };
     }): Promise<{
         pendingIncomingFriendRequests: number;
+        pendingOfflinePenalty: {
+            id: string;
+            mmrLost: number;
+            gameSessionId: string;
+            createdAt: string;
+        } | null;
         id: string;
         email: string;
         username: string;
@@ -37,6 +43,8 @@ export declare class AuthController {
         mmr: number;
         gamesPlayed: number;
         wins: number;
+        offlineDisconnectCount: number;
+        lastDisconnectAt: Date | null;
         createdAt: Date;
     }>;
     requestVerification(req: any): Promise<{
@@ -46,5 +54,13 @@ export declare class AuthController {
     verifyEmail(req: any, code: string): Promise<{
         success: boolean;
         message: string;
+    }>;
+    acknowledgeOfflinePenalty(req: {
+        user: {
+            userId: string;
+        };
+    }): Promise<{
+        success: boolean;
+        cleared: number;
     }>;
 }

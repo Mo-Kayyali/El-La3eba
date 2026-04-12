@@ -17,6 +17,7 @@ const game_service_1 = require("./game.service");
 const leaderboard_service_1 = require("./leaderboard.service");
 const prisma_module_1 = require("../prisma/prisma.module");
 const friends_module_1 = require("../friends/friends.module");
+const users_module_1 = require("../users/users.module");
 let GameModule = class GameModule {
 };
 exports.GameModule = GameModule;
@@ -26,6 +27,7 @@ exports.GameModule = GameModule = __decorate([
             auth_module_1.AuthModule,
             redis_module_1.RedisModule,
             prisma_module_1.PrismaModule,
+            users_module_1.UsersModule,
             (0, common_1.forwardRef)(() => friends_module_1.FriendsModule),
         ],
         controllers: [game_controller_1.GameController],

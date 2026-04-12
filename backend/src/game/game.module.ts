@@ -8,12 +8,14 @@ import { GameService } from './game.service';
 import { LeaderboardService } from './leaderboard.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { FriendsModule } from '../friends/friends.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     AuthModule,
     RedisModule,
     PrismaModule,
+    UsersModule,
     forwardRef(() => FriendsModule),
   ],
   controllers: [GameController],

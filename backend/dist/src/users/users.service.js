@@ -46,10 +46,89 @@ exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const bcrypt = __importStar(require("bcrypt"));
 const prisma_service_1 = require("../prisma/prisma.service");
+const redis_service_1 = require("../redis/redis.service");
 let UsersService = class UsersService {
     prisma;
-    constructor(prisma) {
+    redis;
+    constructor(prisma, redis) {
         this.prisma = prisma;
+        this.redis = redis;
+    }
+    penaltyKey(userId) {
+        return `penalty:${userId}`;
+    }
+    async recordOfflinePenalty(userId, gameSessionId, mmrLost) {
+        const now = new Date();
+        const safeMmrLost = Math.max(0, Math.round(mmrLost));
+        const penalty = await this.prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    offlineDisconnectCount: { increment: 1 },
+                    lastDisconnectAt: now,
+                },
+            });
+            return tx.offlinePenalty.create({
+                data: {
+                    userId,
+                    gameSessionId,
+                    mmrLost: safeMmrLost,
+                },
+            });
+        });
+        await this.redis.set(this.penaltyKey(userId), JSON.stringify({
+            id: penalty.id,
+            mmrLost: penalty.mmrLost,
+            gameSessionId: penalty.gameSessionId,
+            createdAt: penalty.createdAt.toISOString(),
+        }), 'EX', 60 * 60 * 24 * 7);
+        return penalty;
+    }
+    async getPendingOfflinePenalty(userId) {
+        const cached = await this.redis.get(this.penaltyKey(userId));
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (parsed?.id && parsed?.gameSessionId) {
+                    return parsed;
+                }
+            }
+            catch {
+                await this.redis.del(this.penaltyKey(userId)).catch(() => 0);
+            }
+        }
+        const penalty = await this.prisma.offlinePenalty.findFirst({
+            where: {
+                userId,
+                acknowledgedAt: null,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!penalty)
+            return null;
+        const payload = {
+            id: penalty.id,
+            mmrLost: penalty.mmrLost,
+            gameSessionId: penalty.gameSessionId,
+            createdAt: penalty.createdAt.toISOString(),
+        };
+        await this.redis.set(this.penaltyKey(userId), JSON.stringify(payload), 'EX', 60 * 60 * 24 * 7);
+        return payload;
+    }
+    async acknowledgeOfflinePenalty(userId) {
+        const acknowledgedAt = new Date();
+        const result = await this.prisma.offlinePenalty.updateMany({
+            where: {
+                userId,
+                acknowledgedAt: null,
+            },
+            data: { acknowledgedAt },
+        });
+        await this.redis.del(this.penaltyKey(userId)).catch(() => 0);
+        return {
+            success: true,
+            cleared: result.count,
+        };
     }
     async getPublicProfileById(userId) {
         const user = await this.prisma.user.findUnique({
@@ -125,6 +204,7 @@ let UsersService = class UsersService {
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        redis_service_1.RedisService])
 ], UsersService);
 //# sourceMappingURL=users.service.js.map

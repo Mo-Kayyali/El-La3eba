@@ -591,7 +591,7 @@ function FriendRow({
 }) {
   const presenceStatus = friend.presence?.status ?? "offline";
   const canStartInvite = presenceStatus === "online";
-  const inviteDisabled = !invitePending && !canStartInvite;
+  const inviteDisabled = !canStartInvite;
   const inviteTitle =
     invitePending || canStartInvite
       ? undefined
@@ -632,7 +632,7 @@ function FriendRow({
               invitePending
                 ? "bg-red-500 hover:bg-red-400"
                 : "bg-gradient-to-r from-sky-600 to-violet-600 hover:brightness-110"
-            }`}
+            } ${inviteDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             {invitePending ? "Cancel Invite" : "Invite to Game"}
           </button>

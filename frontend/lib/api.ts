@@ -57,6 +57,14 @@ export type MeProfile = {
   isVerified: boolean;
   createdAt: string;
   pendingIncomingFriendRequests: number;
+  offlineDisconnectCount: number;
+  lastDisconnectAt: string | null;
+  pendingOfflinePenalty: {
+    id: string;
+    mmrLost: number;
+    gameSessionId: string;
+    createdAt: string;
+  } | null;
 };
 
 export const API_BASE =
@@ -101,6 +109,16 @@ export async function refreshAuthProfile(): Promise<MeProfile | null> {
     }
     return null;
   }
+}
+
+export async function acknowledgeOfflinePenalty(): Promise<{
+  success: boolean;
+  cleared: number;
+}> {
+  const { data } = await api.post<{ success: boolean; cleared: number }>(
+    "/auth/acknowledge-offline-penalty",
+  );
+  return data;
 }
 
 export async function fetchPublicProfile(
