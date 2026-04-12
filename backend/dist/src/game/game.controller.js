@@ -42,7 +42,9 @@ __decorate([
 ], GameController.prototype, "getLeaderboard", null);
 __decorate([
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Active in-progress game session for the current user (Redis)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Active in-progress game session for the current user (Redis)',
+    }),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('active-game'),
     __param(0, (0, common_1.Request)()),

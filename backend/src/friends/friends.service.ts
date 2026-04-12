@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { FriendshipStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { GameGateway } from '../game/game.gateway';
 
 type FriendshipWithUsers = Prisma.FriendshipGetPayload<{
   include: { user: true; friend: true };
@@ -19,6 +22,8 @@ export class FriendsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redisClient: RedisService,
+    @Inject(forwardRef(() => GameGateway))
+    private readonly gameGateway: GameGateway,
   ) {}
 
   private async resolveUserByIdentifier(identifier: string) {
@@ -88,15 +93,18 @@ export class FriendsService {
       }),
     ]);
 
+    const duplicateFriendshipMessage =
+      'You are already friends or have a pending request.';
+
     if (
       existingOutgoing?.status === FriendshipStatus.ACCEPTED ||
       existingIncoming?.status === FriendshipStatus.ACCEPTED
     ) {
-      throw new ConflictException('You are already friends');
+      throw new ConflictException(duplicateFriendshipMessage);
     }
 
     if (existingOutgoing?.status === FriendshipStatus.PENDING) {
-      throw new ConflictException('Friend request already sent');
+      throw new ConflictException(duplicateFriendshipMessage);
     }
 
     if (existingIncoming?.status === FriendshipStatus.PENDING) {
@@ -120,6 +128,13 @@ export class FriendsService {
         status: FriendshipStatus.PENDING,
       },
       include: { user: true, friend: true },
+    });
+
+    this.gameGateway.emitFriendRequestReceived(target.id, {
+      requestId: created.id,
+      senderId: requesterId,
+      senderUsername: created.user.username,
+      createdAt: created.createdAt.toISOString(),
     });
 
     return {

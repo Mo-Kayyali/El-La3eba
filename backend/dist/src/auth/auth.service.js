@@ -60,10 +60,7 @@ let AuthService = class AuthService {
     async register(dto) {
         const existingUser = await this.prisma.user.findFirst({
             where: {
-                OR: [
-                    { email: dto.email },
-                    { username: dto.username }
-                ],
+                OR: [{ email: dto.email }, { username: dto.username }],
             },
         });
         if (existingUser) {
@@ -113,7 +110,11 @@ let AuthService = class AuthService {
         return user;
     }
     generateToken(user, rememberMe = false) {
-        const payload = { sub: user.id, username: user.username, email: user.email };
+        const payload = {
+            sub: user.id,
+            username: user.username,
+            email: user.email,
+        };
         const expiresIn = rememberMe ? '30d' : '1d';
         return {
             access_token: this.jwtService.sign(payload, { expiresIn }),
@@ -131,7 +132,10 @@ let AuthService = class AuthService {
         const key = `verify_email:${userId}`;
         await this.redisService.set(key, code, 'EX', 900);
         console.log(`[SIMULATED EMAIL] To: ${email} - Verification Code: ${code}`);
-        return { success: true, message: 'Verification code generated and "sent" via email.' };
+        return {
+            success: true,
+            message: 'Verification code generated and "sent" via email.',
+        };
     }
     async verifyEmail(userId, code) {
         const key = `verify_email:${userId}`;

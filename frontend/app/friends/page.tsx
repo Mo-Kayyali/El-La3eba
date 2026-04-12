@@ -3,17 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Check,
-  Copy,
-  Plus,
-  RefreshCw,
-  Swords,
-  Users,
-  UserRound,
-} from "lucide-react";
+import axios from "axios";
+import { toast } from "sonner";
+import { Plus, RefreshCw, Swords, Users, UserRound } from "lucide-react";
 import {
   acceptFriendRequest,
+  extractApiErrorMessage,
   fetchFriends,
   FriendEntry,
   FriendPresence,
@@ -23,6 +18,7 @@ import {
 } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
+import { useNotificationStore } from "@/src/store/notificationStore";
 import { refreshAuthProfile } from "@/lib/api";
 
 function statusClass(status?: string) {
@@ -50,19 +46,22 @@ function statusLabel(status?: string) {
 export default function FriendsPage() {
   const router = useRouter();
   const { accessToken, bootstrapped, isAuthenticated } = useAuthStore();
-  const { socket, connectSocket, disconnectSocket } = useSocketStore();
+  const socket = useSocketStore((s) => s.socket);
+
+  const outgoingInvites = useNotificationStore((s) => s.outgoingInvites);
+  const setOutgoingInvite = useNotificationStore((s) => s.setOutgoingInvite);
+  const clearOutgoingInvite = useNotificationStore(
+    (s) => s.clearOutgoingInvite,
+  );
+  const setPendingFriendRequests = useNotificationStore(
+    (s) => s.setPendingFriendRequests,
+  );
 
   const [friendsData, setFriendsData] = useState<FriendsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [identifier, setIdentifier] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [inviteBanner, setInviteBanner] = useState<{
-    message: string;
-    roomCode: string;
-  } | null>(null);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [copiedCode, setCopiedCode] = useState(false);
 
   const friends = friendsData?.friends ?? [];
   const incomingRequests = friendsData?.incomingRequests ?? [];
@@ -72,13 +71,9 @@ export default function FriendsPage() {
     if (!bootstrapped) return;
     if (!accessToken) {
       router.replace("/");
-      return;
+      setPendingFriendRequests(0);
     }
-    connectSocket(accessToken);
-    return () => {
-      disconnectSocket();
-    };
-  }, [accessToken, bootstrapped, connectSocket, disconnectSocket, router]);
+  }, [accessToken, bootstrapped, router, setPendingFriendRequests]);
 
   useEffect(() => {
     if (!bootstrapped || !accessToken) return;
@@ -93,19 +88,21 @@ export default function FriendsPage() {
       try {
         const data = await fetchFriends();
         setFriendsData(data);
+        setPendingFriendRequests(data.incomingRequests.length);
       } catch {
         setFriendsData({
           friends: [],
           incomingRequests: [],
           outgoingRequests: [],
         });
+        setPendingFriendRequests(0);
       } finally {
         setLoading(false);
       }
     };
 
     void loadFriends();
-  }, [accessToken, bootstrapped, isAuthenticated]);
+  }, [accessToken, bootstrapped, isAuthenticated, setPendingFriendRequests]);
 
   useEffect(() => {
     if (!socket) return;
@@ -133,32 +130,12 @@ export default function FriendsPage() {
       });
     };
 
-    const onFriendGameInvite = (payload: {
-      inviterUsername?: string;
-      roomCode?: string;
-    }) => {
-      if (!payload?.roomCode) return;
-      setInviteBanner({
-        message: `${payload.inviterUsername ?? "A friend"} invited you to a private room`,
-        roomCode: payload.roomCode,
-      });
-      setInviteCode(payload.roomCode);
-    };
-
     socket.on("friendsPresenceUpdated", onFriendsPresenceUpdated);
-    socket.on("friendGameInvite", onFriendGameInvite);
 
     return () => {
       socket.off("friendsPresenceUpdated", onFriendsPresenceUpdated);
-      socket.off("friendGameInvite", onFriendGameInvite);
     };
   }, [socket]);
-
-  useEffect(() => {
-    if (!copiedCode) return;
-    const timer = window.setTimeout(() => setCopiedCode(false), 1800);
-    return () => window.clearTimeout(timer);
-  }, [copiedCode]);
 
   const friendCount = useMemo(() => friends.length, [friends]);
 
@@ -170,6 +147,15 @@ export default function FriendsPage() {
     setActionMessage(null);
     try {
       const response = await sendFriendRequest(value);
+      if (response.created) {
+        toast.success(
+          `Friend request sent to ${response.friendship.username}.`,
+        );
+      } else if (response.accepted) {
+        toast.success(
+          `Friend request resolved with ${response.friendship.username}.`,
+        );
+      }
       setActionMessage(
         response.accepted
           ? `Friend request resolved with ${response.friendship.username}.`
@@ -178,10 +164,15 @@ export default function FriendsPage() {
       setIdentifier("");
       const refreshed = await fetchFriends();
       setFriendsData(refreshed);
+      setPendingFriendRequests(refreshed.incomingRequests.length);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to send request.";
+      const message = extractApiErrorMessage(error, "Failed to send request.");
       setActionMessage(message);
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        toast.error(message);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +181,9 @@ export default function FriendsPage() {
   async function handleAccept(requestId: string) {
     try {
       await acceptFriendRequest(requestId);
-      setFriendsData(await fetchFriends());
+      const refreshed = await fetchFriends();
+      setFriendsData(refreshed);
+      setPendingFriendRequests(refreshed.incomingRequests.length);
     } catch (error) {
       setActionMessage(
         error instanceof Error ? error.message : "Could not accept request.",
@@ -201,7 +194,9 @@ export default function FriendsPage() {
   async function handleReject(requestId: string) {
     try {
       await rejectFriendRequest(requestId);
-      setFriendsData(await fetchFriends());
+      const refreshed = await fetchFriends();
+      setFriendsData(refreshed);
+      setPendingFriendRequests(refreshed.incomingRequests.length);
     } catch (error) {
       setActionMessage(
         error instanceof Error ? error.message : "Could not reject request.",
@@ -211,28 +206,45 @@ export default function FriendsPage() {
 
   function handleInvite(friendId: string, friendName: string) {
     if (!socket?.connected) return;
+    const pendingInvite = outgoingInvites[friendId];
     setActionMessage(null);
+
+    if (pendingInvite) {
+      socket.emit(
+        "cancelGameInvite",
+        { friendId },
+        (response: { status?: string; message?: string }) => {
+          if (response?.status === "ok") {
+            clearOutgoingInvite(friendId);
+            toast.message(`Invite cancelled for ${friendName}.`);
+            return;
+          }
+          toast.error(response?.message ?? "Could not cancel invite.");
+        },
+      );
+      return;
+    }
+
     socket.emit(
-      "inviteFriendToGame",
+      "sendGameInvite",
       { friendId },
       (response: { status?: string; roomCode?: string; message?: string }) => {
         if (response?.status === "success" && response.roomCode) {
-          setInviteCode(response.roomCode);
-          setInviteBanner({
-            message: `Invite sent to ${friendName}`,
+          setOutgoingInvite({
+            friendId,
             roomCode: response.roomCode,
+            status: "pending",
+            expiresAt: Date.now() + 60_000,
           });
           setActionMessage(`Invited ${friendName} to a private room.`);
+          toast.success(`Invite sent to ${friendName}.`);
           return;
         }
-        setActionMessage(response?.message ?? "Could not create invite.");
+        const message = response?.message ?? "Could not create invite.";
+        setActionMessage(message);
+        toast.error(message);
       },
     );
-  }
-
-  async function copyRoomCode(code: string) {
-    await navigator.clipboard.writeText(code);
-    setCopiedCode(true);
   }
 
   if (!bootstrapped) {
@@ -289,43 +301,6 @@ export default function FriendsPage() {
             </Link>
           </div>
         </header>
-
-        {inviteBanner && inviteCode && (
-          <div className="mb-6 rounded-3xl border border-violet-500/20 bg-violet-500/10 p-4 backdrop-blur-xl">
-            <p className="text-xs uppercase tracking-[0.2em] text-violet-200">
-              Private invite
-            </p>
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {inviteBanner.message}
-                </p>
-                <p className="text-xs text-slate-300">
-                  Share the code or jump to the lobby to join the room.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => copyRoomCode(inviteCode)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15 transition"
-                >
-                  {copiedCode ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                  {copiedCode ? "Copied" : "Copy Code"}
-                </button>
-                <Link
-                  href="/lobby"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 px-3 py-2 text-sm font-semibold text-white hover:brightness-110 transition"
-                >
-                  Open Lobby
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-6">
@@ -410,6 +385,7 @@ export default function FriendsPage() {
                     <FriendRow
                       key={friend.friendshipId}
                       friend={friend}
+                      invitePending={Boolean(outgoingInvites[friend.userId])}
                       onInvite={() =>
                         handleInvite(friend.userId, friend.username)
                       }
@@ -508,9 +484,11 @@ function MetricCard({
 function FriendRow({
   friend,
   onInvite,
+  invitePending,
 }: {
   friend: FriendEntry;
   onInvite: () => void;
+  invitePending: boolean;
 }) {
   const presenceStatus = friend.presence?.status ?? "offline";
 
@@ -543,9 +521,13 @@ function FriendRow({
           </Link>
           <button
             onClick={onInvite}
-            className="rounded-xl bg-gradient-to-r from-sky-600 to-violet-600 px-3 py-2 text-sm font-semibold text-white hover:brightness-110 transition"
+            className={`rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${
+              invitePending
+                ? "bg-red-500 hover:bg-red-400"
+                : "bg-gradient-to-r from-sky-600 to-violet-600 hover:brightness-110"
+            }`}
           >
-            Invite to Game
+            {invitePending ? "Cancel Invite" : "Invite to Game"}
           </button>
         </div>
       </div>

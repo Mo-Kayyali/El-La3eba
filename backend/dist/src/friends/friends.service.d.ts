@@ -1,10 +1,12 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { GameGateway } from '../game/game.gateway';
 type PresenceStatus = 'offline' | 'online' | 'in-game';
 export declare class FriendsService {
     private readonly prisma;
     private readonly redisClient;
-    constructor(prisma: PrismaService, redisClient: RedisService);
+    private readonly gameGateway;
+    constructor(prisma: PrismaService, redisClient: RedisService, gameGateway: GameGateway);
     private resolveUserByIdentifier;
     private getPresenceStatus;
     private mapFriendship;

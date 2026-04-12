@@ -83,7 +83,8 @@ export default function LobbyPage() {
   const router = useRouter();
   const { user, accessToken, isAuthenticated, logout, bootstrapped } =
     useAuthStore();
-  const { socket, connectSocket, disconnectSocket } = useSocketStore();
+  const socket = useSocketStore((s) => s.socket);
+  const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
 
   const username = useMemo(
     () => user?.username ?? user?.email ?? "Player",
@@ -113,13 +114,7 @@ export default function LobbyPage() {
     if (!bootstrapped) return;
     if (!accessToken) {
       router.replace("/");
-      return;
     }
-    connectSocket(accessToken);
-    return () => {
-      disconnectSocket();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapped, accessToken, router]);
 
   useEffect(() => {

@@ -8,18 +8,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FriendsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const prisma_service_1 = require("../prisma/prisma.service");
 const redis_service_1 = require("../redis/redis.service");
+const game_gateway_1 = require("../game/game.gateway");
 let FriendsService = class FriendsService {
     prisma;
     redisClient;
-    constructor(prisma, redisClient) {
+    gameGateway;
+    constructor(prisma, redisClient, gameGateway) {
         this.prisma = prisma;
         this.redisClient = redisClient;
+        this.gameGateway = gameGateway;
     }
     async resolveUserByIdentifier(identifier) {
         return this.prisma.user.findFirst({
@@ -74,12 +80,13 @@ let FriendsService = class FriendsService {
                 },
             }),
         ]);
+        const duplicateFriendshipMessage = 'You are already friends or have a pending request.';
         if (existingOutgoing?.status === client_1.FriendshipStatus.ACCEPTED ||
             existingIncoming?.status === client_1.FriendshipStatus.ACCEPTED) {
-            throw new common_1.ConflictException('You are already friends');
+            throw new common_1.ConflictException(duplicateFriendshipMessage);
         }
         if (existingOutgoing?.status === client_1.FriendshipStatus.PENDING) {
-            throw new common_1.ConflictException('Friend request already sent');
+            throw new common_1.ConflictException(duplicateFriendshipMessage);
         }
         if (existingIncoming?.status === client_1.FriendshipStatus.PENDING) {
             const accepted = await this.prisma.friendship.update({
@@ -100,6 +107,12 @@ let FriendsService = class FriendsService {
                 status: client_1.FriendshipStatus.PENDING,
             },
             include: { user: true, friend: true },
+        });
+        this.gameGateway.emitFriendRequestReceived(target.id, {
+            requestId: created.id,
+            senderId: requesterId,
+            senderUsername: created.user.username,
+            createdAt: created.createdAt.toISOString(),
         });
         return {
             created: true,
@@ -194,7 +207,9 @@ let FriendsService = class FriendsService {
 exports.FriendsService = FriendsService;
 exports.FriendsService = FriendsService = __decorate([
     (0, common_1.Injectable)(),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => game_gateway_1.GameGateway))),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        game_gateway_1.GameGateway])
 ], FriendsService);
 //# sourceMappingURL=friends.service.js.map

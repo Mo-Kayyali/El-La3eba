@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -17,10 +21,7 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email: dto.email },
-          { username: dto.username }
-        ],
+        OR: [{ email: dto.email }, { username: dto.username }],
       },
     });
 
@@ -51,7 +52,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -81,7 +85,11 @@ export class AuthService {
   }
 
   private generateToken(user: any, rememberMe = false) {
-    const payload = { sub: user.id, username: user.username, email: user.email };
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      email: user.email,
+    };
     const expiresIn = rememberMe ? '30d' : '1d';
     return {
       access_token: this.jwtService.sign(payload, { expiresIn }),
@@ -106,7 +114,10 @@ export class AuthService {
     // Simulate sending email
     console.log(`[SIMULATED EMAIL] To: ${email} - Verification Code: ${code}`);
 
-    return { success: true, message: 'Verification code generated and "sent" via email.' };
+    return {
+      success: true,
+      message: 'Verification code generated and "sent" via email.',
+    };
   }
 
   async verifyEmail(userId: string, code: string) {
@@ -114,7 +125,9 @@ export class AuthService {
     const storedCode = await this.redisService.get(key);
 
     if (!storedCode) {
-      throw new UnauthorizedException('Verification code expired or not found.');
+      throw new UnauthorizedException(
+        'Verification code expired or not found.',
+      );
     }
 
     if (storedCode !== code) {

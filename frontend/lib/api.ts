@@ -145,3 +145,30 @@ export async function rejectFriendRequest(
   );
   return data;
 }
+
+export function extractApiErrorMessage(
+  err: unknown,
+  fallback = "Something went wrong.",
+) {
+  if (axios.isAxiosError(err)) {
+    const responseData = err.response?.data as
+      | { message?: string | string[] }
+      | undefined;
+    const message = responseData?.message;
+    if (Array.isArray(message) && message.length > 0) {
+      return message[0];
+    }
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+    if (typeof err.message === "string" && err.message.trim()) {
+      return err.message;
+    }
+  }
+
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+
+  return fallback;
+}

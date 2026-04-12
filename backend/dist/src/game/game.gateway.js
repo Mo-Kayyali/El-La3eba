@@ -42,6 +42,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
     guessTimestamps = new Map();
     roundTransitionMs = 4000;
     DISCONNECT_GRACE_MS = 15_000;
+    INVITE_COOLDOWN_SECONDS = 5;
+    INVITE_TTL_SECONDS = 60;
     constructor(jwtService, matchmakingService, gameService, redisClient, friendsService) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
@@ -51,6 +53,49 @@ let GameGateway = GameGateway_1 = class GameGateway {
     }
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    inviteCooldownKey(inviterId) {
+        return `game_invite_cooldown:${inviterId}`;
+    }
+    inviteKey(inviterId, inviteeId) {
+        return `game_invite:${inviterId}:${inviteeId}`;
+    }
+    async cancelActiveInvitesByInviter(inviterId, reason) {
+        const keys = await this.redisClient
+            .keys(this.inviteKey(inviterId, '*'))
+            .catch(() => []);
+        if (!keys.length)
+            return;
+        const values = await this.redisClient.mget(...keys);
+        const invitees = [];
+        values.forEach((raw) => {
+            if (!raw)
+                return;
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed?.inviteeId)
+                    invitees.push(parsed.inviteeId);
+            }
+            catch {
+            }
+        });
+        await this.redisClient.del(...keys).catch(() => 0);
+        await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
+        invitees.forEach((inviteeId) => {
+            this.server.to(inviteeId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId,
+                reason,
+            });
+        });
+    }
+    emitFriendRequestReceived(recipientId, payload) {
+        if (!this.server)
+            return;
+        const room = this.server.sockets.adapter.rooms.get(recipientId);
+        if (!room || room.size === 0)
+            return;
+        this.server.to(recipientId).emit('friendRequestReceived', payload);
     }
     async setPresenceOnline(userId) {
         await this.redisClient.hset('presence', userId, 'online');
@@ -407,6 +452,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (userId) {
             this.matchmakingService.cancelSearch(userId).catch(() => { });
             this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
+            this.cancelActiveInvitesByInviter(userId, 'inviter_offline').catch(() => { });
         }
         try {
             const rooms = Array.from(client.rooms ?? []);
@@ -486,7 +532,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, username);
         return { status: 'success', roomCode };
     }
-    async handleInviteFriendToGame(client, friendId) {
+    async handleSendGameInvite(client, friendId) {
         const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
@@ -497,8 +543,23 @@ let GameGateway = GameGateway_1 = class GameGateway {
             client.data?.user?.email ||
             userId;
         try {
+            const cooldownSet = await this.redisClient.set(this.inviteCooldownKey(userId), '1', 'EX', this.INVITE_COOLDOWN_SECONDS, 'NX');
+            if (cooldownSet !== 'OK') {
+                return {
+                    status: 'error',
+                    message: 'Please wait 5 seconds before sending another invite.',
+                };
+            }
             await this.friendsService.ensureUsersAreFriends(userId, friendId);
+            await this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
             const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername);
+            await this.redisClient.set(this.inviteKey(userId, friendId), JSON.stringify({
+                inviterId: userId,
+                inviteeId: friendId,
+                inviterUsername,
+                roomCode,
+                createdAt: new Date().toISOString(),
+            }), 'EX', this.INVITE_TTL_SECONDS);
             this.server.to(friendId).emit('friendGameInvite', {
                 inviterId: userId,
                 inviterUsername,
@@ -512,6 +573,89 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 message: error?.message || 'Failed to invite friend',
             };
         }
+    }
+    async handleInviteFriendToGame(client, friendId) {
+        return this.handleSendGameInvite(client, friendId);
+    }
+    async handleCancelGameInvite(client, friendId) {
+        const inviterId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!inviterId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!friendId)
+            return { status: 'error', message: 'friendId required' };
+        const key = this.inviteKey(inviterId, friendId);
+        const deleted = await this.redisClient.del(key);
+        await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
+        if (deleted > 0) {
+            this.server.to(friendId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId: friendId,
+                reason: 'inviter_cancelled',
+            });
+        }
+        return { status: 'ok' };
+    }
+    async handleAcceptGameInvite(client, inviterId) {
+        const inviteeId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!inviteeId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!inviterId)
+            return { status: 'error', message: 'inviterId required' };
+        const key = this.inviteKey(inviterId, inviteeId);
+        const rawInvite = await this.redisClient.get(key);
+        if (!rawInvite) {
+            return { status: 'error', message: 'Invite expired or unavailable' };
+        }
+        let invite;
+        try {
+            invite = JSON.parse(rawInvite);
+        }
+        catch {
+            await this.redisClient.del(key).catch(() => 0);
+            return { status: 'error', message: 'Invite is invalid' };
+        }
+        await this.redisClient.del(key);
+        const username = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email ||
+            inviteeId;
+        const joinResult = await this.matchmakingService.joinPrivateRoom(invite.roomCode, inviteeId, client.id, username);
+        if (!joinResult?.success || !joinResult.gameSessionId) {
+            this.server.to(inviterId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId,
+                reason: 'invite_expired',
+            });
+            return {
+                status: 'error',
+                message: joinResult?.error ?? 'Could not accept invite',
+            };
+        }
+        this.server.to(inviterId).emit('inviteAccepted', {
+            inviterId,
+            inviteeId,
+            gameSessionId: joinResult.gameSessionId,
+        });
+        return { status: 'ok', gameSessionId: joinResult.gameSessionId };
+    }
+    async handleDeclineGameInvite(client, inviterId) {
+        const inviteeId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!inviteeId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!inviterId)
+            return { status: 'error', message: 'inviterId required' };
+        const key = this.inviteKey(inviterId, inviteeId);
+        const deleted = await this.redisClient.del(key);
+        if (deleted > 0) {
+            await this.matchmakingService
+                .cancelPrivateRoom(inviterId)
+                .catch(() => { });
+            this.server.to(inviterId).emit('inviteDeclined', {
+                inviterId,
+                inviteeId,
+            });
+        }
+        return { status: 'ok' };
     }
     async handleJoinPrivateRoom(client, roomCode) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
@@ -624,6 +768,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: 'gameSessionId required' };
         client.join(gameSessionId);
         this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
+        this.cancelActiveInvitesByInviter(userId, 'inviter_in_game').catch(() => { });
         await this.setPresenceInGame(userId, gameSessionId).catch(() => { });
         const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
         if (hadDisconnectTimer) {
@@ -959,6 +1104,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleCreatePrivateRoom", null);
 __decorate([
+    (0, websockets_1.SubscribeMessage)('sendGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleSendGameInvite", null);
+__decorate([
     (0, websockets_1.SubscribeMessage)('inviteFriendToGame'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)('friendId')),
@@ -966,6 +1119,30 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, String]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleInviteFriendToGame", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('cancelGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleCancelGameInvite", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('acceptGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('inviterId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleAcceptGameInvite", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('declineGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('inviterId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleDeclineGameInvite", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('joinPrivateMatch'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

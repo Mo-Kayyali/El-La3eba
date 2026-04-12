@@ -1,4 +1,11 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -35,7 +42,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('request-verification')
   requestVerification(@Request() req: any) {
-    return this.authService.requestVerification(req.user.userId, req.user.email);
+    return this.authService.requestVerification(
+      req.user.userId,
+      req.user.email,
+    );
   }
 
   @ApiBearerAuth()

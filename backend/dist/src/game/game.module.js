@@ -22,9 +22,15 @@ let GameModule = class GameModule {
 exports.GameModule = GameModule;
 exports.GameModule = GameModule = __decorate([
     (0, common_1.Module)({
-        imports: [auth_module_1.AuthModule, redis_module_1.RedisModule, prisma_module_1.PrismaModule, friends_module_1.FriendsModule],
+        imports: [
+            auth_module_1.AuthModule,
+            redis_module_1.RedisModule,
+            prisma_module_1.PrismaModule,
+            (0, common_1.forwardRef)(() => friends_module_1.FriendsModule),
+        ],
         controllers: [game_controller_1.GameController],
         providers: [game_gateway_1.GameGateway, matchmaking_service_1.MatchmakingService, game_service_1.GameService, leaderboard_service_1.LeaderboardService],
+        exports: [game_gateway_1.GameGateway],
     })
 ], GameModule);
 //# sourceMappingURL=game.module.js.map
