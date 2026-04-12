@@ -91,8 +91,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         return roomCode;
     }
     async cancelPrivateRoom(userId) {
-        await this.cleanupUserPrivateRoom(userId);
-        this.logger.log(`Private room cancelled by user ${userId}`);
+        const cleanedRoomCode = await this.cleanupUserPrivateRoom(userId);
+        if (cleanedRoomCode) {
+            this.logger.log(`Private room ${cleanedRoomCode} cancelled by user ${userId}`);
+        }
     }
     async cleanupUserPrivateRoom(userId) {
         const roomCode = await this.redisClient.get(`user_room:${userId}`);
@@ -101,7 +103,9 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
                 this.redisClient.del(`private_room:${roomCode}`),
                 this.redisClient.del(`user_room:${userId}`),
             ]);
+            return roomCode;
         }
+        return null;
     }
     async joinPrivateRoom(code, userId, socketId, username) {
         const uppercaseCode = code.toUpperCase();
@@ -127,7 +131,9 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
             this.server.to(host.socketId).emit('matchFound', { gameSessionId });
             this.server.to(socketId).emit('matchFound', { gameSessionId });
-            this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+            this.server
+                .to(gameSessionId)
+                .emit('gameStateUpdated', { state: gameState });
             this.startTurnTimerFn?.(gameSessionId);
         }
         this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
@@ -169,15 +175,23 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
         this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
         this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
-        this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+        this.server
+            .to(gameSessionId)
+            .emit('gameStateUpdated', { state: gameState });
         this.startTurnTimerFn?.(gameSessionId);
         this.logger.log(`${isRanked ? 'Ranked' : 'Unrated'} match created: ${gameSessionId} ` +
             `[${p1.userId} vs ${p2.userId}]`);
     }
     async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false) {
         const [p1Result, p2Result] = await Promise.allSettled([
-            this.prisma.user.findUnique({ where: { id: player1Id }, select: { mmr: true } }),
-            this.prisma.user.findUnique({ where: { id: player2Id }, select: { mmr: true } }),
+            this.prisma.user.findUnique({
+                where: { id: player1Id },
+                select: { mmr: true },
+            }),
+            this.prisma.user.findUnique({
+                where: { id: player2Id },
+                select: { mmr: true },
+            }),
         ]);
         const p1Mmr = p1Result.status === 'fulfilled' ? (p1Result.value?.mmr ?? 1000) : 1000;
         const p2Mmr = p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;

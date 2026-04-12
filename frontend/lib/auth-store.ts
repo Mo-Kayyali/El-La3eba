@@ -6,6 +6,10 @@ export type AuthUser = {
   username?: string;
   email?: string;
   mmr?: number;
+  wins?: number;
+  gamesPlayed?: number;
+  isVerified?: boolean;
+  createdAt?: string;
   [key: string]: unknown;
 };
 
@@ -58,7 +62,6 @@ export const useAuthStore = create<AuthState>()(
         user: s.user,
         isAuthenticated: s.isAuthenticated,
       }),
-    }
-  )
+    },
+  ),
 );
-

@@ -23,7 +23,10 @@ export class MatchmakingService {
   private startTurnTimerFn?: (gameSessionId: string) => void;
 
   /** Redis key pairs for each queue mode. */
-  private readonly QUEUES: Record<QueueMode, { list: string; members: string }> = {
+  private readonly QUEUES: Record<
+    QueueMode,
+    { list: string; members: string }
+  > = {
     ranked: { list: 'ranked_queue', members: 'ranked_queue_members' },
     unrated: { list: 'unrated_queue', members: 'unrated_queue_members' },
   };
@@ -153,22 +156,33 @@ export class MatchmakingService {
 
   /** Allows the host to cancel their own private room before anyone joins. */
   async cancelPrivateRoom(userId: string): Promise<void> {
-    await this.cleanupUserPrivateRoom(userId);
-    this.logger.log(`Private room cancelled by user ${userId}`);
+    const cleanedRoomCode = await this.cleanupUserPrivateRoom(userId);
+
+    // Only log if a room was actually found and deleted
+    if (cleanedRoomCode) {
+      this.logger.log(
+        `Private room ${cleanedRoomCode} cancelled by user ${userId}`,
+      );
+    }
   }
 
   /**
    * Internal helper: deletes the private room owned by userId (if any).
    * Removes both the room key and the reverse-lookup key.
+   * Returns the roomCode if one was deleted, otherwise returns null.
    */
-  private async cleanupUserPrivateRoom(userId: string): Promise<void> {
+  private async cleanupUserPrivateRoom(userId: string): Promise<string | null> {
     const roomCode = await this.redisClient.get(`user_room:${userId}`);
+
     if (roomCode) {
       await Promise.all([
         this.redisClient.del(`private_room:${roomCode}`),
         this.redisClient.del(`user_room:${userId}`),
       ]);
+      return roomCode;
     }
+
+    return null;
   }
 
   /**
@@ -182,7 +196,9 @@ export class MatchmakingService {
     username?: string,
   ) {
     const uppercaseCode = code.toUpperCase();
-    const roomDataStr = await this.redisClient.get(`private_room:${uppercaseCode}`);
+    const roomDataStr = await this.redisClient.get(
+      `private_room:${uppercaseCode}`,
+    );
 
     if (!roomDataStr) {
       return { success: false, error: 'Room not found or expired' };
@@ -220,7 +236,9 @@ export class MatchmakingService {
       this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
       this.server.to(host.socketId).emit('matchFound', { gameSessionId });
       this.server.to(socketId).emit('matchFound', { gameSessionId });
-      this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+      this.server
+        .to(gameSessionId)
+        .emit('gameStateUpdated', { state: gameState });
       this.startTurnTimerFn?.(gameSessionId);
     }
 
@@ -242,7 +260,10 @@ export class MatchmakingService {
     ]);
   }
 
-  private async processQueue(mode: QueueMode, isRanked: boolean): Promise<void> {
+  private async processQueue(
+    mode: QueueMode,
+    isRanked: boolean,
+  ): Promise<void> {
     const { list, members } = this.QUEUES[mode];
 
     const queueLength = await this.redisClient.llen(list);
@@ -285,7 +306,9 @@ export class MatchmakingService {
     this.server.in([p1.socketId, p2.socketId]).socketsJoin(gameSessionId);
     this.server.to(p1.socketId).emit('matchFound', { gameSessionId });
     this.server.to(p2.socketId).emit('matchFound', { gameSessionId });
-    this.server.to(gameSessionId).emit('gameStateUpdated', { state: gameState });
+    this.server
+      .to(gameSessionId)
+      .emit('gameStateUpdated', { state: gameState });
     this.startTurnTimerFn?.(gameSessionId);
 
     this.logger.log(
@@ -307,11 +330,19 @@ export class MatchmakingService {
     // Fetch current MMR for rank badge display on the frontend.
     // Use Promise.allSettled so a missing user doesn't abort game creation.
     const [p1Result, p2Result] = await Promise.allSettled([
-      this.prisma.user.findUnique({ where: { id: player1Id }, select: { mmr: true } }),
-      this.prisma.user.findUnique({ where: { id: player2Id }, select: { mmr: true } }),
+      this.prisma.user.findUnique({
+        where: { id: player1Id },
+        select: { mmr: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: player2Id },
+        select: { mmr: true },
+      }),
     ]);
-    const p1Mmr = p1Result.status === 'fulfilled' ? (p1Result.value?.mmr ?? 1000) : 1000;
-    const p2Mmr = p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;
+    const p1Mmr =
+      p1Result.status === 'fulfilled' ? (p1Result.value?.mmr ?? 1000) : 1000;
+    const p2Mmr =
+      p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;
 
     const gameState = {
       players: [player1Id, player2Id],
@@ -431,12 +462,8 @@ export class MatchmakingService {
       }
 
       const margin = options?.marginMultiplier ?? 1;
-      const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } = calculateElo(
-        winner.mmr,
-        loser.mmr,
-        32,
-        margin,
-      );
+      const { winnerNewMmr, loserNewMmr, winnerDelta, loserDelta } =
+        calculateElo(winner.mmr, loser.mmr, 32, margin);
 
       await Promise.all([
         this.prisma.user.update({

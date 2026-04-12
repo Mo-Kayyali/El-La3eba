@@ -1,6 +1,29 @@
 import axios from "axios";
 import { useAuthStore } from "@/lib/auth-store";
 
+export type PublicProfile = {
+  username: string;
+  wins: number;
+  gamesPlayed: number;
+};
+
+export type UpdateProfilePayload = {
+  username?: string;
+  email?: string;
+  password?: string;
+};
+
+export type MeProfile = {
+  id: string;
+  username: string;
+  email: string;
+  mmr: number;
+  wins: number;
+  gamesPlayed: number;
+  isVerified: boolean;
+  createdAt: string;
+};
+
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -41,4 +64,18 @@ export async function refreshAuthProfile(): Promise<void> {
       syncAxiosAuthFromStore();
     }
   }
+}
+
+export async function fetchPublicProfile(
+  userId: string,
+): Promise<PublicProfile> {
+  const { data } = await api.get<PublicProfile>(`/users/profile/${userId}`);
+  return data;
+}
+
+export async function updateOwnProfile(
+  payload: UpdateProfilePayload,
+): Promise<MeProfile> {
+  const { data } = await api.patch<MeProfile>("/users/profile", payload);
+  return data;
 }

@@ -13,12 +13,20 @@ const auth_module_1 = require("./auth/auth.module");
 const redis_module_1 = require("./redis/redis.module");
 const game_module_1 = require("./game/game.module");
 const schedule_1 = require("@nestjs/schedule");
+const users_module_1 = require("./users/users.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule, redis_module_1.RedisModule, game_module_1.GameModule, schedule_1.ScheduleModule.forRoot()],
+        imports: [
+            prisma_module_1.PrismaModule,
+            auth_module_1.AuthModule,
+            redis_module_1.RedisModule,
+            game_module_1.GameModule,
+            users_module_1.UsersModule,
+            schedule_1.ScheduleModule.forRoot(),
+        ],
         controllers: [],
         providers: [],
     })
