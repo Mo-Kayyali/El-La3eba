@@ -3,7 +3,7 @@
 import axios, { AxiosError } from "axios";
 import { Lock, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { syncAxiosAuthFromStore } from "@/lib/api";
 import { useAuthStore } from "../lib/auth-store";
 
@@ -26,7 +26,13 @@ function Logo({ className }: { className?: string }) {
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
       >
-        <circle cx="16" cy="16" r="15" stroke="url(#ball-grad)" strokeWidth="2" />
+        <circle
+          cx="16"
+          cy="16"
+          r="15"
+          stroke="url(#ball-grad)"
+          strokeWidth="2"
+        />
         <path
           d="M16 4 L20 10 L14 14 L10 9 Z"
           fill="url(#ball-grad)"
@@ -43,11 +49,25 @@ function Logo({ className }: { className?: string }) {
           opacity="0.8"
         />
         <defs>
-          <linearGradient id="ball-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="ball-grad"
+            x1="0"
+            y1="0"
+            x2="32"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#3b82f6" />
             <stop offset="1" stopColor="#a78bfa" />
           </linearGradient>
-          <linearGradient id="ball-grad2" x1="32" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="ball-grad2"
+            x1="32"
+            y1="0"
+            x2="0"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#60a5fa" />
             <stop offset="1" stopColor="#818cf8" />
           </linearGradient>
@@ -66,6 +86,13 @@ function Logo({ className }: { className?: string }) {
 
 export default function AuthPage() {
   const router = useRouter();
+  const bootstrapped = useAuthStore((s) => s.bootstrapped);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const activeGameSessionId = useAuthStore((s) =>
+    typeof s.user?.activeGameSessionId === "string"
+      ? s.user.activeGameSessionId
+      : null,
+  );
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [mode, setMode] = useState<Mode>("login");
@@ -80,8 +107,14 @@ export default function AuthPage() {
 
   const title = useMemo(
     () => (mode === "login" ? "Welcome back" : "Create account"),
-    [mode]
+    [mode],
   );
+
+  useEffect(() => {
+    if (!bootstrapped || !isAuthenticated) return;
+    if (activeGameSessionId) return;
+    router.replace("/lobby");
+  }, [activeGameSessionId, bootstrapped, isAuthenticated, router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,7 +132,8 @@ export default function AuthPage() {
 
         const accessToken: string | undefined = res.data?.access_token;
         const user = res.data?.user;
-        if (!accessToken || !user) throw new Error("Unexpected server response.");
+        if (!accessToken || !user)
+          throw new Error("Unexpected server response.");
 
         setAuth({ accessToken, user });
         syncAxiosAuthFromStore();
@@ -160,14 +194,16 @@ export default function AuthPage() {
           <Logo className="mb-8" />
 
           <h1 className="text-balance text-4xl font-extrabold tracking-tight text-white leading-tight">
-            The Ultimate<br />
+            The Ultimate
+            <br />
             <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
               Football Quiz
             </span>
           </h1>
 
           <p className="mt-4 max-w-sm text-base leading-7 text-slate-400">
-            Name the players. Beat the clock. Climb the ranks. Real-time head-to-head football trivia.
+            Name the players. Beat the clock. Climb the ranks. Real-time
+            head-to-head football trivia.
           </p>
 
           {/* Feature grid */}
@@ -183,7 +219,9 @@ export default function AuthPage() {
                 className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4 backdrop-blur"
               >
                 <span className="text-xl">{f.icon}</span>
-                <p className="mt-1.5 text-sm font-semibold text-white">{f.label}</p>
+                <p className="mt-1.5 text-sm font-semibold text-white">
+                  {f.label}
+                </p>
                 <p className="mt-0.5 text-xs text-slate-400">{f.desc}</p>
               </div>
             ))}
@@ -225,7 +263,7 @@ export default function AuthPage() {
                 <div
                   className={cx(
                     "pointer-events-none absolute inset-y-1 w-1/2 rounded-xl bg-gradient-to-b from-blue-600/30 to-blue-600/10 border border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.15)] transition-transform duration-300",
-                    mode === "register" && "translate-x-full"
+                    mode === "register" && "translate-x-full",
                   )}
                 />
                 {(["login", "register"] as Mode[]).map((m) => (
@@ -239,7 +277,9 @@ export default function AuthPage() {
                     }}
                     className={cx(
                       "relative z-10 rounded-xl px-4 py-2 text-sm font-semibold capitalize transition-colors",
-                      mode === m ? "text-white" : "text-slate-400 hover:text-white"
+                      mode === m
+                        ? "text-white"
+                        : "text-slate-400 hover:text-white",
                     )}
                   >
                     {m === "login" ? "Log in" : "Register"}
@@ -256,7 +296,7 @@ export default function AuthPage() {
                   "transition-[opacity,max-height] duration-300 overflow-hidden",
                   mode === "register"
                     ? "opacity-100 max-h-24"
-                    : "opacity-0 max-h-0 pointer-events-none"
+                    : "opacity-0 max-h-0 pointer-events-none",
                 )}
                 aria-hidden={mode !== "register"}
               >
@@ -286,7 +326,9 @@ export default function AuthPage() {
                 onChange={setPassword}
                 placeholder="••••••••"
                 type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
                 icon={<Lock className="h-4 w-4" />}
               />
 
@@ -299,7 +341,10 @@ export default function AuthPage() {
                     className="h-4 w-4 rounded border-white/20 bg-black/50 text-blue-500 focus:ring-blue-500/40"
                   />
                   <span className="text-sm text-slate-300">
-                    Remember me <span className="text-slate-500">(stay signed in 30 days)</span>
+                    Remember me{" "}
+                    <span className="text-slate-500">
+                      (stay signed in 30 days)
+                    </span>
                   </span>
                 </label>
               )}
@@ -322,7 +367,7 @@ export default function AuthPage() {
                   "group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3.5 text-sm font-bold text-white transition-all",
                   "shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:shadow-[0_0_40px_rgba(59,130,246,0.45)]",
                   "hover:brightness-110 active:scale-[0.99]",
-                  "disabled:cursor-not-allowed disabled:opacity-60"
+                  "disabled:cursor-not-allowed disabled:opacity-60",
                 )}
               >
                 <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.12),transparent_60%)]" />
@@ -385,7 +430,7 @@ function Field(props: {
             "w-full rounded-2xl border border-white/[0.08] bg-black/40 px-4 py-3 pl-11 text-sm text-white outline-none transition",
             "placeholder:text-slate-600",
             "focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10",
-            "hover:border-white/[0.15]"
+            "hover:border-white/[0.15]",
           )}
         />
       </div>

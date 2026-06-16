@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trophy, Swords, Users, LogOut, Crown, Star } from "lucide-react";
+import { toast } from "sonner";
+import { Trophy, Swords, Users, Crown, Star } from "lucide-react";
 import { api, refreshAuthProfile } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
@@ -20,23 +21,59 @@ interface LeaderboardEntry {
 function Logo() {
   return (
     <div className="flex items-center gap-2 select-none">
-      <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 32 32"
+        fill="none"
+        aria-hidden="true"
+      >
         <circle cx="16" cy="16" r="15" stroke="url(#lb-grad)" strokeWidth="2" />
-        <path d="M16 4 L20 10 L14 14 L10 9 Z" fill="url(#lb-grad)" opacity="0.9" />
-        <path d="M22 8 L26 14 L22 20 L16 18 L14 14 L20 10 Z" fill="url(#lb-grad2)" opacity="0.7" />
-        <path d="M10 22 L14 14 L16 18 L14 26 Z" fill="url(#lb-grad)" opacity="0.8" />
+        <path
+          d="M16 4 L20 10 L14 14 L10 9 Z"
+          fill="url(#lb-grad)"
+          opacity="0.9"
+        />
+        <path
+          d="M22 8 L26 14 L22 20 L16 18 L14 14 L20 10 Z"
+          fill="url(#lb-grad2)"
+          opacity="0.7"
+        />
+        <path
+          d="M10 22 L14 14 L16 18 L14 26 Z"
+          fill="url(#lb-grad)"
+          opacity="0.8"
+        />
         <defs>
-          <linearGradient id="lb-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#3b82f6" /><stop offset="1" stopColor="#a78bfa" />
+          <linearGradient
+            id="lb-grad"
+            x1="0"
+            y1="0"
+            x2="32"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#3b82f6" />
+            <stop offset="1" stopColor="#a78bfa" />
           </linearGradient>
-          <linearGradient id="lb-grad2" x1="32" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#60a5fa" /><stop offset="1" stopColor="#818cf8" />
+          <linearGradient
+            id="lb-grad2"
+            x1="32"
+            y1="0"
+            x2="0"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#60a5fa" />
+            <stop offset="1" stopColor="#818cf8" />
           </linearGradient>
         </defs>
       </svg>
       <span className="text-lg font-extrabold tracking-tight">
         <span className="text-white">El-</span>
-        <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">La3eba</span>
+        <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
+          La3eba
+        </span>
       </span>
     </div>
   );
@@ -44,17 +81,16 @@ function Logo() {
 
 export default function LobbyPage() {
   const router = useRouter();
-  const { user, accessToken, isAuthenticated, logout, bootstrapped } = useAuthStore();
-  const { socket, connectSocket, disconnectSocket } = useSocketStore();
-
-  const username = useMemo(
-    () => user?.username ?? user?.email ?? "Player",
-    [user?.username, user?.email]
-  );
+  const { user, accessToken, isAuthenticated, logout, bootstrapped } =
+    useAuthStore();
+  const socket = useSocketStore((s) => s.socket);
+  const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
 
   // Match-finding state
   const [isSearching, setIsSearching] = useState(false);
-  const [searchMode, setSearchMode] = useState<"ranked" | "unrated" | null>(null);
+  const [searchMode, setSearchMode] = useState<"ranked" | "unrated" | null>(
+    null,
+  );
 
   // Private match — create flow
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
@@ -73,13 +109,7 @@ export default function LobbyPage() {
     if (!bootstrapped) return;
     if (!accessToken) {
       router.replace("/");
-      return;
     }
-    connectSocket(accessToken);
-    return () => {
-      disconnectSocket();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapped, accessToken, router]);
 
   useEffect(() => {
@@ -120,12 +150,29 @@ export default function LobbyPage() {
       }
     };
 
+    const onSearchExpired = () => {
+      setIsSearching(false);
+      setSearchMode(null);
+      toast.message("Search timed out after 60 seconds. Please try again.");
+    };
+
+    const onRoomExpired = () => {
+      setIsCreatingRoom(false);
+      setIsWaitingForFriend(false);
+      setCreatedRoomCode(null);
+      toast.message("Search timed out after 60 seconds.");
+    };
+
     socket.on("matchFound", onMatchFound);
     socket.on("connect_error", onConnectError);
+    socket.on("searchExpired", onSearchExpired);
+    socket.on("roomExpired", onRoomExpired);
 
     return () => {
       socket.off("matchFound", onMatchFound);
       socket.off("connect_error", onConnectError);
+      socket.off("searchExpired", onSearchExpired);
+      socket.off("roomExpired", onRoomExpired);
     };
   }, [disconnectSocket, logout, router, socket]);
 
@@ -159,7 +206,9 @@ export default function LobbyPage() {
       <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-6">
         <div className="w-full max-w-sm rounded-3xl border border-white/[0.08] bg-white/[0.04] p-8 text-center backdrop-blur-xl">
           <Logo />
-          <p className="mt-4 text-sm text-slate-400">You need to log in first.</p>
+          <p className="mt-4 text-sm text-slate-400">
+            You need to log in first.
+          </p>
           <button
             onClick={() => router.push("/")}
             className="mt-5 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 text-sm font-bold text-white hover:brightness-110 transition"
@@ -182,45 +231,18 @@ export default function LobbyPage() {
       </div>
 
       <div className="relative mx-auto w-full max-w-7xl px-5 py-8">
-        {/* ── Navbar ── */}
-        <header className="flex items-center justify-between pb-8 border-b border-white/[0.06]">
+        <div className="mb-8 flex items-center justify-between border-b border-white/[0.06] pb-5">
           <Logo />
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
-              <span className={`h-2 w-2 rounded-full ${socket?.connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-500"}`} />
-              <span className="text-xs font-medium text-slate-300">
-                {socket?.connected ? "Online" : "Connecting…"}
-              </span>
-            </div>
-            {/* User chip with rank badge */}
-            {(() => {
-              const myMmr = typeof user?.mmr === "number" ? user.mmr : undefined;
-              const rank = myMmr !== undefined ? getRank(myMmr) : null;
-              return (
-                <div className={`flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-3 py-1.5 ${rank ? rank.borderClass : "border-white/[0.08]"}`}>
-                  {rank ? (
-                    <span className={`text-[10px] font-extrabold tracking-wide ${rank.colorClass} ${rank.glowClass}`}>
-                      {rank.name.toUpperCase()}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-extrabold tracking-wide text-slate-500">
-                      —
-                    </span>
-                  )}
-                  <span className="text-xs font-semibold text-slate-300">{username}</span>
-                </div>
-              );
-            })()}
-            <button
-              onClick={() => { disconnectSocket(); logout(); router.replace("/"); }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/[0.08] transition"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Logout
-            </button>
+          <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${socket?.connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-500"}`}
+            />
+            <span className="text-xs font-medium text-slate-300">
+              {socket?.connected ? "Online" : "Connecting…"}
+            </span>
           </div>
-        </header>
+        </div>
 
         {/* ── Main content ── */}
         <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -272,7 +294,9 @@ export default function LobbyPage() {
                   typeof user?.mmr === "number" ? (
                     <span className="mt-3 inline-flex items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-bold tracking-wide text-blue-200">
                       Current MMR:{" "}
-                      <span className="ml-1.5 tabular-nums text-white">{user.mmr}</span>
+                      <span className="ml-1.5 tabular-nums text-white">
+                        {user.mmr}
+                      </span>
                     </span>
                   ) : null
                 }
@@ -297,13 +321,17 @@ export default function LobbyPage() {
               <div className="rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6 backdrop-blur-xl space-y-5">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm font-semibold text-white">Private Room</span>
+                  <span className="text-sm font-semibold text-white">
+                    Private Room
+                  </span>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Create */}
                   <div className="rounded-2xl border border-white/[0.07] bg-black/30 p-4 space-y-3">
-                    <p className="text-xs font-semibold tracking-wide text-slate-400">CREATE A ROOM</p>
+                    <p className="text-xs font-semibold tracking-wide text-slate-400">
+                      CREATE A ROOM
+                    </p>
                     {!isWaitingForFriend ? (
                       <button
                         disabled={isCreatingRoom || !socket?.connected}
@@ -313,13 +341,19 @@ export default function LobbyPage() {
                           setCreatedRoomCode(null);
                           socket.emit(
                             "createPrivateMatch",
-                            (response: { status: string; roomCode?: string }) => {
+                            (response: {
+                              status: string;
+                              roomCode?: string;
+                            }) => {
                               setIsCreatingRoom(false);
-                              if (response?.status === "success" && response.roomCode) {
+                              if (
+                                response?.status === "success" &&
+                                response.roomCode
+                              ) {
                                 setCreatedRoomCode(response.roomCode);
                                 setIsWaitingForFriend(true);
                               }
-                            }
+                            },
                           );
                         }}
                         className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.06] py-2.5 text-sm font-semibold text-white hover:bg-white/[0.1] transition disabled:opacity-50 disabled:cursor-not-allowed"
@@ -329,7 +363,9 @@ export default function LobbyPage() {
                     ) : (
                       <div className="space-y-3">
                         <div className="rounded-2xl border border-blue-500/20 bg-blue-500/8 p-3 text-center">
-                          <p className="text-[10px] font-bold tracking-[0.3em] text-blue-300">YOUR CODE</p>
+                          <p className="text-[10px] font-bold tracking-[0.3em] text-blue-300">
+                            YOUR CODE
+                          </p>
                           <p className="mt-1 text-3xl font-extrabold tracking-[0.3em] text-white">
                             {createdRoomCode}
                           </p>
@@ -340,13 +376,23 @@ export default function LobbyPage() {
                         </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => navigator.clipboard.writeText(createdRoomCode ?? "")}
+                            onClick={() =>
+                              navigator.clipboard.writeText(
+                                createdRoomCode ?? "",
+                              )
+                            }
                             className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.06] py-2 text-xs font-semibold text-white hover:bg-white/[0.1] transition"
                           >
                             Copy
                           </button>
                           <button
-                            onClick={() => { setIsWaitingForFriend(false); setCreatedRoomCode(null); }}
+                            onClick={() => {
+                              if (socket?.connected) {
+                                socket.emit("cancelPrivateRoom");
+                              }
+                              setIsWaitingForFriend(false);
+                              setCreatedRoomCode(null);
+                            }}
                             className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 text-xs font-semibold text-slate-400 hover:bg-white/[0.08] transition"
                           >
                             Cancel
@@ -358,7 +404,9 @@ export default function LobbyPage() {
 
                   {/* Join */}
                   <div className="rounded-2xl border border-white/[0.07] bg-black/30 p-4 space-y-3">
-                    <p className="text-xs font-semibold tracking-wide text-slate-400">JOIN WITH CODE</p>
+                    <p className="text-xs font-semibold tracking-wide text-slate-400">
+                      JOIN WITH CODE
+                    </p>
                     <div className="flex gap-2">
                       <input
                         value={roomCode}
@@ -371,7 +419,11 @@ export default function LobbyPage() {
                         className="flex-1 min-w-0 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm font-mono text-white placeholder:text-slate-600 outline-none focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                       />
                       <button
-                        disabled={isJoining || !socket?.connected || roomCode.trim().length < 6}
+                        disabled={
+                          isJoining ||
+                          !socket?.connected ||
+                          roomCode.trim().length < 6
+                        }
                         onClick={() => {
                           const code = roomCode.trim();
                           if (!code || !socket?.connected) return;
@@ -380,12 +432,21 @@ export default function LobbyPage() {
                           socket.emit(
                             "joinPrivateMatch",
                             { roomCode: code },
-                            (response: { success?: boolean; error?: string; status?: string }) => {
+                            (response: {
+                              success?: boolean;
+                              error?: string;
+                              status?: string;
+                            }) => {
                               setIsJoining(false);
-                              if (response?.success === false || response?.status === "error") {
-                                setJoinError(response?.error ?? "Failed to join room.");
+                              if (
+                                response?.success === false ||
+                                response?.status === "error"
+                              ) {
+                                setJoinError(
+                                  response?.error ?? "Failed to join room.",
+                                );
                               }
-                            }
+                            },
                           );
                         }}
                         className="rounded-xl border border-white/[0.08] bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.12] transition disabled:opacity-50 disabled:cursor-not-allowed"
@@ -394,7 +455,9 @@ export default function LobbyPage() {
                       </button>
                     </div>
                     {joinError && (
-                      <p className="text-xs font-semibold text-red-400">{joinError}</p>
+                      <p className="text-xs font-semibold text-red-400">
+                        {joinError}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -407,17 +470,24 @@ export default function LobbyPage() {
             <div className="flex items-center gap-2 mb-5">
               <Trophy className="h-4 w-4 text-amber-400" />
               <span className="text-sm font-bold text-white">Top 10</span>
-              <span className="ml-auto text-[10px] font-semibold tracking-wide text-slate-500">LEADERBOARD</span>
+              <span className="ml-auto text-[10px] font-semibold tracking-wide text-slate-500">
+                LEADERBOARD
+              </span>
             </div>
 
             {leaderboardLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-10 rounded-xl bg-white/[0.04] animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-10 rounded-xl bg-white/[0.04] animate-pulse"
+                  />
                 ))}
               </div>
             ) : leaderboard.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-6">No data yet.</p>
+              <p className="text-sm text-slate-500 text-center py-6">
+                No data yet.
+              </p>
             ) : (
               <div className="space-y-1">
                 {leaderboard.map((entry, i) => {
@@ -431,34 +501,48 @@ export default function LobbyPage() {
                         isMe
                           ? `border ${mmrRank.borderClass} bg-blue-500/8`
                           : leaderPos <= 3
-                          ? "bg-white/[0.04]"
-                          : "hover:bg-white/[0.03]"
+                            ? "bg-white/[0.04]"
+                            : "hover:bg-white/[0.03]"
                       }`}
                     >
                       {/* Leaderboard position badge */}
-                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-extrabold ${
-                        leaderPos === 1
-                          ? "bg-amber-400/20 text-amber-300"
-                          : leaderPos === 2
-                          ? "bg-slate-400/20 text-slate-300"
-                          : leaderPos === 3
-                          ? "bg-orange-600/20 text-orange-300"
-                          : "bg-white/[0.04] text-slate-500"
-                      }`}>
-                        {leaderPos === 1 ? <Crown className="h-3.5 w-3.5" /> : leaderPos}
+                      <div
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-extrabold ${
+                          leaderPos === 1
+                            ? "bg-amber-400/20 text-amber-300"
+                            : leaderPos === 2
+                              ? "bg-slate-400/20 text-slate-300"
+                              : leaderPos === 3
+                                ? "bg-orange-600/20 text-orange-300"
+                                : "bg-white/[0.04] text-slate-500"
+                        }`}
+                      >
+                        {leaderPos === 1 ? (
+                          <Crown className="h-3.5 w-3.5" />
+                        ) : (
+                          leaderPos
+                        )}
                       </div>
 
                       {/* Name + MMR rank */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className={`text-sm font-semibold truncate ${isMe ? "text-blue-200" : "text-white"}`}>
+                          <p
+                            className={`text-sm font-semibold truncate ${isMe ? "text-blue-200" : "text-white"}`}
+                          >
                             {entry.username}
                           </p>
                           {/* MMR tier badge */}
-                          <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide ${mmrRank.colorClass} ${mmrRank.borderClass} ${mmrRank.glowClass}`}>
+                          <span
+                            className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide ${mmrRank.colorClass} ${mmrRank.borderClass} ${mmrRank.glowClass}`}
+                          >
                             {mmrRank.name.toUpperCase()}
                           </span>
-                          {isMe && <span className="shrink-0 text-[10px] text-blue-400">(you)</span>}
+                          {isMe && (
+                            <span className="shrink-0 text-[10px] text-blue-400">
+                              (you)
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-slate-500">
                           {entry.wins}W · {entry.gamesPlayed}G
@@ -466,7 +550,9 @@ export default function LobbyPage() {
                       </div>
 
                       {/* MMR number */}
-                      <div className={`text-sm font-extrabold tabular-nums ${mmrRank.colorClass}`}>
+                      <div
+                        className={`text-sm font-extrabold tabular-nums ${mmrRank.colorClass}`}
+                      >
                         {entry.mmr}
                       </div>
                     </div>
@@ -519,17 +605,19 @@ function ModeCard({
         active
           ? `border-blue-500/30 bg-blue-500/10 shadow-[0_0_30px_${glowColor}]`
           : disabled
-          ? "cursor-not-allowed border-white/[0.05] bg-white/[0.02] opacity-60"
-          : "border-white/[0.07] bg-white/[0.04] hover:border-white/[0.14] hover:bg-white/[0.07]"
+            ? "cursor-not-allowed border-white/[0.05] bg-white/[0.02] opacity-60"
+            : "border-white/[0.07] bg-white/[0.04] hover:border-white/[0.14] hover:bg-white/[0.07]"
       }`}
       style={
-        active || (!disabled)
+        active || !disabled
           ? { boxShadow: active ? `0 0 30px ${glowColor}` : undefined }
           : undefined
       }
     >
       {/* Gradient icon bg */}
-      <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${accentFrom} ${accentTo} text-white shadow-lg`}>
+      <div
+        className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${accentFrom} ${accentTo} text-white shadow-lg`}
+      >
         {icon}
       </div>
 

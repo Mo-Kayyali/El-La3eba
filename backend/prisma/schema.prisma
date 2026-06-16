@@ -16,10 +16,35 @@ model User {
   mmr          Int      @default(1000)
   gamesPlayed  Int      @default(0)
   wins         Int      @default(0)
+  offlineDisconnectCount Int      @default(0)
+  lastDisconnectAt       DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  sentFriendRequests     Friendship[] @relation("FriendRequestsSent")
+  receivedFriendRequests Friendship[] @relation("FriendRequestsReceived")
+  offlinePenalties       OfflinePenalty[]
+
   @@index([mmr])
+}
+
+model OfflinePenalty {
+  id            String    @id @default(uuid())
+  userId        String
+  mmrLost       Int
+  gameSessionId String
+  createdAt     DateTime  @default(now())
+  acknowledgedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, acknowledgedAt])
+  @@index([createdAt])
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
 }
 
 model FootballPlayer {
@@ -28,4 +53,20 @@ model FootballPlayer {
   aliases    String[] @default([])
   clubs      String[]
   activeYear Int
+}
+
+model Friendship {
+  id        String           @id @default(uuid())
+  userId    String
+  friendId  String
+  status    FriendshipStatus  @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user   User @relation("FriendRequestsSent", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendRequestsReceived", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId, status])
+  @@index([friendId, status])
 }

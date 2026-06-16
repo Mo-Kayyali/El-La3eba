@@ -9,13 +9,23 @@ export declare class MatchmakingService {
     private readonly logger;
     private server;
     private startTurnTimerFn?;
+    private readonly roomExpiryTimers;
+    private readonly SEARCH_TTL_SECONDS;
+    private readonly PRIVATE_ROOM_TTL_SECONDS;
+    private readonly ACTIVE_GAME_KEY_PREFIX;
     private readonly QUEUES;
     constructor(redisClient: RedisService, prisma: PrismaService);
     setServer(server: Server): void;
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
+    private queueSearchKey;
+    private activeGameKey;
+    private clearRoomExpiryTimer;
+    private schedulePrivateRoomExpiry;
     joinQueue(userId: string, socketId: string, username: string | undefined, mode: QueueMode): Promise<void>;
     cancelSearch(userId: string): Promise<void>;
-    private popValidPlayer;
+    private removeUserFromQueue;
+    private purgeExpiredUsers;
+    private popValidPlayerPair;
     createPrivateRoom(userId: string, socketId: string, username?: string): Promise<string>;
     cancelPrivateRoom(userId: string): Promise<void>;
     private cleanupUserPrivateRoom;
@@ -60,6 +70,8 @@ export declare class MatchmakingService {
         isRanked: boolean;
     }>;
     deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;
+    setActiveGameSessionIdInMulti(multi: ChainableCommander, userId: string, gameSessionId: string): void;
+    setActiveGameSessionIdForUser(userId: string, gameSessionId: string): Promise<void>;
     getActiveGameSessionIdForUser(userId: string): Promise<string | null>;
     updateMmrAfterMatch(winnerId: string, loserId: string, options?: {
         marginMultiplier?: number;

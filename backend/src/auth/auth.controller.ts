@@ -1,4 +1,11 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -23,7 +30,10 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Current user profile (from database)' })
+  @ApiOperation({
+    summary:
+      'Current user profile (from database), including pending incoming friend request count',
+  })
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Request() req: { user: { userId: string } }) {
@@ -35,7 +45,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('request-verification')
   requestVerification(@Request() req: any) {
-    return this.authService.requestVerification(req.user.userId, req.user.email);
+    return this.authService.requestVerification(
+      req.user.userId,
+      req.user.email,
+    );
   }
 
   @ApiBearerAuth()
@@ -44,5 +57,13 @@ export class AuthController {
   @Post('verify-email')
   verifyEmail(@Request() req: any, @Body('code') code: string) {
     return this.authService.verifyEmail(req.user.userId, code);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Acknowledge and clear pending offline penalty' })
+  @UseGuards(JwtAuthGuard)
+  @Post('acknowledge-offline-penalty')
+  acknowledgeOfflinePenalty(@Request() req: { user: { userId: string } }) {
+    return this.authService.acknowledgeOfflinePenalty(req.user.userId);
   }
 }

@@ -18,13 +18,16 @@ export class GameController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Active in-progress game session for the current user (Redis)' })
+  @ApiOperation({
+    summary: 'Active in-progress game session for the current user (Redis)',
+  })
   @UseGuards(JwtAuthGuard)
   @Get('active-game')
   async getActiveGame(@Request() req: { user: { userId: string } }) {
-    const gameSessionId = await this.matchmakingService.getActiveGameSessionIdForUser(
-      req.user.userId,
-    );
+    const gameSessionId =
+      await this.matchmakingService.getActiveGameSessionIdForUser(
+        req.user.userId,
+      );
     return { gameSessionId };
   }
 }
