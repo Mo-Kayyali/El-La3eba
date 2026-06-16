@@ -15,6 +15,7 @@ var GameGateway_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
+const schedule_1 = require("@nestjs/schedule");
 const socket_io_1 = require("socket.io");
 const jwt_1 = require("@nestjs/jwt");
 const matchmaking_service_1 = require("./matchmaking.service");
@@ -24,6 +25,8 @@ const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const game_questions_1 = require("./game.questions");
 const elo_util_1 = require("./elo.util");
+const friends_service_1 = require("../friends/friends.service");
+const users_service_1 = require("../users/users.service");
 const GUESS_RATE_LIMIT_MAX = 5;
 const GUESS_RATE_LIMIT_WINDOW_MS = 1000;
 let GameGateway = GameGateway_1 = class GameGateway {
@@ -31,22 +34,180 @@ let GameGateway = GameGateway_1 = class GameGateway {
     matchmakingService;
     gameService;
     redisClient;
+    friendsService;
+    usersService;
     server;
     logger = new common_1.Logger(GameGateway_1.name);
     turnTimers = new Map();
     rematchTimers = new Map();
     disconnectTimers = new Map();
     guessTimestamps = new Map();
+    inviteExpiryTimers = new Map();
     roundTransitionMs = 4000;
-    DISCONNECT_GRACE_MS = 15_000;
-    constructor(jwtService, matchmakingService, gameService, redisClient) {
+    DISCONNECT_GRACE_MS = 30_000;
+    INVITE_COOLDOWN_SECONDS = 5;
+    INVITE_TTL_SECONDS = 60;
+    constructor(jwtService, matchmakingService, gameService, redisClient, friendsService, usersService) {
         this.jwtService = jwtService;
         this.matchmakingService = matchmakingService;
         this.gameService = gameService;
         this.redisClient = redisClient;
+        this.friendsService = friendsService;
+        this.usersService = usersService;
     }
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    inviteCooldownKey(inviterId) {
+        return `game_invite_cooldown:${inviterId}`;
+    }
+    inviteKey(inviterId, inviteeId) {
+        return `game_invite:${inviterId}:${inviteeId}`;
+    }
+    inviteTimerKey(inviterId, inviteeId) {
+        return `${inviterId}:${inviteeId}`;
+    }
+    clearInviteExpiryTimer(inviterId, inviteeId) {
+        const key = this.inviteTimerKey(inviterId, inviteeId);
+        const timeout = this.inviteExpiryTimers.get(key);
+        if (!timeout)
+            return;
+        clearTimeout(timeout);
+        this.inviteExpiryTimers.delete(key);
+    }
+    scheduleInviteExpiry(inviterId, inviteeId) {
+        this.clearInviteExpiryTimer(inviterId, inviteeId);
+        const timeout = setTimeout(async () => {
+            const timerKey = this.inviteTimerKey(inviterId, inviteeId);
+            this.inviteExpiryTimers.delete(timerKey);
+            const exists = await this.redisClient
+                .exists(this.inviteKey(inviterId, inviteeId))
+                .catch(() => 0);
+            if (exists)
+                return;
+            await this.matchmakingService
+                .cancelPrivateRoom(inviterId)
+                .catch(() => { });
+            this.server.to(inviterId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId,
+                reason: 'invite_expired',
+            });
+        }, this.INVITE_TTL_SECONDS * 1000 + 250);
+        this.inviteExpiryTimers.set(this.inviteTimerKey(inviterId, inviteeId), timeout);
+    }
+    async cancelActiveInvitesByInviter(inviterId, reason) {
+        const keys = await this.redisClient
+            .keys(this.inviteKey(inviterId, '*'))
+            .catch(() => []);
+        if (!keys.length)
+            return;
+        const values = await this.redisClient.mget(...keys);
+        const invitees = [];
+        values.forEach((raw) => {
+            if (!raw)
+                return;
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed?.inviteeId)
+                    invitees.push(parsed.inviteeId);
+            }
+            catch {
+            }
+        });
+        await this.redisClient.del(...keys).catch(() => 0);
+        await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
+        invitees.forEach((inviteeId) => {
+            this.clearInviteExpiryTimer(inviterId, inviteeId);
+        });
+        invitees.forEach((inviteeId) => {
+            this.server.to(inviteeId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId,
+                reason,
+            });
+        });
+    }
+    async cancelPendingInvitesForInvitee(inviteeId, reason) {
+        const keys = await this.redisClient
+            .keys(this.inviteKey('*', inviteeId))
+            .catch(() => []);
+        if (!keys.length)
+            return;
+        const values = await this.redisClient.mget(...keys);
+        const inviters = new Set();
+        values.forEach((raw, idx) => {
+            if (!raw)
+                return;
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed?.inviterId) {
+                    inviters.add(parsed.inviterId);
+                    this.clearInviteExpiryTimer(parsed.inviterId, parsed.inviteeId ?? inviteeId);
+                    return;
+                }
+            }
+            catch {
+            }
+            const parts = keys[idx]?.split(':') ?? [];
+            if (parts.length >= 3) {
+                const inviterId = parts[1];
+                if (inviterId) {
+                    inviters.add(inviterId);
+                    this.clearInviteExpiryTimer(inviterId, inviteeId);
+                }
+            }
+        });
+        await this.redisClient.del(...keys).catch(() => 0);
+        await Promise.allSettled(Array.from(inviters).map((inviterId) => this.matchmakingService.cancelPrivateRoom(inviterId)));
+        inviters.forEach((inviterId) => {
+            this.server.to(inviterId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId,
+                reason,
+            });
+        });
+    }
+    emitFriendRequestReceived(recipientId, payload) {
+        if (!this.server)
+            return;
+        const room = this.server.sockets.adapter.rooms.get(recipientId);
+        if (!room || room.size === 0)
+            return;
+        this.server.to(recipientId).emit('friendRequestReceived', payload);
+    }
+    async setPresenceOnline(userId) {
+        await this.redisClient.hset('presence', userId, 'online');
+    }
+    async setPresenceInGame(userId, gameSessionId) {
+        await this.redisClient.hset('presence', userId, `in-game:${gameSessionId}`);
+    }
+    async clearPresence(userId) {
+        await this.redisClient.hdel('presence', userId);
+    }
+    async emitFriendsPresenceSnapshot(userId) {
+        if (!this.server)
+            return;
+        const friends = await this.friendsService.getFriendPresenceSnapshot(userId);
+        this.server.to(userId).emit('friendsPresenceUpdated', { friends });
+    }
+    async broadcastFriendPresences() {
+        if (!this.server)
+            return;
+        const userIds = await this.redisClient
+            .hkeys('presence')
+            .catch(() => []);
+        if (!userIds.length)
+            return;
+        await Promise.all(userIds.map(async (userId) => {
+            try {
+                const friends = await this.friendsService.getFriendPresenceSnapshot(userId);
+                this.server.to(userId).emit('friendsPresenceUpdated', { friends });
+            }
+            catch (error) {
+                this.logger.warn(`Presence broadcast skipped for ${userId}: ${error?.message}`);
+            }
+        }));
     }
     async resolveMmrDeltasForMatch(state, winnerId, loserId, forfeited) {
         if (!state?.isRanked || !winnerId || !loserId)
@@ -159,10 +320,20 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 const results = await multi.exec();
                 if (!results) {
                     await this.redisClient.unwatch().catch(() => { });
+                    this.logger.debug(`Disconnect forfeit skipped due to concurrent update for game ${gameSessionId}`);
                     return;
                 }
                 this.clearTurnTimer(gameSessionId);
                 const mmrDeltas = await this.resolveMmrDeltasForMatch(state, winnerId, userId, true);
+                const mmrLost = state.isRanked
+                    ? Math.max(0, -(mmrDeltas?.[userId] ?? -15))
+                    : 0;
+                await this.usersService
+                    .recordOfflinePenalty(userId, gameSessionId, mmrLost)
+                    .catch((error) => {
+                    const err = error;
+                    this.logger.error(`Failed to persist offline penalty for ${userId}: ${err?.message}`);
+                });
                 const payload = {
                     state,
                     forfeit: true,
@@ -212,7 +383,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     await this.redisClient.unwatch();
                     return;
                 }
-                state.strikes[timedOutUserId] = (state.strikes[timedOutUserId] ?? 0) + 1;
+                state.strikes[timedOutUserId] =
+                    (state.strikes[timedOutUserId] ?? 0) + 1;
                 let isRoundOver = false;
                 let isMatchOver = false;
                 let roundWinner = null;
@@ -317,7 +489,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         this.startTurnTimer(gameSessionId);
                         return;
                     }
-                    const nextPayload = { state: latest, lastGuess: updatePayload.lastGuess };
+                    const nextPayload = {
+                        state: latest,
+                        lastGuess: updatePayload.lastGuess,
+                    };
                     this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
                     this.startTurnTimer(gameSessionId);
                 }
@@ -347,6 +522,20 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 secret: process.env.JWT_SECRET || 'super-secret-jwt-key',
             });
             client.data.user = payload;
+            const userId = String(payload.sub || payload.userId || '');
+            if (userId) {
+                await client.join(userId);
+                await this.setPresenceOnline(userId);
+                this.emitFriendsPresenceSnapshot(userId).catch(() => { });
+                this.friendsService
+                    .countIncomingFriendRequests(userId)
+                    .then((pendingIncomingFriendRequests) => {
+                    client.emit('friendRequestCountSnapshot', {
+                        pendingIncomingFriendRequests,
+                    });
+                })
+                    .catch(() => { });
+            }
             this.logger.log(`Client connected: ${client.id} (User ID: ${payload.sub || payload.userId})`);
         }
         catch {
@@ -358,41 +547,30 @@ let GameGateway = GameGateway_1 = class GameGateway {
         this.logger.log(`Client disconnected: ${client.id}`);
         const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
         if (userId) {
-            this.matchmakingService.cancelSearch(userId).catch(() => { });
-            this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
+            await Promise.allSettled([
+                this.matchmakingService.cancelSearch(userId),
+                this.matchmakingService.cancelPrivateRoom(userId),
+                this.cancelActiveInvitesByInviter(userId, 'inviter_offline'),
+                this.cancelPendingInvitesForInvitee(userId, 'invitee_offline'),
+            ]);
         }
         try {
-            const rooms = Array.from(client.rooms ?? []);
-            for (const room of rooms) {
-                if (!room || room === client.id)
-                    continue;
-                const stateExists = await this.redisClient.exists(`game:${room}`).catch(() => 0);
-                if (!stateExists)
-                    continue;
-                let endedMatch = false;
-                try {
-                    const stateStr = await this.redisClient.get(`game:${room}`);
-                    if (stateStr) {
-                        const parsed = JSON.parse(stateStr);
-                        endedMatch = parsed?.status === 'match_completed';
-                    }
-                }
-                catch {
-                }
-                if (endedMatch && userId) {
-                    this.server.to(room).emit('opponentLeft', { userId, gameSessionId: room });
-                    this.logger.log(`User ${userId} left ended game ${room} — opponentLeft emitted`);
-                    continue;
-                }
-                if (userId) {
-                    this.startDisconnectTimer(room, userId);
-                    this.server.to(room).emit('playerDisconnected', { userId, gameSessionId: room });
-                    this.logger.log(`User ${userId} disconnected from game ${room} — grace period started`);
+            if (userId) {
+                const gameSessionId = await this.matchmakingService.getActiveGameSessionIdForUser(userId);
+                if (gameSessionId) {
+                    this.startDisconnectTimer(gameSessionId, userId);
+                    this.server
+                        .to(gameSessionId)
+                        .emit('playerDisconnected', { userId, gameSessionId });
+                    this.logger.log(`User ${userId} disconnected from active game ${gameSessionId} — grace period started`);
                 }
             }
         }
         catch (e) {
             this.logger.error(`Error in handleDisconnect cleanup: ${e?.message}`);
+        }
+        if (userId) {
+            await this.clearPresence(userId).catch(() => { });
         }
     }
     async handleJoinQueue(client, mode = 'ranked') {
@@ -429,6 +607,135 @@ let GameGateway = GameGateway_1 = class GameGateway {
             client.data?.user?.email;
         const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, username);
         return { status: 'success', roomCode };
+    }
+    async handleSendGameInvite(client, friendId) {
+        const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!friendId)
+            return { status: 'error', message: 'friendId required' };
+        const inviterUsername = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email ||
+            userId;
+        try {
+            const cooldownSet = await this.redisClient.set(this.inviteCooldownKey(userId), '1', 'EX', this.INVITE_COOLDOWN_SECONDS, 'NX');
+            if (cooldownSet !== 'OK') {
+                return {
+                    status: 'error',
+                    message: 'Please wait 5 seconds before sending another invite.',
+                };
+            }
+            await this.friendsService.ensureUsersAreFriends(userId, friendId);
+            await this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
+            const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername);
+            await this.redisClient.set(this.inviteKey(userId, friendId), JSON.stringify({
+                inviterId: userId,
+                inviteeId: friendId,
+                inviterUsername,
+                roomCode,
+                createdAt: new Date().toISOString(),
+            }), 'EX', this.INVITE_TTL_SECONDS);
+            this.scheduleInviteExpiry(userId, friendId);
+            this.server.to(friendId).emit('friendGameInvite', {
+                inviterId: userId,
+                inviterUsername,
+                roomCode,
+            });
+            return { status: 'success', roomCode };
+        }
+        catch (error) {
+            return {
+                status: 'error',
+                message: error?.message || 'Failed to invite friend',
+            };
+        }
+    }
+    async handleInviteFriendToGame(client, friendId) {
+        return this.handleSendGameInvite(client, friendId);
+    }
+    async handleCancelGameInvite(client, friendId) {
+        const inviterId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!inviterId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!friendId)
+            return { status: 'error', message: 'friendId required' };
+        const key = this.inviteKey(inviterId, friendId);
+        const deleted = await this.redisClient.del(key);
+        this.clearInviteExpiryTimer(inviterId, friendId);
+        await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
+        if (deleted > 0) {
+            this.server.to(friendId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId: friendId,
+                reason: 'inviter_cancelled',
+            });
+        }
+        return { status: 'ok' };
+    }
+    async handleAcceptGameInvite(client, inviterId) {
+        const inviteeId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!inviteeId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!inviterId)
+            return { status: 'error', message: 'inviterId required' };
+        const key = this.inviteKey(inviterId, inviteeId);
+        const rawInvite = await this.redisClient.get(key);
+        if (!rawInvite) {
+            return { status: 'error', message: 'Invite expired or unavailable' };
+        }
+        let invite;
+        try {
+            invite = JSON.parse(rawInvite);
+        }
+        catch {
+            await this.redisClient.del(key).catch(() => 0);
+            return { status: 'error', message: 'Invite is invalid' };
+        }
+        await this.redisClient.del(key);
+        this.clearInviteExpiryTimer(inviterId, inviteeId);
+        const username = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email ||
+            inviteeId;
+        const joinResult = await this.matchmakingService.joinPrivateRoom(invite.roomCode, inviteeId, client.id, username);
+        if (!joinResult?.success || !joinResult.gameSessionId) {
+            this.server.to(inviterId).emit('inviteCancelledBySystem', {
+                inviterId,
+                inviteeId,
+                reason: 'invite_expired',
+            });
+            return {
+                status: 'error',
+                message: joinResult?.error ?? 'Could not accept invite',
+            };
+        }
+        this.server.to(inviterId).emit('inviteAccepted', {
+            inviterId,
+            inviteeId,
+            gameSessionId: joinResult.gameSessionId,
+        });
+        return { status: 'ok', gameSessionId: joinResult.gameSessionId };
+    }
+    async handleDeclineGameInvite(client, inviterId) {
+        const inviteeId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!inviteeId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!inviterId)
+            return { status: 'error', message: 'inviterId required' };
+        const key = this.inviteKey(inviterId, inviteeId);
+        const deleted = await this.redisClient.del(key);
+        if (deleted > 0) {
+            await this.matchmakingService
+                .cancelPrivateRoom(inviterId)
+                .catch(() => { });
+            this.clearInviteExpiryTimer(inviterId, inviteeId);
+            this.server.to(inviterId).emit('inviteDeclined', {
+                inviterId,
+                inviteeId,
+            });
+        }
+        return { status: 'ok' };
     }
     async handleJoinPrivateRoom(client, roomCode) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
@@ -470,7 +777,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             multi.set(rematchKey, JSON.stringify(rematch), 'EX', 35);
             const results = await multi.exec();
             if (!results) {
-                return { status: 'retry', message: 'Concurrent update, please try again' };
+                return {
+                    status: 'retry',
+                    message: 'Concurrent update, please try again',
+                };
             }
             this.server.to(gameSessionId).emit('rematchRequested', { userId });
             if (rematch.p1Ready && rematch.p2Ready) {
@@ -479,8 +789,16 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 const newGameSessionId = (0, crypto_1.randomUUID)();
                 const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, rematch.isRanked === true);
                 this.server.in(gameSessionId).socketsJoin(newGameSessionId);
-                this.server.to(gameSessionId).emit('rematchStarting', { newGameSessionId });
-                this.server.to(newGameSessionId).emit('gameStateUpdated', { state: newState });
+                await Promise.all([
+                    this.setPresenceInGame(rematch.p1Id, newGameSessionId),
+                    this.setPresenceInGame(rematch.p2Id, newGameSessionId),
+                ]);
+                this.server
+                    .to(gameSessionId)
+                    .emit('rematchStarting', { newGameSessionId });
+                this.server
+                    .to(newGameSessionId)
+                    .emit('gameStateUpdated', { state: newState });
                 this.startTurnTimer(newGameSessionId);
                 this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
             }
@@ -502,13 +820,22 @@ let GameGateway = GameGateway_1 = class GameGateway {
         try {
             const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
             if (!stateStr) {
+                await this.setPresenceOnline(userId).catch(() => { });
                 return { status: 'ok' };
             }
             const state = JSON.parse(stateStr);
             if (state?.status !== 'match_completed') {
                 return { status: 'error', message: 'Match is not finished' };
             }
-            this.server.to(gameSessionId).emit('opponentLeft', { userId, gameSessionId });
+            await Promise.allSettled([
+                this.redisClient.del(`user_active_game:${userId}`),
+                this.redisClient.del(`active_game:${userId}`),
+            ]);
+            await this.setPresenceOnline(userId);
+            client.leave(gameSessionId);
+            this.server
+                .to(gameSessionId)
+                .emit('opponentLeft', { userId, gameSessionId });
             this.logger.log(`User ${userId} acknowledged leaving ended match ${gameSessionId}`);
             return { status: 'ok' };
         }
@@ -523,37 +850,69 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: 'Unauthorized' };
         if (!gameSessionId)
             return { status: 'error', message: 'gameSessionId required' };
-        client.join(gameSessionId);
-        this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
         const hadDisconnectTimer = this.disconnectTimers.has(this.disconnectTimerKey(gameSessionId, userId));
-        if (hadDisconnectTimer) {
-            this.clearDisconnectTimer(gameSessionId, userId);
-            try {
-                const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
-                if (stateStr) {
-                    const state = JSON.parse(stateStr);
-                    if (state.status !== 'match_completed') {
-                        this.server
-                            .to(gameSessionId)
-                            .emit('playerReconnected', { userId, gameSessionId });
-                        this.startTurnTimer(gameSessionId);
-                        this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
-                    }
-                }
-            }
-            catch (err) {
-                this.logger.error(`Error during reconnect timer restore: ${err?.message}`);
-            }
-        }
+        this.clearDisconnectTimer(gameSessionId, userId);
+        let parsedState = null;
         try {
             const stateStr = await this.redisClient.get(`game:${gameSessionId}`);
-            if (stateStr) {
-                client.emit('gameStateUpdated', { state: JSON.parse(stateStr) });
+            if (!stateStr) {
+                return { status: 'error', message: 'Game session not found' };
+            }
+            parsedState = JSON.parse(stateStr);
+            if (parsedState?.status === 'match_completed') {
+                this.clearDisconnectTimer(gameSessionId, userId);
+                client.emit('gameStateUpdated', { state: parsedState });
+                return {
+                    status: 'error',
+                    message: 'Match is already completed',
+                    finalState: parsedState,
+                };
             }
         }
         catch (err) {
-            this.logger.error(`Error fetching state for reconnecting client: ${err?.message}`);
+            this.logger.error(`Error fetching state before joinGameRoom: ${err?.message}`);
+            return { status: 'error', message: 'Failed to load game state' };
         }
+        client.join(gameSessionId);
+        this.logger.log(`User ${userId} joined game room ${gameSessionId} (socket ${client.id})`);
+        await Promise.allSettled([
+            this.matchmakingService.cancelSearch(userId),
+            this.matchmakingService.cancelPrivateRoom(userId),
+            this.cancelActiveInvitesByInviter(userId, 'inviter_in_game'),
+            this.cancelPendingInvitesForInvitee(userId, 'invitee_in_game'),
+            this.matchmakingService.setActiveGameSessionIdForUser(userId, gameSessionId),
+        ]);
+        await this.setPresenceInGame(userId, gameSessionId).catch(() => { });
+        if (hadDisconnectTimer) {
+            const latestStateStr = await this.redisClient
+                .get(`game:${gameSessionId}`)
+                .catch(() => null);
+            if (latestStateStr) {
+                try {
+                    const latestState = JSON.parse(latestStateStr);
+                    if (latestState?.status === 'match_completed') {
+                        client.emit('gameStateUpdated', { state: latestState });
+                        return {
+                            status: 'error',
+                            message: 'Match is already completed',
+                            finalState: latestState,
+                        };
+                    }
+                }
+                catch {
+                    return {
+                        status: 'error',
+                        message: 'Failed to load game state',
+                    };
+                }
+            }
+            this.server
+                .to(gameSessionId)
+                .emit('playerReconnected', { userId, gameSessionId });
+            this.startTurnTimer(gameSessionId);
+            this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
+        }
+        client.emit('gameStateUpdated', { state: parsedState });
         return { status: 'success', message: `Joined room ${gameSessionId}` };
     }
     async handleSubmitGuess(client, payload) {
@@ -608,7 +967,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     state.strikes[userId] += 1;
                 }
                 else {
-                    state.guessedPlayers.push({ name: matchedPlayer.name, guessedBy: userId });
+                    state.guessedPlayers.push({
+                        name: matchedPlayer.name,
+                        guessedBy: userId,
+                    });
                     state.scores[userId] += 1;
                 }
             }
@@ -821,6 +1183,12 @@ __decorate([
     __metadata("design:type", socket_io_1.Server)
 ], GameGateway.prototype, "server", void 0);
 __decorate([
+    (0, schedule_1.Interval)(5000),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "broadcastFriendPresences", null);
+__decorate([
     (0, websockets_1.SubscribeMessage)('joinQueue'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)('mode')),
@@ -849,6 +1217,46 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleCreatePrivateRoom", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('sendGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleSendGameInvite", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('inviteFriendToGame'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleInviteFriendToGame", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('cancelGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleCancelGameInvite", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('acceptGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('inviterId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleAcceptGameInvite", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('declineGameInvite'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('inviterId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleDeclineGameInvite", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('joinPrivateMatch'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
@@ -902,6 +1310,8 @@ exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
     __metadata("design:paramtypes", [jwt_1.JwtService,
         matchmaking_service_1.MatchmakingService,
         game_service_1.GameService,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        friends_service_1.FriendsService,
+        users_service_1.UsersService])
 ], GameGateway);
 //# sourceMappingURL=game.gateway.js.map

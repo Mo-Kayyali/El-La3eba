@@ -9,6 +9,7 @@ export const FOOTBALL_QUESTIONS = [
 ] as const;
 
 export function pickRandomFootballQuestion() {
-  return FOOTBALL_QUESTIONS[Math.floor(Math.random() * FOOTBALL_QUESTIONS.length)];
+  return FOOTBALL_QUESTIONS[
+    Math.floor(Math.random() * FOOTBALL_QUESTIONS.length)
+  ];
 }
-

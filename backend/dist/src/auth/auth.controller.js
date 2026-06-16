@@ -39,6 +39,9 @@ let AuthController = class AuthController {
     verifyEmail(req, code) {
         return this.authService.verifyEmail(req.user.userId, code);
     }
+    acknowledgeOfflinePenalty(req) {
+        return this.authService.acknowledgeOfflinePenalty(req.user.userId);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -59,7 +62,9 @@ __decorate([
 ], AuthController.prototype, "login", null);
 __decorate([
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Current user profile (from database)' }),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Current user profile (from database), including pending incoming friend request count',
+    }),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('me'),
     __param(0, (0, common_1.Request)()),
@@ -88,6 +93,16 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "verifyEmail", null);
+__decorate([
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Acknowledge and clear pending offline penalty' }),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('acknowledge-offline-penalty'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "acknowledgeOfflinePenalty", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),

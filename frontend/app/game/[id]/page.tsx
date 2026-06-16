@@ -71,7 +71,7 @@ function coerceString(v: unknown) {
 function getByKeyOrIndex(
   value: Record<string, number> | number[] | undefined,
   key: string | undefined,
-  index: number
+  index: number,
 ) {
   if (!value) return 0;
   if (Array.isArray(value)) return value[index] ?? 0;
@@ -80,7 +80,10 @@ function getByKeyOrIndex(
 }
 
 /** Extract display name and guessedBy from a GuessEntry (handles legacy string format) */
-function parseGuessEntry(entry: GuessEntry): { name: string; guessedBy: string | null } {
+function parseGuessEntry(entry: GuessEntry): {
+  name: string;
+  guessedBy: string | null;
+} {
   if (typeof entry === "string") return { name: entry, guessedBy: null };
   return { name: entry.name, guessedBy: entry.guessedBy };
 }
@@ -88,23 +91,59 @@ function parseGuessEntry(entry: GuessEntry): { name: string; guessedBy: string |
 function Logo() {
   return (
     <div className="flex items-center gap-2 select-none">
-      <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 32 32"
+        fill="none"
+        aria-hidden="true"
+      >
         <circle cx="16" cy="16" r="15" stroke="url(#gp-grad)" strokeWidth="2" />
-        <path d="M16 4 L20 10 L14 14 L10 9 Z" fill="url(#gp-grad)" opacity="0.9" />
-        <path d="M22 8 L26 14 L22 20 L16 18 L14 14 L20 10 Z" fill="url(#gp-grad2)" opacity="0.7" />
-        <path d="M10 22 L14 14 L16 18 L14 26 Z" fill="url(#gp-grad)" opacity="0.8" />
+        <path
+          d="M16 4 L20 10 L14 14 L10 9 Z"
+          fill="url(#gp-grad)"
+          opacity="0.9"
+        />
+        <path
+          d="M22 8 L26 14 L22 20 L16 18 L14 14 L20 10 Z"
+          fill="url(#gp-grad2)"
+          opacity="0.7"
+        />
+        <path
+          d="M10 22 L14 14 L16 18 L14 26 Z"
+          fill="url(#gp-grad)"
+          opacity="0.8"
+        />
         <defs>
-          <linearGradient id="gp-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#3b82f6" /><stop offset="1" stopColor="#a78bfa" />
+          <linearGradient
+            id="gp-grad"
+            x1="0"
+            y1="0"
+            x2="32"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#3b82f6" />
+            <stop offset="1" stopColor="#a78bfa" />
           </linearGradient>
-          <linearGradient id="gp-grad2" x1="32" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#60a5fa" /><stop offset="1" stopColor="#818cf8" />
+          <linearGradient
+            id="gp-grad2"
+            x1="32"
+            y1="0"
+            x2="0"
+            y2="32"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#60a5fa" />
+            <stop offset="1" stopColor="#818cf8" />
           </linearGradient>
         </defs>
       </svg>
       <span className="text-sm font-extrabold tracking-tight">
         <span className="text-white">El-</span>
-        <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">La3eba</span>
+        <span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
+          La3eba
+        </span>
       </span>
     </div>
   );
@@ -112,7 +151,7 @@ function Logo() {
 
 function emitLeaveEndedMatch(
   socket: Socket | null,
-  gameSessionId: string | undefined
+  gameSessionId: string | undefined,
 ) {
   if (socket?.connected && gameSessionId) {
     socket.emit("leaveEndedMatch", { gameSessionId });
@@ -154,8 +193,7 @@ function YouForfeitedEndScreen({
     goLobby();
   }, [secondsLeft, goLobby]);
 
-  const lossLabel =
-    typeof mmrDelta === "number" ? `${mmrDelta} MMR` : null;
+  const lossLabel = typeof mmrDelta === "number" ? `${mmrDelta} MMR` : null;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#030712] text-slate-100 flex flex-col items-center justify-center px-6 py-12">
@@ -163,17 +201,24 @@ function YouForfeitedEndScreen({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(239,68,68,0.12),transparent_60%)]" />
       </div>
       <div className="relative w-full max-w-md text-center">
-        <h2 className="text-4xl font-extrabold tracking-tight text-white">You Forfeited</h2>
+        <h2 className="text-4xl font-extrabold tracking-tight text-white">
+          You Forfeited
+        </h2>
         <p className="mt-3 text-sm text-slate-400">
           This match counts as a loss
           {typeof mmrDelta === "number" ? " — your rating was adjusted." : "."}
         </p>
         {lossLabel !== null && (
-          <p className="mt-6 text-4xl font-extrabold tabular-nums text-red-500">{lossLabel}</p>
+          <p className="mt-6 text-4xl font-extrabold tabular-nums text-red-500">
+            {lossLabel}
+          </p>
         )}
         <p className="mt-8 text-sm text-slate-500">
           Returning to the lobby in{" "}
-          <span className="font-bold text-white tabular-nums">{secondsLeft}</span>s
+          <span className="font-bold text-white tabular-nums">
+            {secondsLeft}
+          </span>
+          s
         </p>
         <button
           type="button"
@@ -213,8 +258,13 @@ export default function GamePage() {
   const flashLeftTimer = useRef<number | null>(null);
   const flashRightTimer = useRef<number | null>(null);
 
-  // Disconnect overlay state
-  const [disconnectedUserId, setDisconnectedUserId] = useState<string | null>(null);
+  // Non-blocking disconnect banner state
+  const [disconnectedUserId, setDisconnectedUserId] = useState<string | null>(
+    null,
+  );
+  const [disconnectSecondsLeft, setDisconnectSecondsLeft] = useState<
+    number | null
+  >(null);
 
   // Rematch state
   const [rematchSecondsLeft, setRematchSecondsLeft] = useState(30);
@@ -222,15 +272,14 @@ export default function GamePage() {
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
 
   /** Populated from `matchOver` payload (ranked). */
-  const [mmrDeltas, setMmrDeltas] = useState<Record<string, number> | null>(null);
+  const [mmrDeltas, setMmrDeltas] = useState<Record<string, number> | null>(
+    null,
+  );
   const [showForfeitModal, setShowForfeitModal] = useState(false);
   const [opponentLeftRematch, setOpponentLeftRematch] = useState(false);
   const [matchEndedByForfeit, setMatchEndedByForfeit] = useState(false);
 
-  const triggerFlash = (
-    side: "left" | "right",
-    type: "correct" | "wrong"
-  ) => {
+  const triggerFlash = (side: "left" | "right", type: "correct" | "wrong") => {
     if (side === "left") {
       if (flashLeftTimer.current) window.clearTimeout(flashLeftTimer.current);
       setFlashLeft(type);
@@ -238,7 +287,10 @@ export default function GamePage() {
     } else {
       if (flashRightTimer.current) window.clearTimeout(flashRightTimer.current);
       setFlashRight(type);
-      flashRightTimer.current = window.setTimeout(() => setFlashRight(null), 700);
+      flashRightTimer.current = window.setTimeout(
+        () => setFlashRight(null),
+        700,
+      );
     }
   };
 
@@ -249,6 +301,8 @@ export default function GamePage() {
     setOpponentWantsRematch(false);
     setOpponentLeftRematch(false);
     setMatchEndedByForfeit(false);
+    setDisconnectedUserId(null);
+    setDisconnectSecondsLeft(null);
   }, [gameSessionId]);
 
   useEffect(() => {
@@ -286,8 +340,10 @@ export default function GamePage() {
         const guesserId = String(lastGuess.user);
         const isLeft = guesserId === String(leftPlayerIdRef.current);
         const isRight = guesserId === String(rightPlayerIdRef.current);
-        if (isLeft) triggerFlash("left", lastGuess.correct ? "correct" : "wrong");
-        if (isRight) triggerFlash("right", lastGuess.correct ? "correct" : "wrong");
+        if (isLeft)
+          triggerFlash("left", lastGuess.correct ? "correct" : "wrong");
+        if (isRight)
+          triggerFlash("right", lastGuess.correct ? "correct" : "wrong");
       }
     };
 
@@ -297,7 +353,9 @@ export default function GamePage() {
       setIsTransitioning(false);
       setTransitionSecondsLeft(0);
       const round = (actualState as any)?.currentRound;
-      toast.success(`Round ${typeof round === "number" ? round : "?"} started!`);
+      toast.success(
+        `Round ${typeof round === "number" ? round : "?"} started!`,
+      );
     };
 
     const onMatchOver = (payload: GameState) => {
@@ -305,6 +363,8 @@ export default function GamePage() {
       setGameState(actualState ?? null);
       setIsTransitioning(false);
       setTransitionSecondsLeft(0);
+      setDisconnectedUserId(null);
+      setDisconnectSecondsLeft(null);
 
       const rawForfeit = (payload as { forfeit?: boolean })?.forfeit === true;
       setMatchEndedByForfeit(rawForfeit);
@@ -316,7 +376,8 @@ export default function GamePage() {
 
       if (rawDeltas && userId !== undefined) {
         const mine = rawDeltas[String(userId)];
-        if (typeof mine === "number") useAuthStore.getState().applyMmrDelta(mine);
+        if (typeof mine === "number")
+          useAuthStore.getState().applyMmrDelta(mine);
       }
 
       // Flash on last guess before match over
@@ -325,14 +386,20 @@ export default function GamePage() {
         const guesserId = String(lastGuess.user);
         const isLeft = guesserId === String(leftPlayerIdRef.current);
         const isRight = guesserId === String(rightPlayerIdRef.current);
-        if (isLeft) triggerFlash("left", lastGuess.correct ? "correct" : "wrong");
-        if (isRight) triggerFlash("right", lastGuess.correct ? "correct" : "wrong");
+        if (isLeft)
+          triggerFlash("left", lastGuess.correct ? "correct" : "wrong");
+        if (isRight)
+          triggerFlash("right", lastGuess.correct ? "correct" : "wrong");
       }
       toast.message("Match over");
 
       const forfeitedBy = (payload as { forfeitedByUserId?: string })
         ?.forfeitedByUserId;
-      if (forfeitedBy && userId !== undefined && String(forfeitedBy) === String(userId)) {
+      if (
+        forfeitedBy &&
+        userId !== undefined &&
+        String(forfeitedBy) === String(userId)
+      ) {
         setShowForfeitModal(false);
       }
     };
@@ -344,7 +411,7 @@ export default function GamePage() {
       setTransitionSecondsLeft(Math.max(0, Math.floor(nextRoundIn)));
       const winner = payload?.winner;
       toast.message(
-        `Round over${winner ? ` • Winner: ${String(winner)}` : ""} — next round soon`
+        `Round over${winner ? ` • Winner: ${String(winner)}` : ""} — next round soon`,
       );
     };
 
@@ -366,8 +433,12 @@ export default function GamePage() {
       router.push("/lobby");
     };
 
-    const onOpponentLeft = (payload: { gameSessionId?: string; userId?: string }) => {
-      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId) return;
+    const onOpponentLeft = (payload: {
+      gameSessionId?: string;
+      userId?: string;
+    }) => {
+      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId)
+        return;
       const leftId = payload?.userId ? String(payload.userId) : "";
       if (!leftId) return;
       if (userId !== undefined && leftId === String(userId)) return;
@@ -379,20 +450,27 @@ export default function GamePage() {
       userId: string;
       gameSessionId?: string;
     }) => {
-      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId) return;
+      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId)
+        return;
       const dropped = payload?.userId ? String(payload.userId) : "";
       if (!dropped) return;
       if (userId !== undefined && dropped === String(userId)) return;
       setDisconnectedUserId(dropped);
+      setDisconnectSecondsLeft(30);
     };
 
     const onPlayerReconnected = (payload: {
       userId: string;
       gameSessionId?: string;
     }) => {
-      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId) return;
+      if (payload?.gameSessionId && payload.gameSessionId !== gameSessionId)
+        return;
       const uid = payload?.userId ? String(payload.userId) : "";
-      setDisconnectedUserId((prev) => (uid && uid === prev ? null : prev));
+      setDisconnectedUserId((prev) => {
+        if (!uid || uid !== prev) return prev;
+        setDisconnectSecondsLeft(null);
+        return null;
+      });
     };
 
     socket.on("gameStateUpdated", onGameStateUpdated);
@@ -422,11 +500,11 @@ export default function GamePage() {
 
   const player1Id = useMemo(
     () => playerEntryToId(gameState?.players?.[0]),
-    [gameState?.players]
+    [gameState?.players],
   );
   const player2Id = useMemo(
     () => playerEntryToId(gameState?.players?.[1]),
-    [gameState?.players]
+    [gameState?.players],
   );
 
   const [leftPlayerId, rightPlayerId] = useMemo(() => {
@@ -506,8 +584,8 @@ export default function GamePage() {
           p1Strikes >= 3
             ? p2Key
             : p2Strikes >= 3
-            ? p1Key
-            : coerceString(winnerId);
+              ? p1Key
+              : coerceString(winnerId);
 
         const leftPts = getByKeyOrIndex(scores as any, leftId, 0);
         const rightPts = getByKeyOrIndex(scores as any, rightId, 1);
@@ -541,10 +619,7 @@ export default function GamePage() {
   useEffect(() => {
     setTurnSecondsLeft(10);
     if (isMatchOver) return;
-    if (
-      gameState?.currentTurn === null ||
-      gameState?.currentTurn === undefined
-    )
+    if (gameState?.currentTurn === null || gameState?.currentTurn === undefined)
       return;
 
     const id = window.setInterval(() => {
@@ -570,6 +645,19 @@ export default function GamePage() {
     return () => window.clearInterval(id);
   }, [isTransitioning, transitionSecondsLeft]);
 
+  useEffect(() => {
+    if (!disconnectedUserId || isMatchOver) return;
+
+    const id = window.setInterval(() => {
+      setDisconnectSecondsLeft((current) => {
+        if (typeof current !== "number") return 0;
+        return Math.max(0, current - 1);
+      });
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [disconnectedUserId, isMatchOver]);
+
   // 30-second rematch countdown
   useEffect(() => {
     if (!isMatchOver) return;
@@ -588,11 +676,11 @@ export default function GamePage() {
   const rightRoundScore = getByKeyOrIndex(gameState?.scores, rightId, 1);
   const leftStrikes = Math.min(
     3,
-    Math.max(0, getByKeyOrIndex(gameState?.strikes, leftId, 0))
+    Math.max(0, getByKeyOrIndex(gameState?.strikes, leftId, 0)),
   );
   const rightStrikes = Math.min(
     3,
-    Math.max(0, getByKeyOrIndex(gameState?.strikes, rightId, 1))
+    Math.max(0, getByKeyOrIndex(gameState?.strikes, rightId, 1)),
   );
   const leftOverall = getByKeyOrIndex(gameState?.overallScores, leftId, 0);
   const rightOverall = getByKeyOrIndex(gameState?.overallScores, rightId, 1);
@@ -629,10 +717,7 @@ export default function GamePage() {
     setGuess("");
   };
 
-  const displayName = (
-    id: string | number | undefined,
-    fallback: string
-  ) => {
+  const displayName = (id: string | number | undefined, fallback: string) => {
     if (id === undefined || id === null) return fallback;
     const key = coerceString(id);
     return playerNames[key] ?? fallback;
@@ -670,8 +755,8 @@ export default function GamePage() {
       flash === "correct"
         ? "flash-green"
         : flash === "wrong"
-        ? "flash-red"
-        : "";
+          ? "flash-red"
+          : "";
 
     return (
       <section
@@ -684,8 +769,8 @@ export default function GamePage() {
           isMatchOver
             ? "opacity-30 pointer-events-none"
             : !isActive && (gameState?.currentTurn ?? null) !== null
-            ? "opacity-50"
-            : "",
+              ? "opacity-50"
+              : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -719,28 +804,39 @@ export default function GamePage() {
               {mmr !== undefined && (
                 <p className="mt-1 text-xs text-slate-400">
                   MMR:{" "}
-                  <span className="font-bold tabular-nums text-slate-100">{mmr}</span>
+                  <span className="font-bold tabular-nums text-slate-100">
+                    {mmr}
+                  </span>
                 </p>
               )}
               {/* MMR rank badge */}
-              {mmr !== undefined && (() => {
-                const r = getRank(mmr);
-                return (
-                  <div className={`mt-1 inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 ${r.borderClass} ${r.glowClass}`}>
-                    <span className={`text-[10px] font-extrabold tracking-wide ${r.colorClass}`}>
-                      {r.name.toUpperCase()}
-                    </span>
-                    <span className="text-[10px] text-slate-500 tabular-nums">{mmr}</span>
-                  </div>
-                );
-              })()}
+              {mmr !== undefined &&
+                (() => {
+                  const r = getRank(mmr);
+                  return (
+                    <div
+                      className={`mt-1 inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 ${r.borderClass} ${r.glowClass}`}
+                    >
+                      <span
+                        className={`text-[10px] font-extrabold tracking-wide ${r.colorClass}`}
+                      >
+                        {r.name.toUpperCase()}
+                      </span>
+                      <span className="text-[10px] text-slate-500 tabular-nums">
+                        {mmr}
+                      </span>
+                    </div>
+                  );
+                })()}
               <p className="mt-1 text-sm text-slate-400">
                 Round pts:{" "}
                 <span className="font-bold text-white">{roundScore}</span>
               </p>
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-black/30 px-3 py-2 text-center shrink-0">
-              <p className="text-[9px] tracking-[0.25em] text-slate-500">MATCH</p>
+              <p className="text-[9px] tracking-[0.25em] text-slate-500">
+                MATCH
+              </p>
               <p className="mt-0.5 text-xl font-extrabold text-white">
                 {overallScore}
               </p>
@@ -777,9 +873,7 @@ export default function GamePage() {
             <span className="text-slate-500">Status: </span>
             <span
               className={`font-semibold ${
-                isActive
-                  ? "text-blue-300 animate-pulse"
-                  : "text-slate-300"
+                isActive ? "text-blue-300 animate-pulse" : "text-slate-300"
               }`}
             >
               {isActive
@@ -787,8 +881,8 @@ export default function GamePage() {
                   ? "Your Turn"
                   : "Opponent's Turn"
                 : isMe
-                ? "Waiting…"
-                : "Waiting…"}
+                  ? "Waiting…"
+                  : "Waiting…"}
             </span>
           </div>
         </div>
@@ -799,9 +893,7 @@ export default function GamePage() {
   function GameOverScreen() {
     const isRanked = gameState?.isRanked === true;
     const myMmrDelta =
-      userId !== undefined && mmrDeltas
-        ? mmrDeltas[String(userId)]
-        : undefined;
+      userId !== undefined && mmrDeltas ? mmrDeltas[String(userId)] : undefined;
     const iWon =
       userId !== undefined &&
       winnerId !== undefined &&
@@ -821,7 +913,9 @@ export default function GamePage() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/8 px-4 py-2 mb-4">
               <Trophy className="h-4 w-4 text-amber-400" />
-              <span className="text-sm font-semibold text-amber-300">Match Complete</span>
+              <span className="text-sm font-semibold text-amber-300">
+                Match Complete
+              </span>
             </div>
             <h2 className="text-5xl font-extrabold tracking-tight text-white">
               {winnerLabel || "Winner"}
@@ -848,7 +942,9 @@ export default function GamePage() {
               <Crown className="h-4 w-4 text-amber-300" />
               <span className="font-semibold text-white">Best of 3</span>
               <span className="text-slate-500">•</span>
-              <span className="font-bold text-white">{leftOverall} – {rightOverall}</span>
+              <span className="font-bold text-white">
+                {leftOverall} – {rightOverall}
+              </span>
             </div>
           </div>
 
@@ -858,10 +954,10 @@ export default function GamePage() {
               const w = entry?.winner;
               const winnerName =
                 w !== undefined && w !== null
-                  ? playerNames[coerceString(w)] ?? String(w)
+                  ? (playerNames[coerceString(w)] ?? String(w))
                   : "—";
-              const leftPts = entry?.scores ? entry.scores[leftId] ?? 0 : 0;
-              const rightPts = entry?.scores ? entry.scores[rightId] ?? 0 : 0;
+              const leftPts = entry?.scores ? (entry.scores[leftId] ?? 0) : 0;
+              const rightPts = entry?.scores ? (entry.scores[rightId] ?? 0) : 0;
 
               return (
                 <div
@@ -872,11 +968,14 @@ export default function GamePage() {
                     ROUND {round}
                   </p>
                   <p className="mt-3 text-4xl font-extrabold text-white">
-                    {leftPts} <span className="text-slate-600">–</span> {rightPts}
+                    {leftPts} <span className="text-slate-600">–</span>{" "}
+                    {rightPts}
                   </p>
                   <p className="mt-2 text-xs text-slate-400">
                     Winner:{" "}
-                    <span className="font-semibold text-white">{winnerName}</span>
+                    <span className="font-semibold text-white">
+                      {winnerName}
+                    </span>
                   </p>
                 </div>
               );
@@ -892,8 +991,8 @@ export default function GamePage() {
                     rematchSecondsLeft <= 5
                       ? "border-red-500/60 text-red-300"
                       : rematchSecondsLeft <= 10
-                      ? "border-amber-400/60 text-amber-200"
-                      : "border-white/20 text-white"
+                        ? "border-amber-400/60 text-amber-200"
+                        : "border-white/20 text-white"
                   }`}
                 >
                   {rematchSecondsLeft}
@@ -902,14 +1001,16 @@ export default function GamePage() {
               </div>
             )}
 
-            {opponentWantsRematch && !hasRequestedRematch && !opponentLeftRematch && (
-              <div className="mb-4 flex justify-center">
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-4 py-2 text-sm font-semibold text-emerald-300">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                  Opponent wants to play again!
+            {opponentWantsRematch &&
+              !hasRequestedRematch &&
+              !opponentLeftRematch && (
+                <div className="mb-4 flex justify-center">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-4 py-2 text-sm font-semibold text-emerald-300">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                    Opponent wants to play again!
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {opponentLeftRematch && (
               <div className="mb-4 flex justify-center">
@@ -994,7 +1095,9 @@ export default function GamePage() {
       String(winnerId) === String(userId);
     if (matchEndedByForfeit && !iWon) {
       const delta =
-        userId !== undefined && mmrDeltas ? mmrDeltas[String(userId)] : undefined;
+        userId !== undefined && mmrDeltas
+          ? mmrDeltas[String(userId)]
+          : undefined;
       return (
         <YouForfeitedEndScreen
           mmrDelta={delta}
@@ -1025,7 +1128,10 @@ export default function GamePage() {
                 BO3 · {leftOverall} – {rightOverall}
               </span>
               <span className="inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300">
-                Round <span className="ml-1.5 font-extrabold text-white">{currentRound}</span>
+                Round{" "}
+                <span className="ml-1.5 font-extrabold text-white">
+                  {currentRound}
+                </span>
               </span>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
@@ -1034,19 +1140,13 @@ export default function GamePage() {
                     : "border-white/[0.08] bg-white/[0.04] text-slate-400"
                 }`}
               >
-                <span className={`h-1.5 w-1.5 rounded-full ${socket?.connected ? "bg-emerald-400" : "bg-zinc-500"}`} />
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${socket?.connected ? "bg-emerald-400" : "bg-zinc-500"}`}
+                />
                 {socket?.connected ? "Live" : "Connecting…"}
               </span>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowForfeitModal(true)}
-            className="inline-flex items-center gap-2 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition"
-          >
-            Forfeit Match
-          </button>
         </header>
 
         {showForfeitModal && (
@@ -1088,7 +1188,7 @@ export default function GamePage() {
                         } else {
                           toast.error(res?.message ?? "Could not forfeit.");
                         }
-                      }
+                      },
                     );
                   }}
                   className="rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(239,68,68,0.25)] hover:brightness-110 transition"
@@ -1096,6 +1196,23 @@ export default function GamePage() {
                   Yes, forfeit
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {disconnectedUserId && !isMatchOver && (
+          <div className="mt-5 flex justify-center">
+            <div className="w-full max-w-3xl rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-center shadow-[0_0_24px_rgba(251,191,36,0.14)]">
+              <p className="text-sm font-semibold text-amber-100">
+                {playerNames[disconnectedUserId] ?? "Opponent"} disconnected.
+                Match will forfeit in{" "}
+                <span className="tabular-nums text-amber-300">
+                  {typeof disconnectSecondsLeft === "number"
+                    ? `${disconnectSecondsLeft}s`
+                    : "30s"}
+                </span>{" "}
+                unless they reconnect.
+              </p>
             </div>
           </div>
         )}
@@ -1112,7 +1229,13 @@ export default function GamePage() {
             overallScore={leftOverall}
             strikes={leftStrikes}
             flash={flashLeft}
-            mmr={leftId ? (gameState?.playerMmr as Record<string, number> | undefined)?.[leftId] : undefined}
+            mmr={
+              leftId
+                ? (
+                    gameState?.playerMmr as Record<string, number> | undefined
+                  )?.[leftId]
+                : undefined
+            }
           />
 
           {/* Centre: question + guess input + activity feed */}
@@ -1140,8 +1263,8 @@ export default function GamePage() {
                   {isTransitioning
                     ? "Transition"
                     : isMyTurn
-                    ? "Your turn"
-                    : "Waiting"}
+                      ? "Your turn"
+                      : "Waiting"}
                 </div>
               </div>
 
@@ -1153,17 +1276,34 @@ export default function GamePage() {
                 <div className="flex items-center gap-2">
                   {/* Timer arc visualization */}
                   {!isTransitioning && (
-                    <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
-                      <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      className="-rotate-90"
+                    >
                       <circle
-                        cx="12" cy="12" r="10"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.08)"
+                        strokeWidth="2"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
                         fill="none"
                         stroke={turnSecondsLeft <= 3 ? "#ef4444" : "#3b82f6"}
                         strokeWidth="2"
                         strokeDasharray={`${2 * Math.PI * 10}`}
                         strokeDashoffset={`${2 * Math.PI * 10 * (1 - turnSecondsLeft / 10)}`}
                         strokeLinecap="round"
-                        style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
+                        style={{
+                          transition:
+                            "stroke-dashoffset 1s linear, stroke 0.3s",
+                        }}
                       />
                     </svg>
                   )}
@@ -1191,7 +1331,9 @@ export default function GamePage() {
                       Round Over! Next round starting…
                     </p>
                     <p className="mt-1 text-2xl font-extrabold text-blue-300">
-                      {transitionSecondsLeft > 0 ? `${transitionSecondsLeft}s` : "Starting…"}
+                      {transitionSecondsLeft > 0
+                        ? `${transitionSecondsLeft}s`
+                        : "Starting…"}
                     </p>
                   </div>
                 ) : (
@@ -1209,7 +1351,9 @@ export default function GamePage() {
                         }}
                         disabled={!canSubmit}
                         placeholder={
-                          canSubmit ? "Type a player name…" : "Waiting for your turn…"
+                          canSubmit
+                            ? "Type a player name…"
+                            : "Waiting for your turn…"
                         }
                         className="w-full rounded-2xl border border-white/[0.08] bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/8 disabled:cursor-not-allowed disabled:opacity-50 transition"
                       />
@@ -1231,7 +1375,9 @@ export default function GamePage() {
                 {/* Activity feed */}
                 <div className="mt-5 rounded-3xl border border-white/[0.07] bg-black/20 p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="text-xs font-bold text-white">Activity Feed</p>
+                    <p className="text-xs font-bold text-white">
+                      Activity Feed
+                    </p>
                     <span className="text-[10px] font-semibold text-slate-500">
                       {guessedPlayers.length} named
                     </span>
@@ -1259,8 +1405,8 @@ export default function GamePage() {
                               isMine
                                 ? "border-blue-500/30 bg-blue-600/20 text-blue-100"
                                 : isOpponent
-                                ? "border-red-500/30 bg-red-600/20 text-red-100"
-                                : "border-white/[0.08] bg-white/[0.05] text-slate-300"
+                                  ? "border-red-500/30 bg-red-600/20 text-red-100"
+                                  : "border-white/[0.08] bg-white/[0.05] text-slate-300"
                             }`}
                           >
                             {name}
@@ -1295,37 +1441,31 @@ export default function GamePage() {
             overallScore={rightOverall}
             strikes={rightStrikes}
             flash={flashRight}
-            mmr={rightId ? (gameState?.playerMmr as Record<string, number> | undefined)?.[rightId] : undefined}
+            mmr={
+              rightId
+                ? (
+                    gameState?.playerMmr as Record<string, number> | undefined
+                  )?.[rightId]
+                : undefined
+            }
           />
         </main>
 
-        {/* ── Disconnect overlay ── */}
-        {disconnectedUserId && !isMatchOver && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="w-full max-w-sm rounded-3xl border border-amber-400/20 bg-[#030712] p-8 text-center shadow-[0_0_60px_rgba(251,191,36,0.15)]">
-              <div className="mb-4 flex justify-center">
-                <span className="inline-flex h-12 w-12 animate-spin rounded-full border-4 border-amber-400/20 border-t-amber-400" />
-              </div>
-              <h3 className="text-lg font-extrabold text-white">
-                Waiting for opponent to reconnect…
-              </h3>
-              <p className="mt-2 text-sm text-slate-400">
-                <span className="font-semibold text-amber-300">
-                  {playerNames[disconnectedUserId] ?? "Opponent"}
-                </span>{" "}
-                dropped from the match. The game resumes when they return.
-              </p>
-              <p className="mt-3 text-xs text-slate-600">
-                15-second reconnection window before forfeit.
-              </p>
-            </div>
-          </div>
-        )}
+        <div className="mt-5 flex justify-start">
+          <button
+            type="button"
+            onClick={() => setShowForfeitModal(true)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/20 transition"
+          >
+            Forfeit Match
+          </button>
+        </div>
 
         {/* No game state yet */}
         {!gameState && (
           <div className="mt-8 rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6 text-sm text-slate-400 text-center">
-            Connecting to game… If this takes too long, ensure the server is running.
+            Connecting to game… If this takes too long, ensure the server is
+            running.
           </div>
         )}
       </div>

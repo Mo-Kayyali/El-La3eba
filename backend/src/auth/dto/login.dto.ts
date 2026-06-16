@@ -1,6 +1,21 @@
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
+
 export class LoginDto {
+  @IsEmail()
+  @IsNotEmpty()
   email!: string;
+
+  @IsString()
+  @IsNotEmpty()
   password!: string;
-  /** When true, JWT expires in 30 days instead of the default short session. */
+
+  @IsOptional()
+  @IsBoolean()
   rememberMe?: boolean;
 }

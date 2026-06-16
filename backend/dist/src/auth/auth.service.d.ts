@@ -8,6 +8,9 @@ export declare class AuthService {
     private jwtService;
     private redisService;
     constructor(prisma: PrismaService, jwtService: JwtService, redisService: RedisService);
+    private penaltyKey;
+    private activeGameKey;
+    private getPendingOfflinePenalty;
     register(dto: RegisterDto): Promise<{
         access_token: string;
         user: {
@@ -29,6 +32,14 @@ export declare class AuthService {
         };
     }>;
     getProfileById(userId: string): Promise<{
+        activeGameSessionId: string | null;
+        pendingIncomingFriendRequests: number;
+        pendingOfflinePenalty: {
+            id: string;
+            mmrLost: number;
+            gameSessionId: string;
+            createdAt: string;
+        } | null;
         id: string;
         email: string;
         username: string;
@@ -36,7 +47,13 @@ export declare class AuthService {
         mmr: number;
         gamesPlayed: number;
         wins: number;
+        offlineDisconnectCount: number;
+        lastDisconnectAt: Date | null;
         createdAt: Date;
+    }>;
+    acknowledgeOfflinePenalty(userId: string): Promise<{
+        success: boolean;
+        cleared: number;
     }>;
     private generateToken;
     requestVerification(userId: string, email: string): Promise<{
