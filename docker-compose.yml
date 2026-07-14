@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -18,7 +18,7 @@ services:
     image: redis:7-alpine
     container_name: ella3eba-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     restart: always
 
 volumes:
