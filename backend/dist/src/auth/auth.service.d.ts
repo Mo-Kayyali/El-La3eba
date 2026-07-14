@@ -40,9 +40,9 @@ export declare class AuthService {
             gameSessionId: string;
             createdAt: string;
         } | null;
+        id: string;
         email: string;
         username: string;
-        id: string;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;

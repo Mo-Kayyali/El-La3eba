@@ -10,9 +10,9 @@ export declare class UsersService {
         id: string;
         createdAt: Date;
         userId: string;
-        acknowledgedAt: Date | null;
         mmrLost: number;
         gameSessionId: string;
+        acknowledgedAt: Date | null;
     }>;
     getPendingOfflinePenalty(userId: string): Promise<{
         id: string;
@@ -25,15 +25,15 @@ export declare class UsersService {
         cleared: number;
     }>;
     getPublicProfileById(userId: string): Promise<{
-        username: string;
         id: string;
+        username: string;
         gamesPlayed: number;
         wins: number;
     }>;
     updateOwnProfile(userId: string, dto: UpdateProfileDto): Promise<{
+        id: string;
         email: string;
         username: string;
-        id: string;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;
