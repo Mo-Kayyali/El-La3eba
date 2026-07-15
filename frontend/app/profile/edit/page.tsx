@@ -17,6 +17,7 @@ export default function EditProfilePage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +52,10 @@ export default function EditProfilePage() {
       return "Password must contain at least 3 letters and at least 1 number.";
     }
 
+    if (password && !currentPassword) {
+      return "Current password is required to change your password.";
+    }
+
     return null;
   }
 
@@ -64,13 +69,20 @@ export default function EditProfilePage() {
       return;
     }
 
-    const payload: { username?: string; email?: string; password?: string } =
-      {};
+    const payload: {
+      username?: string;
+      email?: string;
+      password?: string;
+      currentPassword?: string;
+    } = {};
 
     if (trimmedUsername !== (user?.username ?? ""))
       payload.username = trimmedUsername;
     if (trimmedEmail !== (user?.email ?? "")) payload.email = trimmedEmail;
-    if (password) payload.password = password;
+    if (password) {
+      payload.password = password;
+      payload.currentPassword = currentPassword;
+    }
 
     if (Object.keys(payload).length === 0) {
       setError("No changes detected.");
@@ -139,11 +151,18 @@ export default function EditProfilePage() {
               placeholder="you@example.com"
             />
             <Field
-              label="Password"
+              label="New Password"
               type="password"
               value={password}
               onChange={setPassword}
               placeholder="Leave blank to keep current"
+            />
+            <Field
+              label="Current Password"
+              type="password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+              placeholder="Required to change password"
             />
             <p className="text-xs text-slate-500">
               Password rule: at least 3 letters and at least 1 number.

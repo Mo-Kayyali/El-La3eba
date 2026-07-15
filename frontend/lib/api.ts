@@ -45,6 +45,7 @@ export type UpdateProfilePayload = {
   username?: string;
   email?: string;
   password?: string;
+  currentPassword?: string;
 };
 
 export type MeProfile = {

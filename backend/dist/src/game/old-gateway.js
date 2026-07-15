@@ -303,7 +303,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
         this.clearDisconnectTimer(gameSessionId, userId);
         const timer = setTimeout(async () => {
             this.disconnectTimers.delete(key);
-            this.logger.log(`Disconnect grace period expired for user ${userId} in game ${gameSessionId} — forfeiting`);
+            this.logger.log(`Disconnect grace period expired for user ${userId} in game ${gameSessionId} ΓÇö forfeiting`);
             const gameKey = `game:${gameSessionId}`;
             try {
                 await this.redisClient.watch(gameKey);
@@ -381,180 +381,145 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const timeout = setTimeout(async () => {
             this.turnTimers.delete(gameSessionId);
             const key = `game:${gameSessionId}`;
-            let attempt = 0;
-            let success = false;
-            let isRoundOver = false;
-            let isMatchOver = false;
-            let roundWinner = null;
-            let state = null;
-            while (attempt < 3 && !success) {
-                try {
-                    await this.redisClient.watch(key);
-                    const stateStr = await this.redisClient.get(key);
-                    if (!stateStr) {
-                        await this.redisClient.unwatch();
-                        return;
-                    }
-                    state = JSON.parse(stateStr);
-                    if (state.status === 'match_completed') {
-                        await this.redisClient.unwatch();
-                        return;
-                    }
-                    const timedOutUserId = state.currentTurn;
-                    if (!timedOutUserId) {
-                        await this.redisClient.unwatch();
-                        return;
-                    }
-                    state.strikes[timedOutUserId] =
-                        (state.strikes[timedOutUserId] ?? 0) + 1;
-                    isRoundOver = false;
-                    isMatchOver = false;
-                    roundWinner = null;
-                    if (state.strikes[timedOutUserId] >= 3) {
-                        isRoundOver = true;
-                        const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
-                            state.players[0];
-                        roundWinner = otherPlayer;
-                        if (!Array.isArray(state.roundHistory))
-                            state.roundHistory = [];
-                        if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
-                            state.roundHistory.push({
-                                round: state.currentRound,
-                                winner: roundWinner,
-                                scores: { ...(state.scores ?? {}) },
-                            });
-                        }
-                        state.overallScores[otherPlayer] += 1;
-                        if (state.overallScores[otherPlayer] >= 2 ||
-                            state.currentRound >= 3) {
-                            isMatchOver = true;
-                            state.status = 'match_completed';
-                            state.winner =
-                                state.overallScores[state.players[0]] >
-                                    state.overallScores[state.players[1]]
-                                    ? state.players[0]
-                                    : state.players[1];
-                        }
-                        else {
-                            state.currentTurn = null;
-                        }
-                    }
-                    else {
-                        const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
-                            state.players[0];
-                        state.currentTurn = otherPlayer;
-                    }
-                    const multi = this.redisClient.multi();
-                    multi.set(key, JSON.stringify(state));
-                    if (isMatchOver) {
-                        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
-                    }
-                    const results = await multi.exec();
-                    if (!results) {
-                        attempt++;
-                        if (attempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
-                        continue;
-                    }
-                    success = true;
-                }
-                catch (e) {
-                    await this.redisClient.unwatch().catch(() => { });
-                    attempt++;
-                    if (attempt < 3)
-                        await new Promise(res => setTimeout(res, 50));
-                }
-            }
-            if (!success) {
-                this.logger.error(`Auto-strike timeout failed after 3 attempts (WATCH conflict) for gameSessionId: ${gameSessionId}`);
-                return;
-            }
-            const updatePayload = {
-                state,
-                lastGuess: {
-                    user: state.currentTurn,
-                    guess: null,
-                    correct: false,
-                    matchedName: null,
-                    reason: 'timeout',
-                },
-            };
-            this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
-            if (isMatchOver) {
-                this.clearTurnTimer(gameSessionId);
-                const loserId = state.players.find((p) => p !== state.winner);
-                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.winner, loserId, false);
-                this.server.to(gameSessionId).emit('matchOver', {
-                    ...updatePayload,
-                    forfeit: false,
-                    mmrDeltas,
-                });
-                this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch failed: ${e?.message}`));
-            }
-            else if (isRoundOver) {
-                this.server.to(gameSessionId).emit('roundOver', {
-                    winner: roundWinner,
-                    nextRoundIn: this.roundTransitionMs / 1000,
-                });
-                await this.sleep(this.roundTransitionMs);
-                let nextRoundAttempt = 0;
-                let nextRoundSuccess = false;
-                let latest = null;
-                while (nextRoundAttempt < 3 && !nextRoundSuccess) {
-                    try {
-                        await this.redisClient.watch(key);
-                        const latestStr = await this.redisClient.get(key);
-                        if (!latestStr) {
-                            await this.redisClient.unwatch();
-                            return;
-                        }
-                        latest = JSON.parse(latestStr);
-                        if (latest.status === 'match_completed') {
-                            await this.redisClient.unwatch();
-                            return;
-                        }
-                        latest.currentRound += 1;
-                        latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        latest.guessedPlayers = [];
-                        latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
-                        if (latest.currentRound === 2)
-                            latest.currentTurn = latest.players[1];
-                        else if (latest.currentRound === 3)
-                            latest.currentTurn = latest.players[0];
-                        else
-                            latest.currentTurn = latest.players[0];
-                        const multi2 = this.redisClient.multi();
-                        multi2.set(key, JSON.stringify(latest));
-                        const results2 = await multi2.exec();
-                        if (!results2) {
-                            nextRoundAttempt++;
-                            if (nextRoundAttempt < 3)
-                                await new Promise(res => setTimeout(res, 50));
-                            continue;
-                        }
-                        nextRoundSuccess = true;
-                    }
-                    catch (e) {
-                        await this.redisClient.unwatch().catch(() => { });
-                        nextRoundAttempt++;
-                        if (nextRoundAttempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
-                    }
-                }
-                if (!nextRoundSuccess) {
-                    this.logger.error(`Failed to start next round after 3 attempts (WATCH conflict) for gameSessionId: ${gameSessionId}`);
+            try {
+                await this.redisClient.watch(key);
+                const stateStr = await this.redisClient.get(key);
+                if (!stateStr) {
+                    await this.redisClient.unwatch();
                     return;
                 }
-                const nextPayload = {
-                    state: latest,
-                    lastGuess: updatePayload.lastGuess,
+                const state = JSON.parse(stateStr);
+                if (state.status === 'match_completed') {
+                    await this.redisClient.unwatch();
+                    return;
+                }
+                const timedOutUserId = state.currentTurn;
+                if (!timedOutUserId) {
+                    await this.redisClient.unwatch();
+                    return;
+                }
+                state.strikes[timedOutUserId] =
+                    (state.strikes[timedOutUserId] ?? 0) + 1;
+                let isRoundOver = false;
+                let isMatchOver = false;
+                let roundWinner = null;
+                if (state.strikes[timedOutUserId] >= 3) {
+                    isRoundOver = true;
+                    const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
+                        state.players[0];
+                    roundWinner = otherPlayer;
+                    if (!Array.isArray(state.roundHistory))
+                        state.roundHistory = [];
+                    if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
+                        state.roundHistory.push({
+                            round: state.currentRound,
+                            winner: roundWinner,
+                            scores: { ...(state.scores ?? {}) },
+                        });
+                    }
+                    state.overallScores[otherPlayer] += 1;
+                    if (state.overallScores[otherPlayer] >= 2 ||
+                        state.currentRound >= 3) {
+                        isMatchOver = true;
+                        state.status = 'match_completed';
+                        state.winner =
+                            state.overallScores[state.players[0]] >
+                                state.overallScores[state.players[1]]
+                                ? state.players[0]
+                                : state.players[1];
+                    }
+                    else {
+                        state.currentTurn = null;
+                    }
+                }
+                else {
+                    const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
+                        state.players[0];
+                    state.currentTurn = otherPlayer;
+                }
+                const multi = this.redisClient.multi();
+                multi.set(key, JSON.stringify(state));
+                if (isMatchOver) {
+                    this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+                }
+                const results = await multi.exec();
+                if (!results) {
+                    this.startTurnTimer(gameSessionId);
+                    return;
+                }
+                const updatePayload = {
+                    state,
+                    lastGuess: {
+                        user: timedOutUserId,
+                        guess: null,
+                        correct: false,
+                        matchedName: null,
+                        reason: 'timeout',
+                    },
                 };
-                this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
-                this.startTurnTimer(gameSessionId);
+                this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
+                if (isMatchOver) {
+                    this.clearTurnTimer(gameSessionId);
+                    const loserId = state.players.find((p) => p !== state.winner);
+                    const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.winner, loserId, false);
+                    this.server.to(gameSessionId).emit('matchOver', {
+                        ...updatePayload,
+                        forfeit: false,
+                        mmrDeltas,
+                    });
+                    this.initializeRematch(gameSessionId, state).catch((e) => this.logger.error(`initializeRematch failed: ${e?.message}`));
+                }
+                else if (isRoundOver) {
+                    this.server.to(gameSessionId).emit('roundOver', {
+                        winner: roundWinner,
+                        nextRoundIn: this.roundTransitionMs / 1000,
+                    });
+                    await this.sleep(this.roundTransitionMs);
+                    await this.redisClient.watch(key);
+                    const latestStr = await this.redisClient.get(key);
+                    if (!latestStr) {
+                        await this.redisClient.unwatch();
+                        return;
+                    }
+                    const latest = JSON.parse(latestStr);
+                    if (latest.status === 'match_completed') {
+                        await this.redisClient.unwatch();
+                        return;
+                    }
+                    latest.currentRound += 1;
+                    latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                    latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                    latest.guessedPlayers = [];
+                    latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                    if (latest.currentRound === 2)
+                        latest.currentTurn = latest.players[1];
+                    else if (latest.currentRound === 3)
+                        latest.currentTurn = latest.players[0];
+                    else
+                        latest.currentTurn = latest.players[0];
+                    const multi2 = this.redisClient.multi();
+                    multi2.set(key, JSON.stringify(latest));
+                    const results2 = await multi2.exec();
+                    if (!results2) {
+                        this.startTurnTimer(gameSessionId);
+                        return;
+                    }
+                    const nextPayload = {
+                        state: latest,
+                        lastGuess: updatePayload.lastGuess,
+                    };
+                    this.server.to(gameSessionId).emit('nextRoundStarted', nextPayload);
+                    this.startTurnTimer(gameSessionId);
+                }
+                else {
+                    this.startTurnTimer(gameSessionId);
+                }
             }
-            else {
-                this.startTurnTimer(gameSessionId);
+            catch (error) {
+                this.logger.error(`Exception in turn timer for ${gameSessionId}: ${error.message}`, error.stack);
+            }
+            finally {
+                await this.redisClient.unwatch().catch(() => { });
             }
         }, 10_000);
         this.turnTimers.set(gameSessionId, timeout);
@@ -612,7 +577,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     this.server
                         .to(gameSessionId)
                         .emit('playerDisconnected', { userId, gameSessionId });
-                    this.logger.log(`User ${userId} disconnected from active game ${gameSessionId} — grace period started`);
+                    this.logger.log(`User ${userId} disconnected from active game ${gameSessionId} ΓÇö grace period started`);
                 }
             }
         }
@@ -984,7 +949,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 .to(gameSessionId)
                 .emit('playerReconnected', { userId, gameSessionId });
             this.startTurnTimer(gameSessionId);
-            this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
+            this.logger.log(`User ${userId} reconnected to game ${gameSessionId} ΓÇö timer resumed`);
         }
         client.emit('gameStateUpdated', { state: parsedState });
         return { status: 'success', message: `Joined room ${gameSessionId}` };
@@ -999,7 +964,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
             if (this.isGuestRateLimited(String(userId))) {
                 this.logger.warn(`Rate limit hit for user ${userId}`);
-                client.emit('error', { message: 'Too many guesses — slow down.' });
+                client.emit('error', { message: 'Too many guesses ΓÇö slow down.' });
                 return { status: 'error', message: 'Rate limit exceeded' };
             }
             const { gameSessionId, guessName } = payload;
@@ -1012,112 +977,90 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
             const key = `game:${gameSessionId}`;
             this.clearTurnTimer(gameSessionId);
+            this.logger.log(`Starting Redis transaction for gameSessionId: ${gameSessionId}`);
+            await this.redisClient.watch(key);
+            const stateStr = await this.redisClient.get(key);
+            if (!stateStr) {
+                await this.redisClient.unwatch();
+                this.logger.error(`Game session not found: ${gameSessionId}`);
+                return { status: 'error', message: 'Game session not found' };
+            }
+            const state = JSON.parse(stateStr);
+            if (state.status === 'match_completed') {
+                await this.redisClient.unwatch();
+                this.logger.error(`Attempt to guess in completed match ${gameSessionId}`);
+                return { status: 'error', message: 'Match is already completed' };
+            }
+            if (state.currentTurn !== userId) {
+                await this.redisClient.unwatch();
+                this.logger.error(`User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`);
+                return { status: 'error', message: 'Not your turn' };
+            }
             this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
             const matchedPlayer = await this.gameService.guessPlayer(guessName);
             this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
-            const initialIsCorrect = !!matchedPlayer;
-            let attempt = 0;
-            let success = false;
-            let state = null;
-            let isMatchOver = false;
-            let isRoundOver = false;
-            let roundWinner = null;
-            let finalIsCorrect = false;
-            while (attempt < 3 && !success) {
-                try {
-                    this.logger.log(`Starting Redis transaction for gameSessionId: ${gameSessionId}, attempt ${attempt + 1}`);
-                    await this.redisClient.watch(key);
-                    const stateStr = await this.redisClient.get(key);
-                    if (!stateStr) {
-                        await this.redisClient.unwatch();
-                        this.logger.error(`Game session not found: ${gameSessionId}`);
-                        return { status: 'error', message: 'Game session not found' };
-                    }
-                    state = JSON.parse(stateStr);
-                    if (state.status === 'match_completed') {
-                        await this.redisClient.unwatch();
-                        this.logger.error(`Attempt to guess in completed match ${gameSessionId}`);
-                        return { status: 'error', message: 'Match is already completed' };
-                    }
-                    if (state.currentTurn !== userId) {
-                        await this.redisClient.unwatch();
-                        this.logger.error(`User ${userId} attempted to guess out of turn. Current turn: ${state.currentTurn}`);
-                        return { status: 'error', message: 'Not your turn' };
-                    }
-                    finalIsCorrect = initialIsCorrect;
-                    if (finalIsCorrect) {
-                        if (state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
-                            finalIsCorrect = false;
-                            state.strikes[userId] += 1;
-                        }
-                        else {
-                            state.guessedPlayers.push({
-                                name: matchedPlayer.name,
-                                guessedBy: userId,
-                            });
-                            state.scores[userId] += 1;
-                        }
-                    }
-                    else {
-                        state.strikes[userId] += 1;
-                    }
-                    isRoundOver = false;
-                    isMatchOver = false;
-                    roundWinner = null;
-                    if (state.strikes[userId] >= 3) {
-                        isRoundOver = true;
-                        const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
-                        roundWinner = otherPlayer;
-                        if (!Array.isArray(state.roundHistory))
-                            state.roundHistory = [];
-                        if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
-                            state.roundHistory.push({
-                                round: state.currentRound,
-                                winner: roundWinner,
-                                scores: { ...(state.scores ?? {}) },
-                            });
-                        }
-                        state.overallScores[otherPlayer] += 1;
-                        if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
-                            isMatchOver = true;
-                            state.status = 'match_completed';
-                            state.winner =
-                                state.overallScores[state.players[0]] >
-                                    state.overallScores[state.players[1]]
-                                    ? state.players[0]
-                                    : state.players[1];
-                        }
-                        else {
-                            state.currentTurn = null;
-                        }
-                    }
-                    else {
-                        const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
-                        state.currentTurn = otherPlayer;
-                    }
-                    const multi = this.redisClient.multi();
-                    multi.set(key, JSON.stringify(state));
-                    if (isMatchOver) {
-                        this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
-                    }
-                    const results = await multi.exec();
-                    if (!results) {
-                        attempt++;
-                        if (attempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
-                        continue;
-                    }
-                    success = true;
+            let isCorrect = !!matchedPlayer;
+            if (isCorrect) {
+                if (state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
+                    isCorrect = false;
+                    state.strikes[userId] += 1;
                 }
-                catch (err) {
-                    await this.redisClient.unwatch().catch(() => { });
-                    attempt++;
-                    if (attempt < 3)
-                        await new Promise(res => setTimeout(res, 50));
+                else {
+                    state.guessedPlayers.push({
+                        name: matchedPlayer.name,
+                        guessedBy: userId,
+                    });
+                    state.scores[userId] += 1;
                 }
             }
-            if (!success) {
-                this.logger.error(`handleSubmitGuess failed after 3 attempts (WATCH conflict) for gameSessionId: ${gameSessionId}`);
+            else {
+                state.strikes[userId] += 1;
+            }
+            let isRoundOver = false;
+            let isMatchOver = false;
+            let roundWinner = null;
+            if (state.strikes[userId] >= 3) {
+                isRoundOver = true;
+                const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
+                roundWinner = otherPlayer;
+                if (!Array.isArray(state.roundHistory))
+                    state.roundHistory = [];
+                if (!state.roundHistory.some((r) => r?.round === state.currentRound)) {
+                    state.roundHistory.push({
+                        round: state.currentRound,
+                        winner: roundWinner,
+                        scores: { ...(state.scores ?? {}) },
+                    });
+                }
+                state.overallScores[otherPlayer] += 1;
+                if (state.overallScores[otherPlayer] >= 2 || state.currentRound >= 3) {
+                    isMatchOver = true;
+                    state.status = 'match_completed';
+                    state.winner =
+                        state.overallScores[state.players[0]] >
+                            state.overallScores[state.players[1]]
+                            ? state.players[0]
+                            : state.players[1];
+                }
+                else {
+                    state.currentTurn = null;
+                }
+            }
+            else {
+                const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
+                state.currentTurn = otherPlayer;
+            }
+            this.logger.log(`Executing Redis transaction to update state`);
+            const multi = this.redisClient.multi();
+            multi.set(key, JSON.stringify(state));
+            if (isMatchOver) {
+                this.matchmakingService.deleteActiveGameKeysInMulti(multi, state.players);
+            }
+            const results = await multi.exec();
+            if (!results) {
+                this.logger.error(`Redis transaction failed (concurrent modification) for gameSessionId: ${gameSessionId}`);
+                await this.redisClient.unwatch().catch(() => { });
+                this.startTurnTimer(gameSessionId);
                 return {
                     status: 'error',
                     message: 'Concurrent modification, try again',
@@ -1129,8 +1072,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 lastGuess: {
                     user: userId,
                     guess: guessName,
-                    correct: finalIsCorrect,
-                    matchedName: finalIsCorrect ? matchedPlayer.name : null,
+                    correct: isCorrect,
+                    matchedName: isCorrect ? matchedPlayer.name : null,
                 },
             };
             if (isMatchOver) {
@@ -1153,55 +1096,40 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     nextRoundIn: this.roundTransitionMs / 1000,
                 });
                 await this.sleep(this.roundTransitionMs);
-                let nextRoundAttempt = 0;
-                let nextRoundSuccess = false;
-                let latest = null;
-                while (nextRoundAttempt < 3 && !nextRoundSuccess) {
-                    try {
-                        await this.redisClient.watch(key);
-                        const latestStr = await this.redisClient.get(key);
-                        if (!latestStr) {
-                            await this.redisClient.unwatch();
-                            return { status: 'error', message: 'Game session not found' };
-                        }
-                        latest = JSON.parse(latestStr);
-                        if (latest.status === 'match_completed') {
-                            await this.redisClient.unwatch();
-                            return { status: 'success', isCorrect: finalIsCorrect, matchedPlayer };
-                        }
-                        latest.currentRound += 1;
-                        latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        latest.guessedPlayers = [];
-                        latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
-                        if (latest.currentRound === 2)
-                            latest.currentTurn = latest.players[1];
-                        else if (latest.currentRound === 3)
-                            latest.currentTurn = latest.players[0];
-                        else
-                            latest.currentTurn = latest.players[0];
-                        const multi2 = this.redisClient.multi();
-                        multi2.set(key, JSON.stringify(latest));
-                        const results2 = await multi2.exec();
-                        if (!results2) {
-                            nextRoundAttempt++;
-                            if (nextRoundAttempt < 3)
-                                await new Promise(res => setTimeout(res, 50));
-                            continue;
-                        }
-                        nextRoundSuccess = true;
-                    }
-                    catch (err) {
-                        await this.redisClient.unwatch().catch(() => { });
-                        nextRoundAttempt++;
-                        if (nextRoundAttempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
-                    }
+                await this.redisClient.watch(key);
+                const latestStr = await this.redisClient.get(key);
+                if (!latestStr) {
+                    await this.redisClient.unwatch();
+                    return { status: 'error', message: 'Game session not found' };
                 }
-                if (!nextRoundSuccess) {
-                    this.logger.error(`Failed to transition to next round after 3 attempts for ${gameSessionId}`);
-                    return { status: 'error', message: 'Concurrent modification, try again' };
+                const latest = JSON.parse(latestStr);
+                if (latest.status === 'match_completed') {
+                    await this.redisClient.unwatch();
+                    return { status: 'success', isCorrect, matchedPlayer };
                 }
+                latest.currentRound += 1;
+                latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
+                latest.guessedPlayers = [];
+                latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                if (latest.currentRound === 2)
+                    latest.currentTurn = latest.players[1];
+                else if (latest.currentRound === 3)
+                    latest.currentTurn = latest.players[0];
+                else
+                    latest.currentTurn = latest.players[0];
+                const multi2 = this.redisClient.multi();
+                multi2.set(key, JSON.stringify(latest));
+                const results2 = await multi2.exec();
+                if (!results2) {
+                    await this.redisClient.unwatch().catch(() => { });
+                    this.startTurnTimer(gameSessionId);
+                    return {
+                        status: 'error',
+                        message: 'Concurrent modification, try again',
+                    };
+                }
+                await this.redisClient.unwatch().catch(() => { });
                 const nextPayload = {
                     state: latest,
                     lastGuess: updatePayload.lastGuess,
@@ -1215,11 +1143,13 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
                 this.startTurnTimer(gameSessionId);
             }
-            return { status: 'success', isCorrect: finalIsCorrect, matchedPlayer };
+            return { status: 'success', isCorrect, matchedPlayer };
         }
         catch (error) {
             this.logger.error(`Exception in handleSubmitGuess: ${error.message}`, error.stack);
             await this.redisClient.unwatch().catch(() => { });
+            if (payload?.gameSessionId)
+                this.startTurnTimer(payload.gameSessionId);
             return { status: 'error', message: 'Internal server error' };
         }
     }
@@ -1423,4 +1353,4 @@ exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
         friends_service_1.FriendsService,
         users_service_1.UsersService])
 ], GameGateway);
-//# sourceMappingURL=game.gateway.js.map
+//# sourceMappingURL=old-gateway.js.map

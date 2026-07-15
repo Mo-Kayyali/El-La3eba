@@ -33,14 +33,18 @@ development, targeting eventual public deployment at ~1000 concurrent users.
 
 ```
 User
-  id                uuid (pk)
-  email             string (unique)
-  username          string (unique)
-  passwordHash      string
-  mmr               int (default 1000)
-  wins              int
-  gamesPlayed       int
-  createdAt         datetime
+  id                     uuid (pk)
+  email                  string (unique)
+  username               string (unique)
+  passwordHash           string
+  isVerified             boolean (default false)
+  mmr                    int (default 1000)
+  wins                   int
+  gamesPlayed            int
+  offlineDisconnectCount int (default 0)
+  lastDisconnectAt       datetime?
+  createdAt              datetime
+  updatedAt              datetime
   // Indexes: B-tree on mmr (leaderboard reads)
 
 FootballPlayer
@@ -48,18 +52,18 @@ FootballPlayer
   name              string
   aliases           string[]
   clubs             string[]
-  activeYear        string
+  activeYear        int
   // Indexes: GIN + pg_trgm (gin_trgm_ops) on `name` and on
   //           array_to_string(aliases, ' ') for fuzzy name/alias search
 
 Friendship
   id                uuid (pk)
-  requesterId       uuid (fk -> User)
-  addresseeId       uuid (fk -> User)
+  userId            uuid (fk -> User)
+  friendId          uuid (fk -> User)
   status            enum (PENDING | ACCEPTED)
   createdAt         datetime
   updatedAt         datetime
-  // Directional: requester -> addressee. Both accepted and pending
+  // Directional: userId -> friendId. Both accepted and pending
   // (incoming/outgoing) rows are read from this one table.
 
 OfflinePenalty
@@ -67,16 +71,16 @@ OfflinePenalty
   userId            uuid (fk -> User)
   gameSessionId     string
   mmrLost           int          // 0 for unrated disconnect-forfeits
-  acknowledged      boolean
+  acknowledgedAt    datetime?
   createdAt         datetime
   // Durable record of a disconnect-forfeit. Mirrored to Redis
   // `penalty:{userId}` for fast login hydration; acknowledged via
   // POST /auth/acknowledge-offline-penalty which also clears the Redis cache.
 ```
 
-> **Known gap:** there is no `Question` model documented here yet, even though
-> questions clearly live in the database and are referenced throughout gameplay.
-> Next time the question schema is touched (e.g. when adding per-question
+> **Known gap:** there is no `Question` model documented here yet, nor is there
+> one in the database. Questions are currently hardcoded strings in
+> `game.questions.ts`. Next time the question schema is touched (e.g. when adding per-question
 > answer sets or the planned `game_mode` column — see `GAME_DESIGN_ROADMAP.md`),
 > add the real model here so this file stays authoritative.
 
