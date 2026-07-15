@@ -159,79 +159,7 @@ function emitLeaveEndedMatch(
   }
 }
 
-function YouForfeitedEndScreen({
-  mmrDelta,
-  gameSessionId,
-  socket,
-}: {
-  mmrDelta: number | undefined;
-  gameSessionId: string | undefined;
-  socket: Socket | null;
-}) {
-  const router = useRouter();
-  const [secondsLeft, setSecondsLeft] = useState(10);
-  const navigated = useRef(false);
 
-  const goLobby = useCallback(() => {
-    if (navigated.current) return;
-    navigated.current = true;
-    emitLeaveEndedMatch(socket, gameSessionId);
-    void refreshAuthProfile();
-    router.replace("/lobby");
-  }, [socket, gameSessionId, router]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setSecondsLeft((s) => Math.max(0, s - 1));
-    }, 1000);
-    return () => {
-      window.clearInterval(id);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (secondsLeft > 0) return;
-    goLobby();
-  }, [secondsLeft, goLobby]);
-
-  const lossLabel = typeof mmrDelta === "number" ? `${mmrDelta} MMR` : null;
-
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-[#030712] text-slate-100 flex flex-col items-center justify-center px-6 py-12">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(239,68,68,0.12),transparent_60%)]" />
-      </div>
-      <div className="relative w-full max-w-md text-center">
-        <h2 className="text-4xl font-extrabold tracking-tight text-white">
-          You Forfeited
-        </h2>
-        <p className="mt-3 text-sm text-slate-400">
-          This match counts as a loss
-          {typeof mmrDelta === "number" ? " — your rating was adjusted." : "."}
-        </p>
-        {lossLabel !== null && (
-          <p className="mt-6 text-4xl font-extrabold tabular-nums text-red-500">
-            {lossLabel}
-          </p>
-        )}
-        <p className="mt-8 text-sm text-slate-500">
-          Returning to the lobby in{" "}
-          <span className="font-bold text-white tabular-nums">
-            {secondsLeft}
-          </span>
-          s
-        </p>
-        <button
-          type="button"
-          onClick={goLobby}
-          className="mt-6 w-full rounded-3xl border border-white/[0.1] bg-white/[0.06] px-6 py-4 text-sm font-bold text-white hover:bg-white/[0.1] transition"
-        >
-          Return to Lobby
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function GamePage() {
   const router = useRouter();
@@ -379,6 +307,15 @@ export default function GamePage() {
         const mine = rawDeltas[String(userId)];
         if (typeof mine === "number")
           useAuthStore.getState().applyMmrDelta(mine);
+      }
+
+      const disconnectedUserId = (payload as any)?.disconnectedUserId;
+      if (
+        disconnectedUserId &&
+        userId !== undefined &&
+        String(disconnectedUserId) !== String(userId)
+      ) {
+        setOpponentLeftRematch(true);
       }
 
       // Flash on last guess before match over
@@ -903,7 +840,6 @@ export default function GamePage() {
       userId !== undefined &&
       winnerId !== undefined &&
       String(winnerId) === String(userId);
-    const hidePlayAgain = matchEndedByForfeit === true && iWon;
 
     return (
       <div className="relative min-h-screen overflow-hidden bg-[#030712] text-slate-100 flex flex-col items-center justify-center px-6 py-12">
@@ -931,7 +867,7 @@ export default function GamePage() {
                   iWon ? "text-emerald-400" : "text-red-400"
                 }`}
               >
-                {iWon ? "You won" : "You lost"}
+                {iWon ? "You won" : matchEndedByForfeit ? "You forfeited" : "You lost"}
               </p>
             )}
             {isRanked && typeof myMmrDelta === "number" && (
@@ -989,8 +925,7 @@ export default function GamePage() {
 
           {/* Rematch panel */}
           <div className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.03] p-6">
-            {!hidePlayAgain && (
-              <div className="flex items-center justify-center gap-3 mb-5">
+            <div className="flex items-center justify-center gap-3 mb-5">
                 <div
                   className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl font-extrabold ${
                     rematchSecondsLeft <= 5
@@ -1004,7 +939,6 @@ export default function GamePage() {
                 </div>
                 <p className="text-sm text-slate-400">seconds to decide</p>
               </div>
-            )}
 
             {opponentWantsRematch &&
               !hasRequestedRematch &&
@@ -1026,7 +960,6 @@ export default function GamePage() {
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              {!hidePlayAgain && (
                 <button
                   disabled={
                     hasRequestedRematch ||
@@ -1063,7 +996,6 @@ export default function GamePage() {
                     "Play Again"
                   )}
                 </button>
-              )}
 
               <button
                 onClick={() => {
@@ -1094,23 +1026,6 @@ export default function GamePage() {
   }
 
   if (gameState?.status === "match_completed") {
-    const iWon =
-      userId !== undefined &&
-      winnerId !== undefined &&
-      String(winnerId) === String(userId);
-    if (matchEndedByForfeit && !iWon) {
-      const delta =
-        userId !== undefined && mmrDeltas
-          ? mmrDeltas[String(userId)]
-          : undefined;
-      return (
-        <YouForfeitedEndScreen
-          mmrDelta={delta}
-          gameSessionId={gameSessionId}
-          socket={socket}
-        />
-      );
-    }
     return <GameOverScreen />;
   }
 

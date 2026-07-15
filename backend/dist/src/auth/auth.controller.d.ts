@@ -37,16 +37,16 @@ export declare class AuthController {
             gameSessionId: string;
             createdAt: string;
         } | null;
-        id: string;
         email: string;
         username: string;
+        id: string;
+        createdAt: Date;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;
         wins: number;
         offlineDisconnectCount: number;
         lastDisconnectAt: Date | null;
-        createdAt: Date;
     }>;
     requestVerification(req: any): Promise<{
         success: boolean;
