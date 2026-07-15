@@ -28,4 +28,13 @@ export class UpdateProfileDto {
     message: 'Password must contain at least 3 letters and at least 1 number',
   })
   password?: string;
+
+  /**
+   * Required when `password` is provided.
+   * The user's current password — validated server-side via bcrypt.compare
+   * before the new password is accepted.
+   */
+  @IsOptional()
+  @IsString()
+  currentPassword?: string;
 }

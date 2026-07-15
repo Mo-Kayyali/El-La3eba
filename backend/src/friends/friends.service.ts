@@ -258,6 +258,26 @@ export class FriendsService {
     return { friends, incomingRequests: incoming, outgoingRequests: outgoing };
   }
 
+  /**
+   * Returns only the accepted friend user IDs for `currentUserId`.
+   * Single DB query, no presence join.  Used by the broadcast tick to avoid
+   * 3×N DB queries per online user — presence is read directly from Redis
+   * in the gateway's broadcastFriendPresences method.
+   */
+  async getAcceptedFriendIds(currentUserId: string): Promise<string[]> {
+    const friendships = await this.prisma.friendship.findMany({
+      where: {
+        status: FriendshipStatus.ACCEPTED,
+        OR: [{ userId: currentUserId }, { friendId: currentUserId }],
+      },
+      select: { userId: true, friendId: true },
+    });
+
+    return friendships.map((f) =>
+      f.userId === currentUserId ? f.friendId : f.userId,
+    );
+  }
+
   async getFriendPresenceSnapshot(currentUserId: string) {
     const list = await this.getFriendsList(currentUserId);
     return list.friends.map((friend) => ({

@@ -30,7 +30,13 @@ const GUESS_RATE_LIMIT_MAX = 5;
 const GUESS_RATE_LIMIT_WINDOW_MS = 1000; // 1 second
 // ─────────────────────────────────────────────────────────────────────────────
 
-@WebSocketGateway({ cors: { origin: '*' } })
+// Allowed WebSocket origins must match the REST CORS allow-list in main.ts.
+// Override via FRONTEND_URL env var for production deployments.
+const WS_ALLOWED_ORIGINS = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL, 'http://localhost:3001']
+  : ['http://localhost:3001'];
+
+@WebSocketGateway({ cors: { origin: WS_ALLOWED_ORIGINS, credentials: true } })
 export class GameGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
 {
@@ -86,6 +92,15 @@ export class GameGateway
     return `game_invite:${inviterId}:${inviteeId}`;
   }
 
+  /**
+   * Secondary index: a Redis Set that tracks all inviteeIds currently
+   * invited by `inviterId`.  Used instead of `KEYS` pattern scans.
+   * TTL is set to INVITE_TTL_SECONDS + 5s to outlive the invite itself.
+   */
+  private invitesSentKey(inviterId: string) {
+    return `game_invites_sent:${inviterId}`;
+  }
+
   private inviteTimerKey(inviterId: string, inviteeId: string) {
     return `${inviterId}:${inviteeId}`;
   }
@@ -109,7 +124,21 @@ export class GameGateway
         const exists = await this.redisClient
           .exists(this.inviteKey(inviterId, inviteeId))
           .catch(() => 0);
-        if (exists) return;
+        if (!exists) {
+          // Already handled (accepted / cancelled / declined) — just clean up index.
+          await this.redisClient
+            .srem(this.invitesSentKey(inviterId), inviteeId)
+            .catch(() => {});
+          return;
+        }
+
+        // Key still present — natural TTL expiry. Clean up index + invite key + room.
+        await this.redisClient
+          .multi()
+          .del(this.inviteKey(inviterId, inviteeId))
+          .srem(this.invitesSentKey(inviterId), inviteeId)
+          .exec()
+          .catch(() => {});
 
         await this.matchmakingService
           .cancelPrivateRoom(inviterId)
@@ -133,32 +162,28 @@ export class GameGateway
     inviterId: string,
     reason: 'inviter_offline' | 'inviter_in_game',
   ) {
-    const keys = await this.redisClient
-      .keys(this.inviteKey(inviterId, '*'))
+    // O(1) lookup via the secondary index instead of a keyspace KEYS scan.
+    const inviteeIds = await this.redisClient
+      .smembers(this.invitesSentKey(inviterId))
       .catch(() => [] as string[]);
-    if (!keys.length) return;
+    if (!inviteeIds.length) return;
 
-    const values = await this.redisClient.mget(...keys);
-    const invitees: string[] = [];
+    // Build invite keys from the known invitee IDs.
+    const inviteKeys = inviteeIds.map((id) => this.inviteKey(inviterId, id));
 
-    values.forEach((raw) => {
-      if (!raw) return;
-      try {
-        const parsed = JSON.parse(raw) as { inviteeId?: string };
-        if (parsed?.inviteeId) invitees.push(parsed.inviteeId);
-      } catch {
-        // Ignore malformed payloads and continue cleanup.
-      }
-    });
+    // Atomically delete all invite keys + the index itself.
+    const multi = this.redisClient.multi();
+    inviteKeys.forEach((k) => multi.del(k));
+    multi.del(this.invitesSentKey(inviterId));
+    await multi.exec().catch(() => {});
 
-    await this.redisClient.del(...keys).catch(() => 0);
     await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => {});
 
-    invitees.forEach((inviteeId) => {
+    inviteeIds.forEach((inviteeId) => {
       this.clearInviteExpiryTimer(inviterId, inviteeId);
     });
 
-    invitees.forEach((inviteeId) => {
+    inviteeIds.forEach((inviteeId) => {
       this.server.to(inviteeId).emit('inviteCancelledBySystem', {
         inviterId,
         inviteeId,
@@ -171,44 +196,40 @@ export class GameGateway
     inviteeId: string,
     reason: 'invitee_offline' | 'invitee_in_game',
   ) {
-    const keys = await this.redisClient
-      .keys(this.inviteKey('*', inviteeId))
+    // Resolve all inviters who have a live invite to this invitee.
+    // This requires iterating all online users' sent-invite Sets.  Rather than
+    // a keyspace scan we use the presence hash to bound the search: only online
+    // users can have sent a live invite, so we only check their Sets.
+    //
+    // Pattern: KEYS `game_invite:*:{inviteeId}` is replaced by:
+    //   for each online userId that is NOT inviteeId:
+    //     SISMEMBER game_invites_sent:{userId} inviteeId
+    // This is O(online_users) instead of O(keyspace), which is fine at scale.
+    const onlineUserIds = await this.redisClient
+      .hkeys('presence')
       .catch(() => [] as string[]);
-    if (!keys.length) return;
 
-    const values = await this.redisClient.mget(...keys);
     const inviters = new Set<string>();
+    await Promise.all(
+      onlineUserIds
+        .filter((uid) => uid !== inviteeId)
+        .map(async (uid) => {
+          const isMember = await this.redisClient
+            .sismember(this.invitesSentKey(uid), inviteeId)
+            .catch(() => 0);
+          if (isMember) inviters.add(uid);
+        }),
+    );
 
-    values.forEach((raw, idx) => {
-      if (!raw) return;
-      try {
-        const parsed = JSON.parse(raw) as {
-          inviterId?: string;
-          inviteeId?: string;
-        };
-        if (parsed?.inviterId) {
-          inviters.add(parsed.inviterId);
-          this.clearInviteExpiryTimer(
-            parsed.inviterId,
-            parsed.inviteeId ?? inviteeId,
-          );
-          return;
-        }
-      } catch {
-        // Fall back to key parsing below.
-      }
+    if (!inviters.size) return;
 
-      const parts = keys[idx]?.split(':') ?? [];
-      if (parts.length >= 3) {
-        const inviterId = parts[1];
-        if (inviterId) {
-          inviters.add(inviterId);
-          this.clearInviteExpiryTimer(inviterId, inviteeId);
-        }
-      }
-    });
-
-    await this.redisClient.del(...keys).catch(() => 0);
+    // Delete invite keys and clean up index entries atomically.
+    const multi = this.redisClient.multi();
+    for (const inviterId of inviters) {
+      multi.del(this.inviteKey(inviterId, inviteeId));
+      multi.srem(this.invitesSentKey(inviterId), inviteeId);
+    }
+    await multi.exec().catch(() => {});
 
     await Promise.allSettled(
       Array.from(inviters).map((inviterId) =>
@@ -216,13 +237,14 @@ export class GameGateway
       ),
     );
 
-    inviters.forEach((inviterId) => {
+    for (const inviterId of inviters) {
+      this.clearInviteExpiryTimer(inviterId, inviteeId);
       this.server.to(inviterId).emit('inviteCancelledBySystem', {
         inviterId,
         inviteeId,
         reason,
       });
-    });
+    }
   }
 
   public emitFriendRequestReceived(
@@ -262,16 +284,38 @@ export class GameGateway
   async broadcastFriendPresences() {
     if (!this.server) return;
 
-    const userIds = await this.redisClient
-      .hkeys('presence')
-      .catch(() => [] as string[]);
-    if (!userIds.length) return;
+    // Step 1: fetch the full presence hash and the list of online users in two
+    // Redis calls — no DB queries here.
+    const [userIds, presenceRaw] = await Promise.all([
+      this.redisClient.hkeys('presence').catch(() => [] as string[]),
+      this.redisClient.hgetall('presence').catch(() => null),
+    ]);
+    if (!userIds.length || !presenceRaw) return;
 
+    // Step 2: for each online user, resolve their accepted friend IDs from the
+    // DB (1 query per user, select-only, no joins) then build the presence
+    // snapshot from the in-memory presenceRaw map — zero extra Redis calls.
     await Promise.all(
       userIds.map(async (userId) => {
         try {
-          const friends =
-            await this.friendsService.getFriendPresenceSnapshot(userId);
+          const friendIds =
+            await this.friendsService.getAcceptedFriendIds(userId);
+          if (!friendIds.length) return;
+
+          const friends = friendIds.map((friendId) => {
+            const raw = presenceRaw[friendId];
+            if (!raw) return { userId: friendId, status: 'offline' as const };
+            // presence values: 'online' | 'in-game:{gameSessionId}'
+            if (raw.startsWith('in-game:')) {
+              return {
+                userId: friendId,
+                status: 'in-game' as const,
+                gameSessionId: raw.slice('in-game:'.length),
+              };
+            }
+            return { userId: friendId, status: raw as 'online' };
+          });
+
           this.server.to(userId).emit('friendsPresenceUpdated', { friends });
         } catch (error) {
           this.logger.warn(
@@ -281,6 +325,7 @@ export class GameGateway
       }),
     );
   }
+
 
   /**
    * Ranked-only: persists MMR (with margin / forfeit rules) and returns per-user deltas for clients.
@@ -796,6 +841,8 @@ export class GameGateway
 
     if (userId) {
       await this.clearPresence(userId).catch(() => {});
+      // Prune the rate-limit map to prevent unbounded memory growth on disconnect.
+      this.guessTimestamps.delete(userId);
     }
   }
 
@@ -904,18 +951,23 @@ export class GameGateway
         inviterUsername,
       );
 
-      await this.redisClient.set(
-        this.inviteKey(userId, friendId),
-        JSON.stringify({
-          inviterId: userId,
-          inviteeId: friendId,
-          inviterUsername,
-          roomCode,
-          createdAt: new Date().toISOString(),
-        }),
-        'EX',
-        this.INVITE_TTL_SECONDS,
-      );
+      await this.redisClient
+        .multi()
+        .set(
+          this.inviteKey(userId, friendId),
+          JSON.stringify({
+            inviterId: userId,
+            inviteeId: friendId,
+            inviterUsername,
+            roomCode,
+            createdAt: new Date().toISOString(),
+          }),
+          'EX',
+          this.INVITE_TTL_SECONDS,
+        )
+        .sadd(this.invitesSentKey(userId), friendId)
+        .expire(this.invitesSentKey(userId), this.INVITE_TTL_SECONDS + 5)
+        .exec();
       this.scheduleInviteExpiry(userId, friendId);
 
       this.server.to(friendId).emit('friendGameInvite', {
@@ -953,11 +1005,15 @@ export class GameGateway
     if (!friendId) return { status: 'error', message: 'friendId required' };
 
     const key = this.inviteKey(inviterId, friendId);
-    const deleted = await this.redisClient.del(key);
+    const multi = this.redisClient.multi();
+    multi.del(key);
+    multi.srem(this.invitesSentKey(inviterId), friendId);
+    const execResult = await multi.exec().catch(() => null);
+    const deletedCount = execResult ? Number(execResult[0]?.[1] ?? 0) : 0;
     this.clearInviteExpiryTimer(inviterId, friendId);
     await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => {});
 
-    if (deleted > 0) {
+    if (deletedCount > 0) {
       this.server.to(friendId).emit('inviteCancelledBySystem', {
         inviterId,
         inviteeId: friendId,
@@ -995,11 +1051,20 @@ export class GameGateway
         inviterUsername?: string;
       };
     } catch {
-      await this.redisClient.del(key).catch(() => 0);
+      await this.redisClient
+        .multi()
+        .del(key)
+        .srem(this.invitesSentKey(inviterId), inviteeId)
+        .exec()
+        .catch(() => 0);
       return { status: 'error', message: 'Invite is invalid' };
     }
 
-    await this.redisClient.del(key);
+    await this.redisClient
+      .multi()
+      .del(key)
+      .srem(this.invitesSentKey(inviterId), inviteeId)
+      .exec();
     this.clearInviteExpiryTimer(inviterId, inviteeId);
 
     const username =
@@ -1048,8 +1113,12 @@ export class GameGateway
     if (!inviterId) return { status: 'error', message: 'inviterId required' };
 
     const key = this.inviteKey(inviterId, inviteeId);
-    const deleted = await this.redisClient.del(key);
-    if (deleted > 0) {
+    const multi2 = this.redisClient.multi();
+    multi2.del(key);
+    multi2.srem(this.invitesSentKey(inviterId), inviteeId);
+    const execResult2 = await multi2.exec().catch(() => null);
+    const deletedCount2 = execResult2 ? Number(execResult2[0]?.[1] ?? 0) : 0;
+    if (deletedCount2 > 0) {
       await this.matchmakingService
         .cancelPrivateRoom(inviterId)
         .catch(() => {});
@@ -1159,8 +1228,10 @@ export class GameGateway
           rematch.isRanked === true,
         );
 
-        // Move all sockets still in the old room into the new one.
+        // Move all sockets still in the old room into the new one,
+        // then immediately leave the old room to prevent cross-session events.
         this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+        this.server.in(gameSessionId).socketsLeave(gameSessionId);
         await Promise.all([
           this.setPresenceInGame(rematch.p1Id, newGameSessionId),
           this.setPresenceInGame(rematch.p2Id, newGameSessionId),

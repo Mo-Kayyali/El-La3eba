@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -118,23 +119,6 @@ export class UsersService {
     return payload;
   }
 
-  async acknowledgeOfflinePenalty(userId: string) {
-    const acknowledgedAt = new Date();
-    const result = await this.prisma.offlinePenalty.updateMany({
-      where: {
-        userId,
-        acknowledgedAt: null,
-      },
-      data: { acknowledgedAt },
-    });
-
-    await this.redis.del(this.penaltyKey(userId)).catch(() => 0);
-
-    return {
-      success: true,
-      cleared: result.count,
-    };
-  }
 
   async getPublicProfileById(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -173,6 +157,30 @@ export class UsersService {
     if (dto.username !== undefined) data.username = dto.username;
     if (dto.email !== undefined) data.email = dto.email;
     if (dto.password !== undefined) {
+      // Require the user to prove they know their current password before
+      // accepting a new one.  This prevents session-hijack escalation: an
+      // attacker with a stolen JWT cannot silently change the password.
+      if (!dto.currentPassword) {
+        throw new BadRequestException(
+          'currentPassword is required when changing your password.',
+        );
+      }
+
+      // Fetch only the passwordHash column — no extra data returned.
+      const userRecord = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { passwordHash: true },
+      });
+      if (!userRecord) throw new NotFoundException('User not found');
+
+      const currentPasswordValid = await bcrypt.compare(
+        dto.currentPassword,
+        userRecord.passwordHash,
+      );
+      if (!currentPasswordValid) {
+        throw new ForbiddenException('Current password is incorrect.');
+      }
+
       const salt = await bcrypt.genSalt();
       data.passwordHash = await bcrypt.hash(dto.password, salt);
     }

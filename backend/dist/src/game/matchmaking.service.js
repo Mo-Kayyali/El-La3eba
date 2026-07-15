@@ -360,10 +360,12 @@ return selected
         }
     }
     setActiveGameSessionIdInMulti(multi, userId, gameSessionId) {
-        multi.set(this.activeGameKey(String(userId)), String(gameSessionId));
+        const key = this.activeGameKey(String(userId));
+        multi.set(key, String(gameSessionId));
+        multi.expire(key, 6 * 60 * 60);
     }
     async setActiveGameSessionIdForUser(userId, gameSessionId) {
-        await this.redisClient.set(this.activeGameKey(String(userId)), String(gameSessionId));
+        await this.redisClient.set(this.activeGameKey(String(userId)), String(gameSessionId), 'EX', 6 * 60 * 60);
     }
     async getActiveGameSessionIdForUser(userId) {
         const uid = String(userId);

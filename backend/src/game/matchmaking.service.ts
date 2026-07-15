@@ -535,16 +535,23 @@ return selected
     userId: string,
     gameSessionId: string,
   ): void {
-    multi.set(this.activeGameKey(String(userId)), String(gameSessionId));
+    const key = this.activeGameKey(String(userId));
+    // 6-hour safety-net TTL — only fires if the server crashes mid-match;
+    // normal match endings always delete the key explicitly.
+    multi.set(key, String(gameSessionId));
+    multi.expire(key, 6 * 60 * 60);
   }
 
   async setActiveGameSessionIdForUser(
     userId: string,
     gameSessionId: string,
   ): Promise<void> {
+    // 6-hour safety-net TTL prevents permanent orphaned locks after a server crash.
     await this.redisClient.set(
       this.activeGameKey(String(userId)),
       String(gameSessionId),
+      'EX',
+      6 * 60 * 60,
     );
   }
 

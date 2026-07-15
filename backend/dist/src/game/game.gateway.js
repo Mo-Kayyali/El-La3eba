@@ -29,6 +29,9 @@ const friends_service_1 = require("../friends/friends.service");
 const users_service_1 = require("../users/users.service");
 const GUESS_RATE_LIMIT_MAX = 5;
 const GUESS_RATE_LIMIT_WINDOW_MS = 1000;
+const WS_ALLOWED_ORIGINS = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL, 'http://localhost:3001']
+    : ['http://localhost:3001'];
 let GameGateway = GameGateway_1 = class GameGateway {
     jwtService;
     matchmakingService;
@@ -64,6 +67,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
     inviteKey(inviterId, inviteeId) {
         return `game_invite:${inviterId}:${inviteeId}`;
     }
+    invitesSentKey(inviterId) {
+        return `game_invites_sent:${inviterId}`;
+    }
     inviteTimerKey(inviterId, inviteeId) {
         return `${inviterId}:${inviteeId}`;
     }
@@ -83,8 +89,18 @@ let GameGateway = GameGateway_1 = class GameGateway {
             const exists = await this.redisClient
                 .exists(this.inviteKey(inviterId, inviteeId))
                 .catch(() => 0);
-            if (exists)
+            if (!exists) {
+                await this.redisClient
+                    .srem(this.invitesSentKey(inviterId), inviteeId)
+                    .catch(() => { });
                 return;
+            }
+            await this.redisClient
+                .multi()
+                .del(this.inviteKey(inviterId, inviteeId))
+                .srem(this.invitesSentKey(inviterId), inviteeId)
+                .exec()
+                .catch(() => { });
             await this.matchmakingService
                 .cancelPrivateRoom(inviterId)
                 .catch(() => { });
@@ -97,30 +113,21 @@ let GameGateway = GameGateway_1 = class GameGateway {
         this.inviteExpiryTimers.set(this.inviteTimerKey(inviterId, inviteeId), timeout);
     }
     async cancelActiveInvitesByInviter(inviterId, reason) {
-        const keys = await this.redisClient
-            .keys(this.inviteKey(inviterId, '*'))
+        const inviteeIds = await this.redisClient
+            .smembers(this.invitesSentKey(inviterId))
             .catch(() => []);
-        if (!keys.length)
+        if (!inviteeIds.length)
             return;
-        const values = await this.redisClient.mget(...keys);
-        const invitees = [];
-        values.forEach((raw) => {
-            if (!raw)
-                return;
-            try {
-                const parsed = JSON.parse(raw);
-                if (parsed?.inviteeId)
-                    invitees.push(parsed.inviteeId);
-            }
-            catch {
-            }
-        });
-        await this.redisClient.del(...keys).catch(() => 0);
+        const inviteKeys = inviteeIds.map((id) => this.inviteKey(inviterId, id));
+        const multi = this.redisClient.multi();
+        inviteKeys.forEach((k) => multi.del(k));
+        multi.del(this.invitesSentKey(inviterId));
+        await multi.exec().catch(() => { });
         await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
-        invitees.forEach((inviteeId) => {
+        inviteeIds.forEach((inviteeId) => {
             this.clearInviteExpiryTimer(inviterId, inviteeId);
         });
-        invitees.forEach((inviteeId) => {
+        inviteeIds.forEach((inviteeId) => {
             this.server.to(inviteeId).emit('inviteCancelledBySystem', {
                 inviterId,
                 inviteeId,
@@ -129,44 +136,36 @@ let GameGateway = GameGateway_1 = class GameGateway {
         });
     }
     async cancelPendingInvitesForInvitee(inviteeId, reason) {
-        const keys = await this.redisClient
-            .keys(this.inviteKey('*', inviteeId))
+        const onlineUserIds = await this.redisClient
+            .hkeys('presence')
             .catch(() => []);
-        if (!keys.length)
-            return;
-        const values = await this.redisClient.mget(...keys);
         const inviters = new Set();
-        values.forEach((raw, idx) => {
-            if (!raw)
-                return;
-            try {
-                const parsed = JSON.parse(raw);
-                if (parsed?.inviterId) {
-                    inviters.add(parsed.inviterId);
-                    this.clearInviteExpiryTimer(parsed.inviterId, parsed.inviteeId ?? inviteeId);
-                    return;
-                }
-            }
-            catch {
-            }
-            const parts = keys[idx]?.split(':') ?? [];
-            if (parts.length >= 3) {
-                const inviterId = parts[1];
-                if (inviterId) {
-                    inviters.add(inviterId);
-                    this.clearInviteExpiryTimer(inviterId, inviteeId);
-                }
-            }
-        });
-        await this.redisClient.del(...keys).catch(() => 0);
+        await Promise.all(onlineUserIds
+            .filter((uid) => uid !== inviteeId)
+            .map(async (uid) => {
+            const isMember = await this.redisClient
+                .sismember(this.invitesSentKey(uid), inviteeId)
+                .catch(() => 0);
+            if (isMember)
+                inviters.add(uid);
+        }));
+        if (!inviters.size)
+            return;
+        const multi = this.redisClient.multi();
+        for (const inviterId of inviters) {
+            multi.del(this.inviteKey(inviterId, inviteeId));
+            multi.srem(this.invitesSentKey(inviterId), inviteeId);
+        }
+        await multi.exec().catch(() => { });
         await Promise.allSettled(Array.from(inviters).map((inviterId) => this.matchmakingService.cancelPrivateRoom(inviterId)));
-        inviters.forEach((inviterId) => {
+        for (const inviterId of inviters) {
+            this.clearInviteExpiryTimer(inviterId, inviteeId);
             this.server.to(inviterId).emit('inviteCancelledBySystem', {
                 inviterId,
                 inviteeId,
                 reason,
             });
-        });
+        }
     }
     emitFriendRequestReceived(recipientId, payload) {
         if (!this.server)
@@ -194,14 +193,30 @@ let GameGateway = GameGateway_1 = class GameGateway {
     async broadcastFriendPresences() {
         if (!this.server)
             return;
-        const userIds = await this.redisClient
-            .hkeys('presence')
-            .catch(() => []);
-        if (!userIds.length)
+        const [userIds, presenceRaw] = await Promise.all([
+            this.redisClient.hkeys('presence').catch(() => []),
+            this.redisClient.hgetall('presence').catch(() => null),
+        ]);
+        if (!userIds.length || !presenceRaw)
             return;
         await Promise.all(userIds.map(async (userId) => {
             try {
-                const friends = await this.friendsService.getFriendPresenceSnapshot(userId);
+                const friendIds = await this.friendsService.getAcceptedFriendIds(userId);
+                if (!friendIds.length)
+                    return;
+                const friends = friendIds.map((friendId) => {
+                    const raw = presenceRaw[friendId];
+                    if (!raw)
+                        return { userId: friendId, status: 'offline' };
+                    if (raw.startsWith('in-game:')) {
+                        return {
+                            userId: friendId,
+                            status: 'in-game',
+                            gameSessionId: raw.slice('in-game:'.length),
+                        };
+                    }
+                    return { userId: friendId, status: raw };
+                });
                 this.server.to(userId).emit('friendsPresenceUpdated', { friends });
             }
             catch (error) {
@@ -571,6 +586,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
         }
         if (userId) {
             await this.clearPresence(userId).catch(() => { });
+            this.guessTimestamps.delete(userId);
         }
     }
     async handleJoinQueue(client, mode = 'ranked') {
@@ -629,13 +645,18 @@ let GameGateway = GameGateway_1 = class GameGateway {
             await this.friendsService.ensureUsersAreFriends(userId, friendId);
             await this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
             const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername);
-            await this.redisClient.set(this.inviteKey(userId, friendId), JSON.stringify({
+            await this.redisClient
+                .multi()
+                .set(this.inviteKey(userId, friendId), JSON.stringify({
                 inviterId: userId,
                 inviteeId: friendId,
                 inviterUsername,
                 roomCode,
                 createdAt: new Date().toISOString(),
-            }), 'EX', this.INVITE_TTL_SECONDS);
+            }), 'EX', this.INVITE_TTL_SECONDS)
+                .sadd(this.invitesSentKey(userId), friendId)
+                .expire(this.invitesSentKey(userId), this.INVITE_TTL_SECONDS + 5)
+                .exec();
             this.scheduleInviteExpiry(userId, friendId);
             this.server.to(friendId).emit('friendGameInvite', {
                 inviterId: userId,
@@ -661,10 +682,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (!friendId)
             return { status: 'error', message: 'friendId required' };
         const key = this.inviteKey(inviterId, friendId);
-        const deleted = await this.redisClient.del(key);
+        const multi = this.redisClient.multi();
+        multi.del(key);
+        multi.srem(this.invitesSentKey(inviterId), friendId);
+        const execResult = await multi.exec().catch(() => null);
+        const deletedCount = execResult ? Number(execResult[0]?.[1] ?? 0) : 0;
         this.clearInviteExpiryTimer(inviterId, friendId);
         await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
-        if (deleted > 0) {
+        if (deletedCount > 0) {
             this.server.to(friendId).emit('inviteCancelledBySystem', {
                 inviterId,
                 inviteeId: friendId,
@@ -689,10 +714,19 @@ let GameGateway = GameGateway_1 = class GameGateway {
             invite = JSON.parse(rawInvite);
         }
         catch {
-            await this.redisClient.del(key).catch(() => 0);
+            await this.redisClient
+                .multi()
+                .del(key)
+                .srem(this.invitesSentKey(inviterId), inviteeId)
+                .exec()
+                .catch(() => 0);
             return { status: 'error', message: 'Invite is invalid' };
         }
-        await this.redisClient.del(key);
+        await this.redisClient
+            .multi()
+            .del(key)
+            .srem(this.invitesSentKey(inviterId), inviteeId)
+            .exec();
         this.clearInviteExpiryTimer(inviterId, inviteeId);
         const username = client.data?.user?.username ||
             client.data?.user?.name ||
@@ -724,8 +758,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (!inviterId)
             return { status: 'error', message: 'inviterId required' };
         const key = this.inviteKey(inviterId, inviteeId);
-        const deleted = await this.redisClient.del(key);
-        if (deleted > 0) {
+        const multi2 = this.redisClient.multi();
+        multi2.del(key);
+        multi2.srem(this.invitesSentKey(inviterId), inviteeId);
+        const execResult2 = await multi2.exec().catch(() => null);
+        const deletedCount2 = execResult2 ? Number(execResult2[0]?.[1] ?? 0) : 0;
+        if (deletedCount2 > 0) {
             await this.matchmakingService
                 .cancelPrivateRoom(inviterId)
                 .catch(() => { });
@@ -789,6 +827,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 const newGameSessionId = (0, crypto_1.randomUUID)();
                 const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, rematch.isRanked === true);
                 this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+                this.server.in(gameSessionId).socketsLeave(gameSessionId);
                 await Promise.all([
                     this.setPresenceInGame(rematch.p1Id, newGameSessionId),
                     this.setPresenceInGame(rematch.p2Id, newGameSessionId),
@@ -1306,7 +1345,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleForfeitMatch", null);
 exports.GameGateway = GameGateway = GameGateway_1 = __decorate([
-    (0, websockets_1.WebSocketGateway)({ cors: { origin: '*' } }),
+    (0, websockets_1.WebSocketGateway)({ cors: { origin: WS_ALLOWED_ORIGINS, credentials: true } }),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         matchmaking_service_1.MatchmakingService,
         game_service_1.GameService,
