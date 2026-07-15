@@ -34,36 +34,33 @@ let GameService = class GameService {
       player_metrics AS (
         SELECT 
           p.*,
-          -- Distance to full name
-          levenshtein(lower(unaccent(p.name)), g.val) as full_dist,
-          -- Min distance to any of the words in the name
-          (SELECT min(levenshtein(word, g.val)) FROM unnest(string_to_array(lower(unaccent(p.name)), ' ')) as word) as word_dist,
-          -- Trigram word similarity
-          word_similarity(g.val, lower(unaccent(p.name))) as w_sim,
-          -- Strict length checks (full name + best-matching word)
-          abs(char_length(g.val) - char_length(lower(unaccent(p.name)))) as full_len_diff,
+          g.val,
+          -- Best edit distance to the FULL name or any FULL alias within length tolerance
           (
-            SELECT min(abs(char_length(g.val) - char_length(word)))
-            FROM unnest(string_to_array(lower(unaccent(p.name)), ' ')) as word
-          ) as word_len_diff
+            SELECT min(levenshtein(lower(unaccent(alias)), g.val))
+            FROM unnest(array_append(p.aliases, p.name)) as alias
+            WHERE abs(char_length(g.val) - char_length(alias)) <= 3
+          ) as best_dist,
+          -- Trigram similarity against both name and aliases for sorting (and pre-filtering)
+          GREATEST(
+            word_similarity(g.val, lower(unaccent(p.name))),
+            word_similarity(g.val, lower(unaccent(array_to_string(p.aliases, ' '))))
+          ) as w_sim
         FROM "FootballPlayer" p, guess g
+        WHERE
+          -- Generous prefilter to narrow candidates via GIN index (if configured) or fast discard
+          (
+            word_similarity(g.val, lower(unaccent(p.name))) >= 0.15 OR
+            word_similarity(g.val, lower(unaccent(array_to_string(p.aliases, ' ')))) >= 0.15
+          )
       )
       SELECT *
       FROM player_metrics
       WHERE 
-        -- Reject obvious length mismatches (prevents "messssssssssi" style matches)
-        (full_len_diff <= 3 OR word_len_diff <= 3)
-        AND
-        (
-          -- Require BOTH a reasonably close edit distance AND strong trigram similarity
-          ((full_dist <= ${allowedTypos} OR word_dist <= ${allowedTypos}) AND w_sim >= 0.85)
-          -- Or allow very high similarity (near-exact) even if levenshtein is noisy due to accents
-          OR (w_sim >= 0.92 AND full_len_diff <= 2)
-        )
+        best_dist <= ${allowedTypos}
       ORDER BY 
         w_sim DESC,
-        word_dist ASC,
-        full_dist ASC
+        best_dist ASC
       LIMIT 1;
     `;
         return matches.length > 0 ? matches[0] : null;
