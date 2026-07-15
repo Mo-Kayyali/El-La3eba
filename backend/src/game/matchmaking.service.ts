@@ -485,7 +485,9 @@ return selected
 
     const gameState = {
       players: [player1Id, player2Id],
+      winner: null,
       currentTurn: player1Id,
+      turnDeadlineAt: Date.now() + 10_000,
       playerNames: {
         [player1Id]: player1Username ?? String(player1Id),
         [player2Id]: player2Username ?? String(player2Id),
@@ -507,8 +509,8 @@ return selected
     const stateJson = JSON.stringify(gameState);
     const multi = this.redisClient.multi();
     multi.set(gameKey, stateJson);
-    multi.set(this.activeGameKey(player1Id), gameSessionId);
-    multi.set(this.activeGameKey(player2Id), gameSessionId);
+    this.setActiveGameSessionIdInMulti(multi, player1Id, gameSessionId);
+    this.setActiveGameSessionIdInMulti(multi, player2Id, gameSessionId);
     await multi.exec();
     return gameState;
   }

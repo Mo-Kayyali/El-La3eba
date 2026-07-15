@@ -42,7 +42,9 @@ export declare class MatchmakingService {
     private processQueue;
     initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean): Promise<{
         players: string[];
+        winner: null;
         currentTurn: string;
+        turnDeadlineAt: number;
         playerNames: {
             [player1Id]: string;
             [player2Id]: string;

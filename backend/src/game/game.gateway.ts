@@ -562,7 +562,7 @@ export class GameGateway
 
   // ─── Turn timer (full implementation) ────────────────────────────────────
 
-  private startTurnTimer(gameSessionId: string) {
+  private startTurnTimer(gameSessionId: string, remainingMs: number = 10_000) {
     this.clearTurnTimer(gameSessionId);
 
     const timeout = setTimeout(async () => {
@@ -649,6 +649,7 @@ export class GameGateway
               state.players.find((p: string) => p !== timedOutUserId) ||
               state.players[0];
             state.currentTurn = otherPlayer;
+            state.turnDeadlineAt = Date.now() + 10_000;
           }
 
           const multi = this.redisClient.multi();
@@ -752,6 +753,7 @@ export class GameGateway
             else if (latest.currentRound === 3)
               latest.currentTurn = latest.players[0];
             else latest.currentTurn = latest.players[0];
+            latest.turnDeadlineAt = Date.now() + 10_000;
 
             const multi2 = this.redisClient.multi();
             multi2.set(key, JSON.stringify(latest));
@@ -787,7 +789,7 @@ export class GameGateway
       } else {
         this.startTurnTimer(gameSessionId);
       }
-    }, 10_000);
+    }, Math.max(0, remainingMs));
 
     this.turnTimers.set(gameSessionId, timeout);
   }
@@ -1428,7 +1430,16 @@ export class GameGateway
         .to(gameSessionId)
         .emit('playerReconnected', { userId, gameSessionId });
       // Resume the turn timer so the game continues.
-      this.startTurnTimer(gameSessionId);
+      let remainingMs = 10_000;
+      if (latestStateStr) {
+        try {
+          const latestState = JSON.parse(latestStateStr);
+          if (latestState.turnDeadlineAt) {
+            remainingMs = latestState.turnDeadlineAt - Date.now();
+          }
+        } catch {}
+      }
+      this.startTurnTimer(gameSessionId, remainingMs);
       this.logger.log(
         `User ${userId} reconnected to game ${gameSessionId} — timer resumed`,
       );
@@ -1581,6 +1592,7 @@ export class GameGateway
             const otherPlayer =
               state.players.find((p: string) => p !== userId) || state.players[0];
             state.currentTurn = otherPlayer;
+            state.turnDeadlineAt = Date.now() + 10_000;
           }
 
           // Execute transaction
@@ -1691,6 +1703,7 @@ export class GameGateway
             else if (latest.currentRound === 3)
               latest.currentTurn = latest.players[0];
             else latest.currentTurn = latest.players[0];
+            latest.turnDeadlineAt = Date.now() + 10_000;
 
             const multi2 = this.redisClient.multi();
             multi2.set(key, JSON.stringify(latest));

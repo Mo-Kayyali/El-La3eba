@@ -376,7 +376,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.disconnectTimers.delete(key);
         }
     }
-    startTurnTimer(gameSessionId) {
+    startTurnTimer(gameSessionId, remainingMs = 10_000) {
         this.clearTurnTimer(gameSessionId);
         const timeout = setTimeout(async () => {
             this.turnTimers.delete(gameSessionId);
@@ -443,6 +443,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         const otherPlayer = state.players.find((p) => p !== timedOutUserId) ||
                             state.players[0];
                         state.currentTurn = otherPlayer;
+                        state.turnDeadlineAt = Date.now() + 10_000;
                     }
                     const multi = this.redisClient.multi();
                     multi.set(key, JSON.stringify(state));
@@ -524,6 +525,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                             latest.currentTurn = latest.players[0];
                         else
                             latest.currentTurn = latest.players[0];
+                        latest.turnDeadlineAt = Date.now() + 10_000;
                         const multi2 = this.redisClient.multi();
                         multi2.set(key, JSON.stringify(latest));
                         const results2 = await multi2.exec();
@@ -556,7 +558,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             else {
                 this.startTurnTimer(gameSessionId);
             }
-        }, 10_000);
+        }, Math.max(0, remainingMs));
         this.turnTimers.set(gameSessionId, timeout);
     }
     async handleConnection(client) {
@@ -983,7 +985,17 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.server
                 .to(gameSessionId)
                 .emit('playerReconnected', { userId, gameSessionId });
-            this.startTurnTimer(gameSessionId);
+            let remainingMs = 10_000;
+            if (latestStateStr) {
+                try {
+                    const latestState = JSON.parse(latestStateStr);
+                    if (latestState.turnDeadlineAt) {
+                        remainingMs = latestState.turnDeadlineAt - Date.now();
+                    }
+                }
+                catch { }
+            }
+            this.startTurnTimer(gameSessionId, remainingMs);
             this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
         }
         client.emit('gameStateUpdated', { state: parsedState });
@@ -1094,6 +1106,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     else {
                         const otherPlayer = state.players.find((p) => p !== userId) || state.players[0];
                         state.currentTurn = otherPlayer;
+                        state.turnDeadlineAt = Date.now() + 10_000;
                     }
                     const multi = this.redisClient.multi();
                     multi.set(key, JSON.stringify(state));
@@ -1180,6 +1193,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                             latest.currentTurn = latest.players[0];
                         else
                             latest.currentTurn = latest.players[0];
+                        latest.turnDeadlineAt = Date.now() + 10_000;
                         const multi2 = this.redisClient.multi();
                         multi2.set(key, JSON.stringify(latest));
                         const results2 = await multi2.exec();
