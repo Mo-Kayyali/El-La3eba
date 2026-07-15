@@ -38,6 +38,7 @@ type GameState = {
     winner: string | number;
     scores: Record<string, number>;
   }>;
+  turnDeadlineAt?: number;
   isRanked?: boolean;
   [key: string]: unknown;
 };
@@ -617,7 +618,11 @@ export default function GamePage() {
 
   // Visual turn countdown
   useEffect(() => {
-    setTurnSecondsLeft(10);
+    let remaining = 10;
+    if (gameState?.turnDeadlineAt) {
+      remaining = Math.max(0, Math.ceil((gameState.turnDeadlineAt - Date.now()) / 1000));
+    }
+    setTurnSecondsLeft(remaining);
     if (isMatchOver) return;
     if (gameState?.currentTurn === null || gameState?.currentTurn === undefined)
       return;
@@ -626,7 +631,7 @@ export default function GamePage() {
       setTurnSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [gameState?.currentTurn, isMatchOver]);
+  }, [gameState?.currentTurn, gameState?.turnDeadlineAt, isMatchOver]);
 
   useEffect(() => {
     if (isMatchOver) return;

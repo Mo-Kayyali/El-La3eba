@@ -1275,7 +1275,7 @@ export class GameGateway
           this.setPresenceInGame(rematch.p2Id, newGameSessionId),
         ]);
         this.server
-          .to(gameSessionId)
+          .to(newGameSessionId)
           .emit('rematchStarting', { newGameSessionId });
         this.server
           .to(newGameSessionId)
