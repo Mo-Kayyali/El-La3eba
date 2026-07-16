@@ -133,8 +133,11 @@ export default function AdminCompetitionsPage() {
                 >
                   <option value="DOMESTIC_LEAGUE" className="bg-slate-900">Domestic League</option>
                   <option value="DOMESTIC_CUP" className="bg-slate-900">Domestic Cup</option>
-                  <option value="CONTINENTAL_CLUB" className="bg-slate-900">Continental Club</option>
-                  <option value="INTERNATIONAL_NATIONAL_TEAM" className="bg-slate-900">International / National Team</option>
+                  <option value="CONTINENTAL_CLUB_COMPETITION" className="bg-slate-900">Continental Club Competition</option>
+                  <option value="INTERNATIONAL_TOURNAMENT" className="bg-slate-900">International Tournament</option>
+                  <option value="GLOBAL_CLUB_CHAMPIONSHIP" className="bg-slate-900">Global Club Championship</option>
+                  <option value="DOMESTIC_SUPER_CUP" className="bg-slate-900">Domestic Super Cup</option>
+                  <option value="CONTINENTAL_SUPER_CUP" className="bg-slate-900">Continental Super Cup</option>
                 </select>
               </div>
               <div>
