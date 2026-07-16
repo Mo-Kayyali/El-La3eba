@@ -85,19 +85,19 @@ enum SuggestionStatus {
 // ─── Core domain models ───────────────────────────────────────────────────────
 
 model User {
-  id                     String   @id @default(uuid())
-  email                  String   @unique
-  username               String   @unique
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  username               String    @unique
   passwordHash           String
-  isVerified             Boolean  @default(false)
-  mmr                    Int      @default(1000)
-  gamesPlayed            Int      @default(0)
-  wins                   Int      @default(0)
-  offlineDisconnectCount Int      @default(0)
+  isVerified             Boolean   @default(false)
+  mmr                    Int       @default(1000)
+  gamesPlayed            Int       @default(0)
+  wins                   Int       @default(0)
+  offlineDisconnectCount Int       @default(0)
   lastDisconnectAt       DateTime?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  role                   Role     @default(PLAYER)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  role                   Role      @default(PLAYER)
 
   sentFriendRequests     Friendship[]       @relation("FriendRequestsSent")
   receivedFriendRequests Friendship[]       @relation("FriendRequestsReceived")
@@ -129,8 +129,8 @@ model Friendship {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  user   User @relation("FriendRequestsSent",      fields: [userId],   references: [id], onDelete: Cascade)
-  friend User @relation("FriendRequestsReceived",   fields: [friendId], references: [id], onDelete: Cascade)
+  user   User @relation("FriendRequestsSent", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendRequestsReceived", fields: [friendId], references: [id], onDelete: Cascade)
 
   @@unique([userId, friendId])
   @@index([userId, status])
@@ -140,7 +140,7 @@ model Friendship {
 // ─── Geography ────────────────────────────────────────────────────────────────
 
 model Country {
-  id   String @id          // ISO 3166-1 alpha-3 code, e.g. "ENG", "ESP"
+  id   String @id // ISO 3166-1 alpha-3 code, e.g. "ENG", "ESP"
   name String
 
   clubs        Club[]
@@ -156,8 +156,8 @@ model Competition {
   countryCode String?
   tier        Int?
 
-  country Country? @relation(fields: [countryCode], references: [id])
-  clubs   Club[]   @relation("ClubCurrentCompetition")
+  country          Country?          @relation(fields: [countryCode], references: [id])
+  clubs            Club[]            @relation("ClubCurrentCompetition")
   clubCompetitions ClubCompetition[]
 }
 
@@ -175,8 +175,8 @@ model Club {
   competitions         String[] @default([])
   logoUrl              String?
 
-  country            Country      @relation(fields: [countryCode], references: [id])
-  currentCompetition Competition? @relation("ClubCurrentCompetition", fields: [currentCompetitionId], references: [id])
+  country            Country           @relation(fields: [countryCode], references: [id])
+  currentCompetition Competition?      @relation("ClubCurrentCompetition", fields: [currentCompetitionId], references: [id])
   currentPlayers     Player[]
   playerClubs        PlayerClub[]
   clubCompetitions   ClubCompetition[]
@@ -187,7 +187,7 @@ model Club {
 // ─── Club ↔ Competition join table ─────────────────────────────────────────────
 
 model ClubCompetition {
-  id            String  @id @default(uuid())
+  id            String @id @default(uuid())
   clubId        String
   competitionId String
 
@@ -202,34 +202,35 @@ model ClubCompetition {
 // ─── Players ──────────────────────────────────────────────────────────────────
 
 model Player {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   firstName       String
   lastName        String
   /// Canonical display name (e.g. "Vinícius Júnior"). Fuzzy-searched via GIN + pg_trgm.
   name            String
   /// Known alternate names / nicknames. Fuzzy-searched via GIN + pg_trgm on the
   /// flattened string — identical index strategy to the old FootballPlayer.aliases.
-  aliases         String[]      @default([])
-  nationality     String        // Country.id (ISO alpha-3)
+  aliases         String[]       @default([])
+  nationality     String // Country.id (ISO alpha-3)
   dateOfBirth     DateTime?
   heightCm        Int?
   preferredFoot   PreferredFoot?
-  positions       Position[]    @default([])
+  positions       Position[]     @default([])
   primaryPosition Position?
-  isRetired       Boolean       @default(false)
+  isRetired       Boolean        @default(false)
   currentClubId   String?
   imageUrl        String?
   /// Denormalised flat list of club names derived from PlayerClub history.
   /// GIN indexed. Do NOT set directly — use PlayerDenormService.regenerateForPlayer().
-  clubs           String[]      @default([])
+  clubs           String[]       @default([])
   /// Denormalised flat list of competition names derived from clubs[].competitions.
   /// GIN indexed. Do NOT set directly — use PlayerDenormService.regenerateForPlayer().
-  competitions    String[]      @default([])
+  competitions    String[]       @default([])
 
-  currentClub     Club?          @relation(fields: [currentClubId], references: [id])
+  currentClub     Club?              @relation(fields: [currentClubId], references: [id])
   playerClubs     PlayerClub[]
-  questionPhotos  Question[]     @relation("QuestionPhotoPlayer")
+  questionPhotos  Question[]         @relation("QuestionPhotoPlayer")
   questionAnswers QuestionAnswer[]
+  suggestions     AnswerSuggestion[]
 
   // GIN index on positions array for filter queries
   @@index([positions], type: Gin)
@@ -251,7 +252,7 @@ model PlayerClub {
   isCurrent Boolean @default(false)
 
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  club   Club   @relation(fields: [clubId],   references: [id], onDelete: Cascade)
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   @@index([playerId])
   @@index([clubId])
@@ -260,20 +261,20 @@ model PlayerClub {
 // ─── Questions ────────────────────────────────────────────────────────────────
 
 model Question {
-  id            String      @id @default(uuid())
+  id            String         @id @default(uuid())
   text          String
   gameMode      GameMode
   answerType    AnswerType
   logicOperator LogicOperator? // applies when answerType = FILTER and there are >1 clauses
-  photoPlayerId String?        // populated when gameMode = PHOTO_GUESS
+  photoPlayerId String? // populated when gameMode = PHOTO_GUESS
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  photoPlayer     Player?                @relation("QuestionPhotoPlayer", fields: [photoPlayerId], references: [id])
-  clauses         QuestionFilterClause[]
-  answers         QuestionAnswer[]
-  suggestions     AnswerSuggestion[]
+  photoPlayer Player?                @relation("QuestionPhotoPlayer", fields: [photoPlayerId], references: [id])
+  clauses     QuestionFilterClause[]
+  answers     QuestionAnswer[]
+  suggestions AnswerSuggestion[]
 
   @@index([gameMode])
   @@index([answerType])
@@ -285,7 +286,7 @@ model QuestionFilterClause {
   filterType  FilterType
   filterValue String
 
-  question    Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([questionId])
 }
@@ -300,7 +301,7 @@ model QuestionAnswer {
   slotLabel  String?
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  player   Player   @relation(fields: [playerId],   references: [id], onDelete: Cascade)
+  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([questionId, playerId])
   @@index([questionId])
@@ -310,16 +311,19 @@ model QuestionAnswer {
 // ─── Answer suggestion review queue ───────────────────────────────────────────
 
 model AnswerSuggestion {
-  id         String           @id @default(uuid())
-  questionId String
-  guessText  String
+  id          String           @id @default(uuid())
+  questionId  String
+  guessText   String
+  playerId    String
   suggestedBy String
-  status     SuggestionStatus @default(PENDING)
-  reviewNote String?
-  createdAt  DateTime         @default(now())
-  reviewedAt DateTime?
+  status      SuggestionStatus @default(PENDING)
+  comment     String?
+  reviewNote  String?
+  createdAt   DateTime         @default(now())
+  reviewedAt  DateTime?
 
-  question  Question @relation(fields: [questionId],  references: [id], onDelete: Cascade)
+  question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
   suggester User     @relation(fields: [suggestedBy], references: [id], onDelete: Cascade)
 
   @@index([questionId, status])

@@ -1074,21 +1074,32 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         return { status: 'error', message: 'Not your turn' };
                     }
                     finalIsCorrect = initialIsCorrect;
-                    if (finalIsCorrect) {
-                        if (state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
-                            finalIsCorrect = false;
-                            state.strikes[userId] += 1;
-                        }
-                        else {
+                    if (matchedPlayer &&
+                        state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
+                        finalIsCorrect = false;
+                        state.strikes[userId] += 1;
+                    }
+                    else {
+                        if (finalIsCorrect) {
                             state.guessedPlayers.push({
                                 name: matchedPlayer.name,
                                 guessedBy: userId,
+                                isCorrect: true,
+                                playerId: matchedPlayer.id,
                             });
                             state.scores[userId] += 1;
                         }
-                    }
-                    else {
-                        state.strikes[userId] += 1;
+                        else {
+                            state.strikes[userId] += 1;
+                            if (matchedPlayer) {
+                                state.guessedPlayers.push({
+                                    name: matchedPlayer.name,
+                                    guessedBy: userId,
+                                    isCorrect: false,
+                                    playerId: matchedPlayer.id,
+                                });
+                            }
+                        }
                     }
                     isRoundOver = false;
                     isMatchOver = false;

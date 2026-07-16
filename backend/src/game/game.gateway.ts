@@ -1546,25 +1546,36 @@ export class GameGateway
           }
 
           finalIsCorrect = initialIsCorrect;
-          if (finalIsCorrect) {
-            if (
-              state.guessedPlayers.some(
-                (g: any) =>
-                  (typeof g === 'string' ? g : g?.name) === matchedPlayer.name,
-              )
-            ) {
-              // Penalty: treat already-guessed as a WRONG answer (strike)
-              finalIsCorrect = false;
-              state.strikes[userId] += 1;
-            } else {
+          if (
+            matchedPlayer &&
+            state.guessedPlayers.some(
+              (g: any) =>
+                (typeof g === 'string' ? g : g?.name) === matchedPlayer.name,
+            )
+          ) {
+            // Penalty: treat already-guessed as a WRONG answer (strike)
+            finalIsCorrect = false;
+            state.strikes[userId] += 1;
+          } else {
+            if (finalIsCorrect) {
               state.guessedPlayers.push({
                 name: matchedPlayer.name,
                 guessedBy: userId,
+                isCorrect: true,
+                playerId: matchedPlayer.id,
               });
               state.scores[userId] += 1;
+            } else {
+              state.strikes[userId] += 1;
+              if (matchedPlayer) {
+                state.guessedPlayers.push({
+                  name: matchedPlayer.name,
+                  guessedBy: userId,
+                  isCorrect: false,
+                  playerId: matchedPlayer.id,
+                });
+              }
             }
-          } else {
-            state.strikes[userId] += 1;
           }
 
           isRoundOver = false;

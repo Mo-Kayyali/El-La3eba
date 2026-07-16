@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { X, Crown, Swords, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/auth-store";
-import { refreshAuthProfile } from "@/lib/api";
+import { api, refreshAuthProfile } from "@/lib/api";
 import { useSocketStore } from "@/src/store/socketStore";
 import { getRank } from "@/lib/rank";
 import type { Socket } from "socket.io-client";
@@ -30,7 +30,7 @@ type Question = {
 };
 
 /** A guess entry in the activity feed. Backend now sends objects with guessedBy. */
-type GuessEntry = { name: string; guessedBy: string } | string;
+type GuessEntry = { name: string; guessedBy: string; isCorrect?: boolean; playerId?: string } | string;
 
 type GameState = {
   players?: Array<string | number | Player>;
@@ -47,7 +47,7 @@ type GameState = {
   playerMmr?: Record<string, number>;
   roundHistory?: Array<{
     round: number;
-    winner: string | number;
+    winner: string | null;
     scores: Record<string, number>;
   }>;
   turnDeadlineAt?: number;
@@ -75,9 +75,9 @@ function playerEntryToId(entry: unknown) {
   return undefined;
 }
 
-function coerceString(v: unknown) {
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
+function coerceString(val: unknown): string {
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
   return "";
 }
 
@@ -96,9 +96,16 @@ function getByKeyOrIndex(
 function parseGuessEntry(entry: GuessEntry): {
   name: string;
   guessedBy: string | null;
+  isCorrect: boolean;
+  playerId?: string;
 } {
-  if (typeof entry === "string") return { name: entry, guessedBy: null };
-  return { name: entry.name, guessedBy: entry.guessedBy };
+  if (typeof entry === "string") return { name: entry, guessedBy: null, isCorrect: true };
+  return { 
+    name: entry.name, 
+    guessedBy: entry.guessedBy, 
+    isCorrect: entry.isCorrect ?? true,
+    playerId: entry.playerId
+  };
 }
 
 function Logo() {
@@ -211,6 +218,12 @@ export default function GamePage() {
   const [rematchSecondsLeft, setRematchSecondsLeft] = useState(30);
   const [hasRequestedRematch, setHasRequestedRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
+
+  // Report Guess state
+  const [reportModalData, setReportModalData] = useState<{ playerId: string; guessName: string } | null>(null);
+  const [reportComment, setReportComment] = useState("");
+  const [reportedGuesses, setReportedGuesses] = useState<Set<string>>(new Set());
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   /** Populated from `matchOver` payload (ranked). */
   const [mmrDeltas, setMmrDeltas] = useState<Record<string, number> | null>(
@@ -671,6 +684,27 @@ export default function GamePage() {
     setGuess("");
   };
 
+  const submitReport = async () => {
+    if (!reportModalData || !gameState?.currentQuestion?.id || isSubmittingReport) return;
+    setIsSubmittingReport(true);
+    try {
+      await api.post("/game/suggestions", {
+        questionId: gameState.currentQuestion.id,
+        playerId: reportModalData.playerId,
+        guessText: reportModalData.guessName,
+        comment: reportComment.trim() || undefined,
+      });
+      toast.success("Suggestion reported to admins!");
+      setReportedGuesses((prev) => new Set(prev).add(reportModalData.playerId));
+      setReportModalData(null);
+      setReportComment("");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to submit report.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   const displayName = (id: string | number | undefined, fallback: string) => {
     if (id === undefined || id === null) return fallback;
     const key = coerceString(id);
@@ -1081,6 +1115,56 @@ export default function GamePage() {
           </div>
         </header>
 
+        {reportModalData && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="w-full max-w-md rounded-3xl border border-blue-500/25 bg-[#030712] p-8 shadow-[0_0_60px_rgba(59,130,246,0.12)]"
+            >
+              <h3 className="text-lg font-extrabold text-white">
+                Report "{reportModalData.guessName}"
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                Are you sure this player is correct? Your report will be reviewed by admins.
+              </p>
+              
+              <div className="mt-4">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Optional comment
+                </label>
+                <textarea
+                  value={reportComment}
+                  onChange={(e) => setReportComment(e.target.value)}
+                  placeholder="Why is this correct?"
+                  className="w-full rounded-2xl border border-white/[0.08] bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/8 transition resize-none h-24"
+                />
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportModalData(null);
+                    setReportComment("");
+                  }}
+                  className="rounded-2xl border border-white/[0.1] bg-white/[0.05] px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/[0.08] transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitReport}
+                  disabled={isSubmittingReport}
+                  className="rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(59,130,246,0.25)] hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingReport ? "Submitting..." : "Submit Report"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showForfeitModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
             <div
@@ -1322,7 +1406,7 @@ export default function GamePage() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {guessedPlayers.map((entry, idx) => {
-                        const { name, guessedBy } = parseGuessEntry(entry);
+                        const { name, guessedBy, isCorrect, playerId } = parseGuessEntry(entry);
                         const isMine =
                           guessedBy !== null &&
                           String(guessedBy) === String(userId);
@@ -1330,18 +1414,30 @@ export default function GamePage() {
                           guessedBy !== null &&
                           String(guessedBy) !== String(userId);
 
+                        const isRejected = isCorrect === false;
+                        const hasReported = playerId ? reportedGuesses.has(playerId) : false;
+
                         return (
                           <span
                             key={`${name}-${idx}`}
+                            onClick={() => {
+                              if (isRejected && playerId && !hasReported) {
+                                setReportModalData({ playerId, guessName: name });
+                              }
+                            }}
                             className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                              isMine
-                                ? "border-blue-500/30 bg-blue-600/20 text-blue-100"
-                                : isOpponent
-                                  ? "border-red-500/30 bg-red-600/20 text-red-100"
-                                  : "border-white/[0.08] bg-white/[0.05] text-slate-300"
+                              isRejected
+                                ? hasReported
+                                  ? "border-amber-500/30 bg-amber-600/10 text-amber-200 opacity-50 cursor-not-allowed"
+                                  : "border-slate-500/30 bg-slate-600/10 text-slate-400 opacity-60 cursor-pointer hover:border-slate-400/50 hover:bg-slate-500/20"
+                                : isMine
+                                  ? "border-blue-500/30 bg-blue-600/20 text-blue-100"
+                                  : isOpponent
+                                    ? "border-red-500/30 bg-red-600/20 text-red-100"
+                                    : "border-white/[0.08] bg-white/[0.05] text-slate-300"
                             }`}
                           >
-                            {name}
+                            {name} {isRejected && hasReported && " (Reported)"}
                           </span>
                         );
                       })}

@@ -38,8 +38,8 @@ export declare class AuthController {
             createdAt: string;
         } | null;
         id: string;
-        createdAt: Date;
         email: string;
+        createdAt: Date;
         username: string;
         isVerified: boolean;
         mmr: number;

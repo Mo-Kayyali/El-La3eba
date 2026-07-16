@@ -140,6 +140,33 @@ let GameService = class GameService {
         }
         return false;
     }
+    async createSuggestion(userId, questionId, playerId, guessText, comment) {
+        const existing = await this.prisma.answerSuggestion.findFirst({
+            where: {
+                suggestedBy: userId,
+                questionId,
+                playerId,
+                status: 'PENDING',
+            },
+        });
+        if (existing) {
+            return {
+                status: 'error',
+                message: 'You have already suggested this answer for this question.',
+            };
+        }
+        const suggestion = await this.prisma.answerSuggestion.create({
+            data: {
+                questionId,
+                playerId,
+                guessText,
+                suggestedBy: userId,
+                comment,
+                status: 'PENDING',
+            },
+        });
+        return { status: 'ok', suggestion };
+    }
 };
 exports.GameService = GameService;
 exports.GameService = GameService = __decorate([

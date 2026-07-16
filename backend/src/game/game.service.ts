@@ -156,4 +156,41 @@ export class GameService {
   //     return false; // Fallback to rejected if AI is unreachable
   //   }
   // }
+
+  async createSuggestion(
+    userId: string,
+    questionId: string,
+    playerId: string,
+    guessText: string,
+    comment?: string,
+  ) {
+    const existing = await this.prisma.answerSuggestion.findFirst({
+      where: {
+        suggestedBy: userId,
+        questionId,
+        playerId,
+        status: 'PENDING',
+      },
+    });
+
+    if (existing) {
+      return {
+        status: 'error',
+        message: 'You have already suggested this answer for this question.',
+      };
+    }
+
+    const suggestion = await this.prisma.answerSuggestion.create({
+      data: {
+        questionId,
+        playerId,
+        guessText,
+        suggestedBy: userId,
+        comment,
+        status: 'PENDING',
+      },
+    });
+
+    return { status: 'ok', suggestion };
+  }
 }

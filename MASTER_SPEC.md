@@ -168,13 +168,16 @@ OfflinePenalty
 AnswerSuggestion
   id          uuid (pk)
   questionId  uuid (fk -> Question, cascade delete)
+  playerId    uuid (fk -> Player, cascade delete)
   guessText   string
   suggestedBy uuid (fk -> User, cascade delete)
+  comment     string?
   status      SuggestionStatus (default PENDING)
   reviewNote  string?
   createdAt   datetime
   reviewedAt  datetime?
-  // Indexes: (questionId, status); suggestedBy
+  // Unique: (questionId, playerId, suggestedBy) [partial unique index where status='PENDING']
+  // Indexes: (questionId, status); suggestedBy; playerId
 ```
 
 ## 4. Current Architecture State

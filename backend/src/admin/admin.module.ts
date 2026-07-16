@@ -8,6 +8,8 @@ import { AdminPlayersController } from './players.controller';
 import { AdminPlayersService } from './players.service';
 import { AdminQuestionsController } from './questions.controller';
 import { AdminQuestionsService } from './questions.service';
+import { SuggestionsController } from './suggestions.controller';
+import { SuggestionsService } from './suggestions.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { GameModule } from '../game/game.module';
 
@@ -18,13 +20,15 @@ import { GameModule } from '../game/game.module';
     AdminCompetitionsController,
     AdminClubsController,
     AdminPlayersController,
-    AdminQuestionsController
+    AdminQuestionsController,
+    SuggestionsController,
   ],
   providers: [
     AdminCompetitionsService,
     AdminClubsService,
     AdminPlayersService,
-    AdminQuestionsService
+    AdminQuestionsService,
+    SuggestionsService,
   ],
 })
 export class AdminModule {}
