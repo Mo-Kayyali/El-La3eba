@@ -4,9 +4,9 @@ import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Server } from 'socket.io';
 import { randomUUID, randomBytes } from 'crypto';
-import { pickRandomFootballQuestion } from './game.questions';
 import { calculateElo } from './elo.util';
 import type { ChainableCommander } from 'ioredis';
+import { GameService } from './game.service';
 
 export type QueueMode = 'ranked' | 'unrated';
 
@@ -38,6 +38,7 @@ export class MatchmakingService {
   constructor(
     private readonly redisClient: RedisService,
     private readonly prisma: PrismaService,
+    private readonly gameService: GameService,
   ) {}
 
   setServer(server: Server) {
@@ -502,7 +503,7 @@ return selected
       currentRound: 1,
       strikes: { [player1Id]: 0, [player2Id]: 0 },
       guessedPlayers: [],
-      currentQuestion: pickRandomFootballQuestion(),
+      currentQuestion: await this.gameService.getRandomQuestion('STRIKES'),
       isRanked, // consumed by gateway to decide whether to update MMR on completion
     };
     const gameKey = `game:${gameSessionId}`;

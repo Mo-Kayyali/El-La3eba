@@ -17,7 +17,6 @@ import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { pickRandomFootballQuestion } from './game.questions';
 import { scoreMarginMultiplier } from './elo.util';
 import { FriendsService } from '../friends/friends.service';
 import { UsersService } from '../users/users.service';
@@ -747,7 +746,7 @@ export class GameGateway
             latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.guessedPlayers = [];
-            latest.currentQuestion = pickRandomFootballQuestion();
+            latest.currentQuestion = await this.gameService.getRandomQuestion('STRIKES');
             // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
             if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
             else if (latest.currentRound === 3)
@@ -1493,7 +1492,19 @@ export class GameGateway
       this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
       const matchedPlayer = await this.gameService.guessPlayer(guessName);
       this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
-      const initialIsCorrect = !!matchedPlayer;
+
+      let initialIsCorrect = false;
+      if (matchedPlayer) {
+        const currentStateStr = await this.redisClient.get(key);
+        if (currentStateStr) {
+          try {
+            const currentState = JSON.parse(currentStateStr);
+            if (currentState.currentQuestion) {
+              initialIsCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, matchedPlayer);
+            }
+          } catch {}
+        }
+      }
 
       let attempt = 0;
       let success = false;
@@ -1697,7 +1708,7 @@ export class GameGateway
             latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.guessedPlayers = [];
-            latest.currentQuestion = pickRandomFootballQuestion();
+            latest.currentQuestion = await this.gameService.getRandomQuestion('STRIKES');
             // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
             if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
             else if (latest.currentRound === 3)

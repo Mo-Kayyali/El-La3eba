@@ -23,7 +23,6 @@ const game_service_1 = require("./game.service");
 const redis_service_1 = require("../redis/redis.service");
 const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
-const game_questions_1 = require("./game.questions");
 const elo_util_1 = require("./elo.util");
 const friends_service_1 = require("../friends/friends.service");
 const users_service_1 = require("../users/users.service");
@@ -518,7 +517,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.guessedPlayers = [];
-                        latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                        latest.currentQuestion = await this.gameService.getRandomQuestion('STRIKES');
                         if (latest.currentRound === 2)
                             latest.currentTurn = latest.players[1];
                         else if (latest.currentRound === 3)
@@ -1027,7 +1026,19 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
             const matchedPlayer = await this.gameService.guessPlayer(guessName);
             this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
-            const initialIsCorrect = !!matchedPlayer;
+            let initialIsCorrect = false;
+            if (matchedPlayer) {
+                const currentStateStr = await this.redisClient.get(key);
+                if (currentStateStr) {
+                    try {
+                        const currentState = JSON.parse(currentStateStr);
+                        if (currentState.currentQuestion) {
+                            initialIsCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, matchedPlayer);
+                        }
+                    }
+                    catch { }
+                }
+            }
             let attempt = 0;
             let success = false;
             let state = null;
@@ -1186,7 +1197,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.guessedPlayers = [];
-                        latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                        latest.currentQuestion = await this.gameService.getRandomQuestion('STRIKES');
                         if (latest.currentRound === 2)
                             latest.currentTurn = latest.players[1];
                         else if (latest.currentRound === 3)
