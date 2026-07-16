@@ -4,8 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
+import { FilterSelect } from "@/components/filter-select";
 
 type Club = {
   id: string;
@@ -18,6 +19,7 @@ type Club = {
 type Competition = {
   id: string;
   name: string;
+  type?: string;
   countryCode: string | null;
 };
 
@@ -71,11 +73,13 @@ function AdminPlayersContent() {
   const [error, setError] = useState("");
 
   const [isEditing, setIsEditing] = useState<Partial<Player> | null>(null);
-  const [clubHistory, setClubHistory] = useState<PlayerClubHistory[]>([]);
+  const [clubHistory, setClubHistory] = useState<any[]>([]);
+  const [isRetiredState, setIsRetiredState] = useState(false);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [primaryPosition, setPrimaryPosition] = useState<string>("");
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [selectedClubId, setSelectedClubId] = useState<string>("");
+  const [filterCompCountryCode, setFilterCompCountryCode] = useState<string>("");
   const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterClubId, setFilterClubId] = useState<string>("");
   const [filterRetired, setFilterRetired] = useState<string>("");
@@ -115,11 +119,12 @@ function AdminPlayersContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchPlayers();
-  }, [bootstrapped, user, filterCompId, filterClubId, filterRetired, filterNationality]);
+  }, [bootstrapped, user, filterCompCountryCode, filterCompId, filterClubId, filterRetired, filterNationality]);
 
   const fetchPlayers = async () => {
     try {
       const params: any = {};
+      if (filterCompCountryCode) params.compCountryCode = filterCompCountryCode;
       if (filterCompId) params.competitionId = filterCompId;
       if (filterClubId) params.clubId = filterClubId;
       if (filterRetired) params.isRetired = filterRetired;
@@ -144,6 +149,7 @@ function AdminPlayersContent() {
     try {
       const { data } = await api.get<Player>(`/admin/players/${player.id}`);
       setIsEditing(data);
+      setIsRetiredState(data.isRetired || false);
       setSelectedPositions(data.positions || []);
       setPrimaryPosition(data.primaryPosition || "");
       setSelectedClubId(data.currentClubId || "");
@@ -169,6 +175,7 @@ function AdminPlayersContent() {
 
   const handleCreateNew = () => {
     setIsEditing({ isRetired: false });
+    setIsRetiredState(false);
     setSelectedPositions([]);
     setPrimaryPosition("");
     setSelectedClubId("");
@@ -184,30 +191,8 @@ function AdminPlayersContent() {
     let lastName = (formData.get("lastName") as string).trim();
     let name = (formData.get("name") as string).trim();
 
-    // 1. NAME AUTO-FILL
-    if (firstName && lastName && !name) {
-      name = `${firstName} ${lastName}`;
-    } else if (name && !firstName && !lastName) {
-      const parts = name.split(/\s+/);
-      firstName = parts[0] || "";
-      if (parts.length > 1) {
-        lastName = parts[parts.length - 1];
-      }
-    }
-
-    // 2. ALIAS AUTO-POPULATION
     const aliasesRaw = formData.get("aliases") as string;
     let aliases = aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
-    const lowerAliases = aliases.map(a => a.toLowerCase());
-    
-    if (firstName && !lowerAliases.includes(firstName.toLowerCase())) {
-      aliases.push(firstName);
-      lowerAliases.push(firstName.toLowerCase());
-    }
-    if (lastName && !lowerAliases.includes(lastName.toLowerCase())) {
-      aliases.push(lastName);
-      lowerAliases.push(lastName.toLowerCase());
-    }
     
     const payload = {
       firstName,
@@ -286,46 +271,7 @@ function AdminPlayersContent() {
     }
   };
 
-  const handleNameBlur = () => {
-    if (!firstNameRef.current || !lastNameRef.current || !nameRef.current || !aliasesRef.current) return;
-    
-    let first = firstNameRef.current.value.trim();
-    let last = lastNameRef.current.value.trim();
-    let full = nameRef.current.value.trim();
 
-    if (first && last && !full) {
-      full = `${first} ${last}`;
-      nameRef.current.value = full;
-    } else if (full && !first && !last) {
-      const parts = full.split(/\s+/);
-      first = parts[0] || "";
-      if (parts.length > 1) {
-        last = parts[parts.length - 1];
-      }
-      firstNameRef.current.value = first;
-      lastNameRef.current.value = last;
-    }
-
-    const aliasesRaw = aliasesRef.current.value;
-    let aliases = aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
-    const lowerAliases = aliases.map(a => a.toLowerCase());
-    
-    let aliasesChanged = false;
-    if (first && !lowerAliases.includes(first.toLowerCase())) {
-      aliases.push(first);
-      lowerAliases.push(first.toLowerCase());
-      aliasesChanged = true;
-    }
-    if (last && !lowerAliases.includes(last.toLowerCase())) {
-      aliases.push(last);
-      lowerAliases.push(last.toLowerCase());
-      aliasesChanged = true;
-    }
-
-    if (aliasesChanged) {
-      aliasesRef.current.value = aliases.join(", ");
-    }
-  };
 
   const addClubHistory = () => {
     setClubHistory([...clubHistory, { clubId: "", isCurrent: false }]);
@@ -384,27 +330,54 @@ function AdminPlayersContent() {
                   <input
                     name="firstName"
                     ref={firstNameRef}
-                    onBlur={handleNameBlur}
                     defaultValue={isEditing.firstName || ""}
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1 space-y-1.5 mt-4">
-                  <label className="text-xs font-semibold text-slate-300">Last Name</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">Last Name</label>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        if (nameRef.current && firstNameRef.current && lastNameRef.current) {
+                          const parts = nameRef.current.value.trim().split(/\s+/);
+                          if (parts.length > 0 && parts[0] !== "") {
+                            firstNameRef.current.value = parts[0];
+                            lastNameRef.current.value = parts.length > 1 ? parts[parts.length - 1] : "";
+                          }
+                        }
+                      }}
+                      className="text-[10px] uppercase tracking-wider font-bold text-violet-400 hover:text-violet-300 transition whitespace-nowrap ml-2"
+                    >
+                      Auto-fill from Display
+                    </button>
+                  </div>
                   <input
                     name="lastName"
                     ref={lastNameRef}
-                    onBlur={handleNameBlur}
                     defaultValue={isEditing.lastName || ""}
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Display Name</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">Display Name</label>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        if (firstNameRef.current && lastNameRef.current && nameRef.current) {
+                          nameRef.current.value = `${firstNameRef.current.value.trim()} ${lastNameRef.current.value.trim()}`.trim();
+                        }
+                      }}
+                      className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 hover:text-emerald-300 transition"
+                    >
+                      Auto-fill from First/Last
+                    </button>
+                  </div>
                   <input
                     name="name"
                     ref={nameRef}
-                    onBlur={handleNameBlur}
                     defaultValue={isEditing.name || ""}
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
@@ -414,9 +387,8 @@ function AdminPlayersContent() {
                   <input
                     name="aliases"
                     ref={aliasesRef}
-                    onBlur={handleNameBlur}
                     defaultValue={isEditing.aliases?.join(", ") || ""}
-                    placeholder="Leave blank to default to [firstName, lastName]"
+                    placeholder="Enter aliases"
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
@@ -440,7 +412,8 @@ function AdminPlayersContent() {
                   <select
                     value={selectedCompId}
                     onChange={e => setSelectedCompId(e.target.value)}
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                    disabled={isRetiredState}
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="" className="bg-slate-900">All Clubs</option>
                     {competitions.map(c => (
@@ -456,7 +429,8 @@ function AdminPlayersContent() {
                     name="currentClubId"
                     value={selectedClubId}
                     onChange={handleClubChange}
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                    disabled={isRetiredState}
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="" className="bg-slate-900">None / Free Agent</option>
                     {clubs
@@ -537,15 +511,30 @@ function AdminPlayersContent() {
                   </select>
                 </div>
 
-                <div className="pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-300 hover:text-white transition">
+                <div className="pt-4">
+                  <label className={`flex items-center gap-3 cursor-pointer p-4 rounded-xl border transition-all ${isRetiredState ? 'bg-red-500/10 border-red-500/30' : 'bg-black/40 border-white/[0.08] hover:border-white/20'}`}>
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${isRetiredState ? 'bg-red-500 border-red-500 text-white' : 'border-white/20 bg-black/60'}`}>
+                      {isRetiredState && <Check className="w-4 h-4 stroke-[3px]" />}
+                    </div>
                     <input
                       type="checkbox"
                       name="isRetired"
-                      defaultChecked={isEditing.isRetired}
-                      className="rounded border-white/20 bg-black/40 text-blue-500 focus:ring-blue-500/20 w-4 h-4"
+                      checked={isRetiredState}
+                      onChange={(e) => {
+                        const isRetired = e.target.checked;
+                        setIsRetiredState(isRetired);
+                        if (isRetired) {
+                          setSelectedClubId("");
+                          setSelectedCompId("");
+                          setClubHistory(prev => prev.map(h => ({ ...h, isCurrent: false })));
+                        }
+                      }}
+                      className="hidden"
                     />
-                    Player is Retired
+                    <div>
+                      <div className={`font-bold text-sm ${isRetiredState ? 'text-red-400' : 'text-slate-300'}`}>Player is Retired</div>
+                      <div className="text-xs text-slate-500 mt-0.5">Disables current club assignments and marks player as inactive</div>
+                    </div>
                   </label>
                 </div>
               </div>
@@ -600,12 +589,13 @@ function AdminPlayersContent() {
                         onChange={(e) => updateClubHistory(idx, 'endYear', e.target.value)}
                         className="w-24 rounded-lg border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 disabled:opacity-50"
                       />
-                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+                      <label className={`flex items-center gap-2 text-xs font-semibold cursor-pointer ${isRetiredState ? 'text-slate-500' : 'text-slate-300'}`}>
                         <input
                           type="checkbox"
                           checked={history.isCurrent}
+                          disabled={isRetiredState}
                           onChange={(e) => updateClubHistory(idx, 'isCurrent', e.target.checked)}
-                          className="rounded border-white/20 bg-black/40 text-blue-500 w-3.5 h-3.5"
+                          className={`rounded border-white/20 bg-black/40 text-blue-500 w-3.5 h-3.5 ${isRetiredState ? 'opacity-50 cursor-not-allowed' : ''}`}
                         />
                         Current
                       </label>
@@ -644,61 +634,70 @@ function AdminPlayersContent() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="w-48">
-            <select
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="w-full">
+            <FilterSelect
+              value={filterNationality}
+              onChange={setFilterNationality}
+              options={countries.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))}
+              placeholder="All Nationalities"
+            />
+          </div>
+          <div className="w-full">
+            <FilterSelect
+              value={filterCompCountryCode}
+              onChange={(val) => {
+                setFilterCompCountryCode(val);
+                setFilterCompId("");
+                setFilterClubId("");
+              }}
+              options={[
+                { value: "_WORLD", label: "World (International)", group: "Global" },
+                { value: "_CONTINENTAL", label: "Continental", group: "Global" },
+                ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
+              ]}
+              placeholder="League Country"
+            />
+          </div>
+          <div className="w-full">
+            <FilterSelect
               value={filterCompId}
-              onChange={(e) => {
-                setFilterCompId(e.target.value);
+              onChange={(val) => {
+                setFilterCompId(val);
                 setFilterClubId(""); // Reset club when league changes
               }}
-              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
-            >
-              <option value="">All Leagues</option>
-              {competitions.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+              options={competitions
+                .filter(c => {
+                  if (!filterCompCountryCode) return true;
+                  if (filterCompCountryCode === "_WORLD") return c.type === "INTERNATIONAL";
+                  if (filterCompCountryCode === "_CONTINENTAL") return c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP";
+                  return c.countryCode === filterCompCountryCode;
+                })
+                .map(c => ({ value: c.id, label: c.name }))}
+              placeholder="All Leagues"
+            />
           </div>
-          <div className="w-48">
-            <select
+          <div className="w-full">
+            <FilterSelect
               value={filterClubId}
-              onChange={(e) => setFilterClubId(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
-            >
-              <option value="">All Clubs</option>
-              {clubs
+              onChange={setFilterClubId}
+              options={clubs
                 .filter(c => !filterCompId || c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId))
-                .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+                .map(c => ({ value: c.id, label: c.name }))}
+              placeholder="All Clubs"
+            />
           </div>
-          <div className="w-32">
-            <select
+          <div className="w-full">
+            <FilterSelect
               value={filterRetired}
-              onChange={(e) => setFilterRetired(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
-            >
-              <option value="">All Statuses</option>
-              <option value="false">Active Only</option>
-              <option value="true">Retired Only</option>
-            </select>
-          </div>
-          <div className="w-48">
-            <select
-              value={filterNationality}
-              onChange={(e) => setFilterNationality(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
-            >
-              <option value="">All Nationalities</option>
-              {countries.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
-              ))}
-            </select>
+              onChange={setFilterRetired}
+              options={[
+                { value: "false", label: "Active Only" },
+                { value: "true", label: "Retired Only" }
+              ]}
+              placeholder="All Statuses"
+            />
           </div>
         </div>
         <div className="text-sm text-slate-400 shrink-0">

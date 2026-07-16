@@ -269,13 +269,37 @@ let AdminPlayersService = class AdminPlayersService {
         if (filters.clubId) {
             where.currentClubId = filters.clubId;
         }
-        else if (filters.competitionId) {
-            where.currentClub = {
-                OR: [
-                    { currentCompetitionId: filters.competitionId },
-                    { clubCompetitions: { some: { competitionId: filters.competitionId } } }
-                ]
-            };
+        else {
+            const clubConditions = [];
+            if (filters.competitionId) {
+                clubConditions.push({
+                    OR: [
+                        { currentCompetitionId: filters.competitionId },
+                        { clubCompetitions: { some: { competitionId: filters.competitionId } } }
+                    ]
+                });
+            }
+            if (filters.compCountryCode) {
+                let compCondition;
+                if (filters.compCountryCode === '_WORLD') {
+                    compCondition = { type: { in: ['INTERNATIONAL_TOURNAMENT', 'GLOBAL_CLUB_CHAMPIONSHIP'] } };
+                }
+                else if (filters.compCountryCode === '_CONTINENTAL') {
+                    compCondition = { type: { in: ['CONTINENTAL_CLUB_COMPETITION', 'CONTINENTAL_SUPER_CUP'] } };
+                }
+                else {
+                    compCondition = { countryCode: filters.compCountryCode };
+                }
+                clubConditions.push({
+                    OR: [
+                        { currentCompetition: compCondition },
+                        { clubCompetitions: { some: { competition: compCondition } } }
+                    ]
+                });
+            }
+            if (clubConditions.length > 0) {
+                where.currentClub = { AND: clubConditions };
+            }
         }
         if (filters.isRetired !== undefined && filters.isRetired !== '') {
             where.isRetired = filters.isRetired === 'true';

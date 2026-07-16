@@ -38,6 +38,7 @@ let GameService = class GameService {
           SELECT 
             p.*,
             c.name as "currentClubName",
+            c.competitions as "currentClubCompetitions",
             g.val,
             -- Best edit distance to the FULL name or any FULL alias within length tolerance
             (
@@ -76,21 +77,21 @@ let GameService = class GameService {
         let effectiveExclude = excludeIds;
         if (effectiveExclude.length > 0) {
             const countWithExclusion = await this.prisma.question.count({
-                where: { gameMode, isActive: true, id: { notIn: effectiveExclude } },
+                where: { gameMode, id: { notIn: effectiveExclude } },
             });
             if (countWithExclusion === 0) {
                 effectiveExclude = [excludeIds[excludeIds.length - 1]];
             }
         }
         const availableCount = await this.prisma.question.count({
-            where: { gameMode, isActive: true, id: { notIn: effectiveExclude } },
+            where: { gameMode, id: { notIn: effectiveExclude } },
         });
         if (availableCount === 0) {
-            return this.prisma.question.findFirst({ where: { gameMode, isActive: true }, include: { clauses: true } });
+            return this.prisma.question.findFirst({ where: { gameMode }, include: { clauses: true } });
         }
         const skip = Math.floor(Math.random() * availableCount);
         const questions = await this.prisma.question.findMany({
-            where: { gameMode, isActive: true, id: { notIn: effectiveExclude } },
+            where: { gameMode, id: { notIn: effectiveExclude } },
             skip,
             take: 1,
             include: { clauses: true },
@@ -110,13 +111,26 @@ let GameService = class GameService {
                 return false;
             const evaluateClause = (clause) => {
                 if (clause.filterType === 'COMPETITION') {
-                    return player.competitions?.includes(clause.filterValue) ?? false;
+                    if (clause.timeframe === 'CURRENT') {
+                        return player.currentClubCompetitions?.includes(clause.filterValue) ?? false;
+                    }
+                    else if (clause.timeframe === 'PAST') {
+                        return (player.competitions?.includes(clause.filterValue) && !player.currentClubCompetitions?.includes(clause.filterValue)) ?? false;
+                    }
+                    else {
+                        return player.competitions?.includes(clause.filterValue) ?? false;
+                    }
                 }
                 else if (clause.filterType === 'CLUB') {
-                    if (clause.currentClubOnly) {
+                    if (clause.timeframe === 'CURRENT') {
                         return player.currentClubName === clause.filterValue;
                     }
-                    return player.clubs?.includes(clause.filterValue) ?? false;
+                    else if (clause.timeframe === 'PAST') {
+                        return (player.clubs?.includes(clause.filterValue) && player.currentClubName !== clause.filterValue) ?? false;
+                    }
+                    else {
+                        return player.clubs?.includes(clause.filterValue) ?? false;
+                    }
                 }
                 else if (clause.filterType === 'NATIONALITY') {
                     return player.nationality === clause.filterValue;

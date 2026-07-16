@@ -8,7 +8,7 @@ export declare class QuestionAnswerDto {
 export declare class QuestionFilterClauseDto {
     filterType: FilterType;
     filterValue: string;
-    currentClubOnly?: boolean;
+    timeframe?: 'CURRENT' | 'PAST' | 'BOTH';
 }
 export declare class CreateQuestionDto {
     text: string;
@@ -58,7 +58,7 @@ export declare class AdminQuestionsService {
             questionId: string;
             filterType: import(".prisma/client").$Enums.FilterType;
             filterValue: string;
-            currentClubOnly: boolean;
+            timeframe: import(".prisma/client").$Enums.Timeframe;
         }[];
     } & {
         id: string;
@@ -83,7 +83,7 @@ export declare class AdminQuestionsService {
             questionId: string;
             filterType: import(".prisma/client").$Enums.FilterType;
             filterValue: string;
-            currentClubOnly: boolean;
+            timeframe: import(".prisma/client").$Enums.Timeframe;
         }[];
         answers: ({
             player: {

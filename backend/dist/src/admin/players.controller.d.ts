@@ -20,7 +20,7 @@ export declare class AdminPlayersController {
         imageUrl: string | null;
         clubs: string[];
     }>;
-    findAll(competitionId?: string, clubId?: string, isRetired?: string, nationality?: string): Promise<({
+    findAll(competitionId?: string, compCountryCode?: string, clubId?: string, isRetired?: string, nationality?: string): Promise<({
         currentClub: {
             id: string;
             name: string;

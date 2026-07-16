@@ -39,7 +39,7 @@ __decorate([
 class QuestionFilterClauseDto {
     filterType;
     filterValue;
-    currentClubOnly;
+    timeframe;
 }
 exports.QuestionFilterClauseDto = QuestionFilterClauseDto;
 __decorate([
@@ -52,8 +52,8 @@ __decorate([
 ], QuestionFilterClauseDto.prototype, "filterValue", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Boolean)
-], QuestionFilterClauseDto.prototype, "currentClubOnly", void 0);
+    __metadata("design:type", String)
+], QuestionFilterClauseDto.prototype, "timeframe", void 0);
 class CreateQuestionDto {
     text;
     gameMode;
@@ -208,7 +208,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                         questionId: question.id,
                         filterType: c.filterType,
                         filterValue: c.filterValue,
-                        currentClubOnly: c.currentClubOnly ?? false,
+                        timeframe: c.timeframe ?? 'BOTH',
                     }))
                 });
             }
@@ -283,7 +283,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                         questionId: id,
                         filterType: c.filterType,
                         filterValue: c.filterValue,
-                        currentClubOnly: c.currentClubOnly ?? false,
+                        timeframe: c.timeframe ?? 'BOTH',
                     }))
                 });
             }

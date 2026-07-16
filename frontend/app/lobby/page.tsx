@@ -377,16 +377,6 @@ export default function LobbyPage() {
                         </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(
-                                createdRoomCode ?? "",
-                              )
-                            }
-                            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.06] py-2 text-xs font-semibold text-white hover:bg-white/[0.1] transition"
-                          >
-                            Copy
-                          </button>
-                          <button
                             onClick={() => {
                               if (socket?.connected) {
                                 socket.emit("cancelPrivateRoom");
@@ -397,6 +387,16 @@ export default function LobbyPage() {
                             className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 text-xs font-semibold text-slate-400 hover:bg-white/[0.08] transition"
                           >
                             Cancel
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigator.clipboard.writeText(
+                                createdRoomCode ?? "",
+                              )
+                            }
+                            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.06] py-2 text-xs font-semibold text-white hover:bg-white/[0.1] transition"
+                          >
+                            Copy
                           </button>
                         </div>
                       </div>

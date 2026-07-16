@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
+import { FilterSelect } from "@/components/filter-select";
 
 type Competition = {
   id: string;
@@ -16,10 +17,14 @@ type Competition = {
   tier: number | null;
 };
 
+type Country = { id: string; name: string };
+
 export default function AdminCompetitionsPage() {
   const router = useRouter();
   const { user, bootstrapped } = useAuthStore();
   const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [filterCompCountryCode, setFilterCompCountryCode] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -43,8 +48,12 @@ export default function AdminCompetitionsPage() {
 
   const fetchCompetitions = async () => {
     try {
-      const { data } = await api.get<Competition[]>("/admin/competitions");
-      setCompetitions(data);
+      const [{ data: comps }, { data: cntrs }] = await Promise.all([
+        api.get<Competition[]>("/admin/competitions"),
+        api.get<Country[]>("/admin/countries"),
+      ]);
+      setCompetitions(comps);
+      setCountries(cntrs);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -216,6 +225,21 @@ export default function AdminCompetitionsPage() {
         </div>
       )}
 
+      <div className="mb-6 flex items-center justify-between">
+        <div className="w-64">
+          <FilterSelect
+            value={filterCompCountryCode}
+            onChange={setFilterCompCountryCode}
+            options={[
+              { value: "_WORLD", label: "World (International)", group: "Global" },
+              { value: "_CONTINENTAL", label: "Continental", group: "Global" },
+              ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
+            ]}
+            placeholder="League Country"
+          />
+        </div>
+      </div>
+
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -229,7 +253,14 @@ export default function AdminCompetitionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
-              {competitions.map((comp) => (
+              {competitions
+                .filter(c => {
+                  if (!filterCompCountryCode) return true;
+                  if (filterCompCountryCode === "_WORLD") return c.type === "INTERNATIONAL_TOURNAMENT" || c.type === "GLOBAL_CLUB_CHAMPIONSHIP";
+                  if (filterCompCountryCode === "_CONTINENTAL") return c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP";
+                  return c.countryCode === filterCompCountryCode;
+                })
+                .map((comp) => (
                 <tr key={comp.id} className="transition hover:bg-white/[0.02]">
                   <td className="px-5 py-4 font-medium text-white">{comp.name}</td>
                   <td className="px-5 py-4 text-slate-400">{comp.type}</td>

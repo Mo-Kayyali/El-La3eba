@@ -27,7 +27,7 @@ export declare class AdminQuestionsController {
             questionId: string;
             filterType: import(".prisma/client").$Enums.FilterType;
             filterValue: string;
-            currentClubOnly: boolean;
+            timeframe: import(".prisma/client").$Enums.Timeframe;
         }[];
     } & {
         id: string;
@@ -52,7 +52,7 @@ export declare class AdminQuestionsController {
             questionId: string;
             filterType: import(".prisma/client").$Enums.FilterType;
             filterValue: string;
-            currentClubOnly: boolean;
+            timeframe: import(".prisma/client").$Enums.Timeframe;
         }[];
         answers: ({
             player: {

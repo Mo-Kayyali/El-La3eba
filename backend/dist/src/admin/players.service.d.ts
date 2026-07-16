@@ -58,6 +58,7 @@ export declare class AdminPlayersService {
     }[]>;
     findAll(filters?: {
         competitionId?: string;
+        compCountryCode?: string;
         clubId?: string;
         isRetired?: string;
         nationality?: string;

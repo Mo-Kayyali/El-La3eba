@@ -19,11 +19,12 @@ export class AdminPlayersController {
   @Get()
   findAll(
     @Query('competitionId') competitionId?: string,
+    @Query('compCountryCode') compCountryCode?: string,
     @Query('clubId') clubId?: string,
     @Query('isRetired') isRetired?: string,
     @Query('nationality') nationality?: string,
   ) {
-    return this.playersService.findAll({ competitionId, clubId, isRetired, nationality });
+    return this.playersService.findAll({ competitionId, compCountryCode, clubId, isRetired, nationality });
   }
 
   @Get('search')

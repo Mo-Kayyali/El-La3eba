@@ -38,7 +38,7 @@ function AdminSuggestionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, bootstrapped } = useAuthStore();
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [allSuggestions, setAllSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // For modal
@@ -52,9 +52,12 @@ function AdminSuggestionsContent() {
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">(initialTab);
 
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", statusFilter);
-    router.replace(`?${params.toString()}`);
+    const currentTab = searchParams.get("tab");
+    if (currentTab !== statusFilter) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", statusFilter);
+      router.replace(`?${params.toString()}`);
+    }
   }, [statusFilter, router, searchParams]);
 
   useEffect(() => {
@@ -64,20 +67,28 @@ function AdminSuggestionsContent() {
       return;
     }
     fetchSuggestions();
-  }, [bootstrapped, user, router, statusFilter]);
+  }, [bootstrapped, user, router]);
 
   const fetchSuggestions = async () => {
     setIsLoading(true);
     try {
-      const url = statusFilter === "ALL" ? "/admin/suggestions" : `/admin/suggestions?status=${statusFilter}`;
-      const res = await api.get(url);
-      setSuggestions(res.data);
+      const res = await api.get("/admin/suggestions");
+      setAllSuggestions(res.data);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to load suggestions");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const suggestions = statusFilter === "ALL" 
+    ? allSuggestions 
+    : allSuggestions.filter(s => s.status === statusFilter);
+
+  const pendingCount = allSuggestions.filter(s => s.status === "PENDING").length;
+  const approvedCount = allSuggestions.filter(s => s.status === "APPROVED").length;
+  const rejectedCount = allSuggestions.filter(s => s.status === "REJECTED").length;
+  const allCount = allSuggestions.length;
 
   const handleAction = async () => {
     if (!activeSuggestion || !actionType) return;
@@ -88,8 +99,10 @@ function AdminSuggestionsContent() {
       
       toast.success(res.data.message || `Suggestion ${actionType}d`);
       
-      // Remove from list
-      setSuggestions((prev) => prev.filter((s) => s.id !== activeSuggestion.id));
+      // Update status in list
+      setAllSuggestions((prev) => 
+        prev.map((s) => s.id === activeSuggestion.id ? { ...s, status: actionType === "approve" ? "APPROVED" : "REJECTED" } : s)
+      );
       
       if (actionType === "approve") {
         setShowSuccessOptions(true);
@@ -135,16 +148,24 @@ function AdminSuggestionsContent() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {["PENDING", "APPROVED", "REJECTED", "ALL"].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status as any)}
-            className={`rounded-lg px-4 py-2 text-sm font-bold transition ${statusFilter === status ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
-          >
-            {status}
-          </button>
-        ))}
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          {["PENDING", "APPROVED", "REJECTED", "ALL"].map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status as any)}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition ${statusFilter === status ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-xs font-semibold shrink-0">
+          <div className="flex items-center gap-1.5 text-yellow-400/80 bg-yellow-500/10 px-3 py-1.5 rounded-full"><span className="text-yellow-400">{pendingCount}</span> Pending</div>
+          <div className="flex items-center gap-1.5 text-emerald-400/80 bg-emerald-500/10 px-3 py-1.5 rounded-full"><span className="text-emerald-400">{approvedCount}</span> Approved</div>
+          <div className="flex items-center gap-1.5 text-red-400/80 bg-red-500/10 px-3 py-1.5 rounded-full"><span className="text-red-400">{rejectedCount}</span> Rejected</div>
+          <div className="flex items-center gap-1.5 text-slate-400/80 bg-slate-500/10 px-3 py-1.5 rounded-full"><span className="text-slate-300">{allCount}</span> Total</div>
+        </div>
       </div>
 
       {isLoading ? (

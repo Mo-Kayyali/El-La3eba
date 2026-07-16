@@ -26,7 +26,7 @@ export class QuestionFilterClauseDto {
   filterValue: string;
 
   @IsOptional()
-  currentClubOnly?: boolean;
+  timeframe?: 'CURRENT' | 'PAST' | 'BOTH';
 }
 
 export class CreateQuestionDto {
@@ -161,7 +161,7 @@ export class AdminQuestionsService {
             questionId: question.id,
             filterType: c.filterType,
             filterValue: c.filterValue,
-            currentClubOnly: c.currentClubOnly ?? false,
+            timeframe: c.timeframe ?? 'BOTH',
           }))
         });
       }
@@ -242,7 +242,7 @@ export class AdminQuestionsService {
             questionId: id,
             filterType: c.filterType,
             filterValue: c.filterValue,
-            currentClubOnly: c.currentClubOnly ?? false,
+            timeframe: c.timeframe ?? 'BOTH',
           }))
         });
       }

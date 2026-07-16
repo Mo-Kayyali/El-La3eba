@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
+import { FilterSelect } from "@/components/filter-select";
 
 type Club = {
   id: string;
@@ -178,36 +179,22 @@ export default function AdminClubsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-4">
           <div className="w-48">
-            <select
+            <FilterSelect
               value={filterCountryCode}
-              onChange={(e) => setFilterCountryCode(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-emerald-500/40"
-            >
-              <option value="">All Countries</option>
-              {countries.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.id})
-                </option>
-              ))}
-            </select>
+              onChange={setFilterCountryCode}
+              options={countries.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))}
+              placeholder="All Countries"
+            />
           </div>
           <div className="w-64">
-            <select
+            <FilterSelect
               value={filterCompId}
-              onChange={(e) => setFilterCompId(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-emerald-500/40"
-            >
-              <option value="">All Competitions</option>
-              {sortedGroups.map((group) => (
-                <optgroup key={group} label={group}>
-                  {groupedCompetitions[group].map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={setFilterCompId}
+              options={sortedGroups.flatMap(group => 
+                groupedCompetitions[group].map(c => ({ value: c.id, label: c.name, group }))
+              )}
+              placeholder="All Competitions"
+            />
           </div>
         </div>
         <div className="text-sm text-slate-400 shrink-0">

@@ -19,6 +19,12 @@ enum Role {
   ADMIN
 }
 
+enum Timeframe {
+  CURRENT
+  PAST
+  BOTH
+}
+
 enum CompetitionType {
   DOMESTIC_LEAGUE
   DOMESTIC_CUP
@@ -311,7 +317,7 @@ model QuestionFilterClause {
   questionId      String
   filterType      FilterType
   filterValue     String
-  currentClubOnly Boolean    @default(false)
+  timeframe       Timeframe  @default(BOTH)
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

@@ -6,6 +6,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
 import { ArrowLeft, X, Search, Check, AlertCircle } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
+import { FilterSelect } from "@/components/filter-select";
 
 type PlayerSearchResult = {
   id: string;
@@ -27,7 +28,7 @@ type QuestionAnswer = {
 type QuestionFilterClause = {
   filterType: string;
   filterValue: string;
-  currentClubOnly?: boolean;
+  timeframe?: "CURRENT" | "PAST" | "BOTH";
 };
 
 type Question = {
@@ -180,8 +181,8 @@ function AdminQuestionsContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // List filters
-  const [filterGameMode, setFilterGameMode] = useState<"ALL" | "STRIKES" | "TOP_10" | "LINEUP" | "PHOTO_GUESS">("ALL");
-  const [filterIsActive, setFilterIsActive] = useState<"ALL" | "true" | "false">("ALL");
+  const [filterGameMode, setFilterGameMode] = useState<string>("");
+  const [filterIsActive, setFilterIsActive] = useState<string>("");
 
   // Test guess state
   const [testGuessName, setTestGuessName] = useState("");
@@ -207,8 +208,8 @@ function AdminQuestionsContent() {
   const fetchQuestions = async () => {
     try {
       const params = new URLSearchParams();
-      if (filterGameMode !== "ALL") params.append("gameMode", filterGameMode);
-      if (filterIsActive !== "ALL") params.append("isActive", filterIsActive);
+      if (filterGameMode) params.append("gameMode", filterGameMode);
+      if (filterIsActive) params.append("isActive", filterIsActive);
 
       const [res, clubsRes, compsRes, countriesRes] = await Promise.all([
         api.get<Question[]>(`/admin/questions?${params.toString()}`),
@@ -327,7 +328,7 @@ function AdminQuestionsContent() {
         payload.clauses = cleanClauses.map(c => ({
           filterType: c.filterType,
           filterValue: c.filterValue,
-          currentClubOnly: c.currentClubOnly
+          timeframe: c.timeframe || "BOTH"
         }));
         if (cleanClauses.length > 1) {
           payload.logicOperator = logicOperator;
@@ -665,34 +666,49 @@ function AdminQuestionsContent() {
                               <option value="">Select Club...</option>
                               {clubs.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                             </select>
-                            <label className="flex items-center gap-2 shrink-0 cursor-pointer whitespace-nowrap text-sm text-slate-300">
-                              <input
-                                type="checkbox"
-                                checked={clause.currentClubOnly || false}
-                                onChange={(e) => {
-                                  const newClauses = [...clauses];
-                                  newClauses[idx].currentClubOnly = e.target.checked;
-                                  setClauses(newClauses);
-                                }}
-                                className="h-4 w-4 rounded border-white/10 bg-slate-800 text-blue-500 focus:ring-blue-500"
-                              />
-                              Current Only
-                            </label>
+                            <select
+                              value={clause.timeframe || "BOTH"}
+                              onChange={(e) => {
+                                const newClauses = [...clauses];
+                                newClauses[idx].timeframe = e.target.value as "CURRENT" | "PAST" | "BOTH";
+                                setClauses(newClauses);
+                              }}
+                              className="shrink-0 w-32 block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                            >
+                              <option value="BOTH">Both</option>
+                              <option value="CURRENT">Current Only</option>
+                              <option value="PAST">Past Only</option>
+                            </select>
                           </div>
                         )}
                         {clause.filterType === "COMPETITION" && (
-                          <select
-                            value={clause.filterValue}
-                            onChange={(e) => {
-                              const newClauses = [...clauses];
-                              newClauses[idx].filterValue = e.target.value;
-                              setClauses(newClauses);
-                            }}
-                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
-                          >
-                            <option value="">Select Competition...</option>
-                            {competitions.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                          </select>
+                          <div className="flex w-full items-center gap-2">
+                            <select
+                              value={clause.filterValue}
+                              onChange={(e) => {
+                                const newClauses = [...clauses];
+                                newClauses[idx].filterValue = e.target.value;
+                                setClauses(newClauses);
+                              }}
+                              className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                            >
+                              <option value="">Select Competition...</option>
+                              {competitions.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            </select>
+                            <select
+                              value={clause.timeframe || "BOTH"}
+                              onChange={(e) => {
+                                const newClauses = [...clauses];
+                                newClauses[idx].timeframe = e.target.value as "CURRENT" | "PAST" | "BOTH";
+                                setClauses(newClauses);
+                              }}
+                              className="shrink-0 w-32 block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                            >
+                              <option value="BOTH">Both</option>
+                              <option value="CURRENT">Current Only</option>
+                              <option value="PAST">Past Only</option>
+                            </select>
+                          </div>
                         )}
                         {clause.filterType === "POSITION" && (
                           <select
@@ -905,27 +921,30 @@ function AdminQuestionsContent() {
         {/* List Panel */}
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-4">
-            <select
-              value={filterGameMode}
-              onChange={(e) => setFilterGameMode(e.target.value as any)}
-              className="rounded-xl border border-white/10 bg-slate-900/50 p-2 text-sm text-slate-300 outline-none focus:border-violet-500"
-            >
-              <option value="ALL">All Modes</option>
-              <option value="STRIKES">STRIKES</option>
-              <option value="TOP_10">TOP_10</option>
-              <option value="LINEUP">LINEUP</option>
-              <option value="PHOTO_GUESS">PHOTO_GUESS</option>
-            </select>
-            
-            <select
-              value={filterIsActive}
-              onChange={(e) => setFilterIsActive(e.target.value as any)}
-              className="rounded-xl border border-white/10 bg-slate-900/50 p-2 text-sm text-slate-300 outline-none focus:border-violet-500"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="true">Active Only</option>
-              <option value="false">Inactive Only</option>
-            </select>
+            <div className="w-48">
+              <FilterSelect
+                value={filterGameMode}
+                onChange={setFilterGameMode}
+                options={[
+                  { value: "STRIKES", label: "STRIKES" },
+                  { value: "TOP_10", label: "TOP_10" },
+                  { value: "LINEUP", label: "LINEUP" },
+                  { value: "PHOTO_GUESS", label: "PHOTO_GUESS" }
+                ]}
+                placeholder="All Modes"
+              />
+            </div>
+            <div className="w-48">
+              <FilterSelect
+                value={filterIsActive}
+                onChange={setFilterIsActive}
+                options={[
+                  { value: "true", label: "Active Only" },
+                  { value: "false", label: "Inactive Only" }
+                ]}
+                placeholder="All Statuses"
+              />
+            </div>
           </div>
           <div className="text-sm text-slate-400">
             {questions.length} question{questions.length === 1 ? '' : 's'} found
