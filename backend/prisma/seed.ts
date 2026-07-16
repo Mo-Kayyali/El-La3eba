@@ -75,6 +75,20 @@ async function main() {
   await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "pg_trgm";`);
   console.log('  Extensions OK.');
 
+  console.log('Seeding countries...');
+  const iso3166 = require('iso-3166-1');
+  const countries = iso3166.all();
+  let countryCount = 0;
+  for (const c of countries) {
+    await prisma.country.upsert({
+      where: { id: c.alpha3 },
+      create: { id: c.alpha3, name: c.country },
+      update: { name: c.country },
+    });
+    countryCount++;
+  }
+  console.log(`  Seeded ${countryCount} countries.`);
+
   // NOTE: Player / Club / Competition / Country data is NOT seeded here.
   // The FootballPlayer table has been removed as part of the structured-schema
   // migration (20260716000000_structured_schema_v2). Real player data will be

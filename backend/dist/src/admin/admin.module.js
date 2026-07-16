@@ -9,12 +9,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminModule = void 0;
 const common_1 = require("@nestjs/common");
 const admin_controller_1 = require("./admin.controller");
+const competitions_controller_1 = require("./competitions.controller");
+const competitions_service_1 = require("./competitions.service");
+const clubs_controller_1 = require("./clubs.controller");
+const clubs_service_1 = require("./clubs.service");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
 exports.AdminModule = AdminModule = __decorate([
     (0, common_1.Module)({
-        controllers: [admin_controller_1.AdminController],
+        controllers: [admin_controller_1.AdminController, competitions_controller_1.AdminCompetitionsController, clubs_controller_1.AdminClubsController],
+        providers: [competitions_service_1.AdminCompetitionsService, clubs_service_1.AdminClubsService],
     })
 ], AdminModule);
 //# sourceMappingURL=admin.module.js.map
