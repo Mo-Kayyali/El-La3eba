@@ -12,84 +12,75 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AdminPlayersController = void 0;
+exports.AdminQuestionsController = void 0;
 const common_1 = require("@nestjs/common");
-const players_service_1 = require("./players.service");
+const questions_service_1 = require("./questions.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../auth/roles.guard");
 const roles_decorator_1 = require("../auth/roles.decorator");
 const client_1 = require("@prisma/client");
-let AdminPlayersController = class AdminPlayersController {
-    playersService;
-    constructor(playersService) {
-        this.playersService = playersService;
+let AdminQuestionsController = class AdminQuestionsController {
+    questionsService;
+    constructor(questionsService) {
+        this.questionsService = questionsService;
     }
     create(createDto) {
-        return this.playersService.create(createDto);
+        return this.questionsService.create(createDto);
     }
-    findAll() {
-        return this.playersService.findAll();
-    }
-    search(q) {
-        return this.playersService.search(q);
+    findAll(gameMode) {
+        return this.questionsService.findAll(gameMode);
     }
     findOne(id) {
-        return this.playersService.findOne(id);
+        return this.questionsService.findOne(id);
     }
     update(id, updateDto) {
-        return this.playersService.update(id, updateDto);
+        return this.questionsService.update(id, updateDto);
     }
     remove(id) {
-        return this.playersService.remove(id);
+        return this.questionsService.remove(id);
     }
 };
-exports.AdminPlayersController = AdminPlayersController;
+exports.AdminQuestionsController = AdminQuestionsController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [players_service_1.CreatePlayerDto]),
+    __metadata("design:paramtypes", [questions_service_1.CreateQuestionDto]),
     __metadata("design:returntype", void 0)
-], AdminPlayersController.prototype, "create", null);
+], AdminQuestionsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], AdminPlayersController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)('search'),
-    __param(0, (0, common_1.Query)('q')),
+    __param(0, (0, common_1.Query)('gameMode')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], AdminPlayersController.prototype, "search", null);
+], AdminQuestionsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], AdminPlayersController.prototype, "findOne", null);
+], AdminQuestionsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, players_service_1.PatchPlayerDto]),
+    __metadata("design:paramtypes", [String, questions_service_1.PatchQuestionDto]),
     __metadata("design:returntype", void 0)
-], AdminPlayersController.prototype, "update", null);
+], AdminQuestionsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], AdminPlayersController.prototype, "remove", null);
-exports.AdminPlayersController = AdminPlayersController = __decorate([
+], AdminQuestionsController.prototype, "remove", null);
+exports.AdminQuestionsController = AdminQuestionsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(client_1.Role.ADMIN),
-    (0, common_1.Controller)('admin/players'),
-    __metadata("design:paramtypes", [players_service_1.AdminPlayersService])
-], AdminPlayersController);
-//# sourceMappingURL=players.controller.js.map
+    (0, common_1.Controller)('admin/questions'),
+    __metadata("design:paramtypes", [questions_service_1.AdminQuestionsService])
+], AdminQuestionsController);
+//# sourceMappingURL=questions.controller.js.map

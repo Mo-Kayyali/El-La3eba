@@ -238,6 +238,31 @@ let AdminPlayersService = class AdminPlayersService {
             }
         }
     }
+    async search(query) {
+        if (!query || query.length < 2)
+            return [];
+        return this.prisma.player.findMany({
+            where: {
+                OR: [
+                    { name: { contains: query, mode: 'insensitive' } },
+                    { aliases: { hasSome: [query] } },
+                ]
+            },
+            take: 15,
+            select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true,
+                nationality: true,
+                isRetired: true,
+                currentClub: {
+                    select: { name: true }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+    }
     async findAll() {
         return this.prisma.player.findMany({
             orderBy: { name: 'asc' },

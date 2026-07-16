@@ -45,6 +45,17 @@ export declare class AdminPlayersService {
     private playerDenormService;
     constructor(prisma: PrismaService, playerDenormService: PlayerDenormService);
     private validateFks;
+    search(query: string): Promise<{
+        id: string;
+        name: string;
+        firstName: string;
+        lastName: string;
+        nationality: string;
+        isRetired: boolean;
+        currentClub: {
+            name: string;
+        } | null;
+    }[]>;
     findAll(): Promise<({
         currentClub: {
             id: string;

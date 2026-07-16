@@ -162,6 +162,38 @@ export class AdminPlayersService {
     }
   }
 
+  async search(query: string) {
+    if (!query || query.length < 2) return [];
+    
+    return this.prisma.player.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { aliases: { hasSome: [query] } },
+          // A true case-insensitive array element match in Prisma Postgres is tricky.
+          // Since aliases are usually exact names, we can also just rely on name match 
+          // or we can just fetch and let the DB do a simple contains on the stringified array if needed.
+          // Actually `hasSome` is exact match (case-sensitive).
+          // To make it simple and fast, we'll do name contains. If they type part of alias, 
+          // `name` usually covers it. For aliases, we can't easily do `contains` insensitive on string[].
+        ]
+      },
+      take: 15,
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        nationality: true,
+        isRetired: true,
+        currentClub: {
+          select: { name: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+  }
+
   async findAll() {
     return this.prisma.player.findMany({
       orderBy: { name: 'asc' },

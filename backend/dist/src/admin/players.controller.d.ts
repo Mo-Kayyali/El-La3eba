@@ -44,6 +44,17 @@ export declare class AdminPlayersController {
         imageUrl: string | null;
         clubs: string[];
     })[]>;
+    search(q: string): Promise<{
+        id: string;
+        name: string;
+        firstName: string;
+        lastName: string;
+        nationality: string;
+        isRetired: boolean;
+        currentClub: {
+            name: string;
+        } | null;
+    }[]>;
     findOne(id: string): Promise<{
         playerClubs: ({
             club: {

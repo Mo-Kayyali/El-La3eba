@@ -87,8 +87,11 @@ export default function AdminDashboardPage() {
           </div>
         </Link>
 
-        <div className="group relative flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/5 bg-slate-900/20 p-8 text-center opacity-60 grayscale cursor-not-allowed">
-          <div className="rounded-full bg-slate-500/10 p-4 text-slate-400">
+        <Link
+          href="/admin/questions"
+          className="group relative flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-slate-900/50 p-8 text-center transition hover:border-violet-500/50 hover:bg-slate-800/50"
+        >
+          <div className="rounded-full bg-violet-500/10 p-4 text-violet-400 group-hover:bg-violet-500/20 group-hover:text-violet-300 transition-colors">
             <svg
               className="h-8 w-8"
               fill="none"
@@ -105,9 +108,9 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">Questions</h2>
-            <p className="mt-1 text-sm text-slate-400">Coming soon</p>
+            <p className="mt-1 text-sm text-slate-400">Manage trivia questions</p>
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );

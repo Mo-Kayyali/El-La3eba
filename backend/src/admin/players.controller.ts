@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { AdminPlayersService, CreatePlayerDto, PatchPlayerDto } from './players.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -19,6 +19,11 @@ export class AdminPlayersController {
   @Get()
   findAll() {
     return this.playersService.findAll();
+  }
+
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.playersService.search(q);
   }
 
   @Get(':id')
