@@ -84,6 +84,7 @@ export default function LobbyPage() {
   const { user, accessToken, isAuthenticated, logout, bootstrapped } =
     useAuthStore();
   const socket = useSocketStore((s) => s.socket);
+  const isConnected = useSocketStore((s) => s.isConnected);
   const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
 
   // Match-finding state
@@ -236,10 +237,10 @@ export default function LobbyPage() {
 
           <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
             <span
-              className={`h-2 w-2 rounded-full ${socket?.connected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-500"}`}
+              className={`h-2 w-2 rounded-full ${isConnected ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-500"}`}
             />
             <span className="text-xs font-medium text-slate-300">
-              {socket?.connected ? "Online" : "Connecting…"}
+              {isConnected ? "Online" : "Connecting…"}
             </span>
           </div>
         </div>

@@ -80,81 +80,86 @@ export default function AdminCompetitionsPage() {
   if (!bootstrapped || loading) return <div className="p-8">Loading...</div>;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto text-slate-200">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white">Admin: Competitions</h1>
+    <div className="mx-auto max-w-5xl px-6 py-10 text-slate-200">
+      <div className="mb-8 flex items-center justify-between border-b border-white/[0.06] pb-5">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">Competitions</h1>
+          <p className="mt-1 text-sm text-slate-400">Manage domestic and international competitions.</p>
+        </div>
         <button
           onClick={() => setIsEditing({})}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white font-medium"
+          className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20 transition"
         >
           Add Competition
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-500/20 text-red-400 p-4 rounded mb-6 border border-red-500/50">
+        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}
 
       {isEditing && (
-        <div className="bg-slate-800 p-6 rounded-lg mb-8 border border-slate-700">
-          <h2 className="text-xl font-bold mb-4 text-white">
-            {isEditing.id ? "Edit" : "New"} Competition
+        <div className="mb-8 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl">
+          <h2 className="mb-5 text-lg font-bold text-white">
+            {isEditing.id ? "Edit Competition" : "New Competition"}
           </h2>
           <form onSubmit={handleSave} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input
-                name="name"
-                defaultValue={isEditing.name || ""}
-                required
-                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Name</label>
+                <input
+                  name="name"
+                  defaultValue={isEditing.name || ""}
+                  required
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Type</label>
+                <select
+                  name="type"
+                  defaultValue={isEditing.type || "DOMESTIC_LEAGUE"}
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                >
+                  <option value="DOMESTIC_LEAGUE" className="bg-slate-900">Domestic League</option>
+                  <option value="DOMESTIC_CUP" className="bg-slate-900">Domestic Cup</option>
+                  <option value="CONTINENTAL_CLUB" className="bg-slate-900">Continental Club</option>
+                  <option value="INTERNATIONAL_NATIONAL_TEAM" className="bg-slate-900">International / National Team</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country Code (ISO-3)</label>
+                <input
+                  name="countryCode"
+                  defaultValue={isEditing.countryCode || ""}
+                  placeholder="e.g. ENG"
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Tier</label>
+                <input
+                  name="tier"
+                  type="number"
+                  defaultValue={isEditing.tier || ""}
+                  placeholder="e.g. 1"
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select
-                name="type"
-                defaultValue={isEditing.type || "DOMESTIC_LEAGUE"}
-                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-              >
-                <option value="DOMESTIC_LEAGUE">Domestic League</option>
-                <option value="DOMESTIC_CUP">Domestic Cup</option>
-                <option value="CONTINENTAL_CLUB">Continental Club</option>
-                <option value="INTERNATIONAL_NATIONAL_TEAM">International / National Team</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Country Code (ISO-3)</label>
-              <input
-                name="countryCode"
-                defaultValue={isEditing.countryCode || ""}
-                placeholder="e.g. ENG"
-                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Tier</label>
-              <input
-                name="tier"
-                type="number"
-                defaultValue={isEditing.tier || ""}
-                placeholder="e.g. 1"
-                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white"
-              />
-            </div>
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white font-medium"
+                className="rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:brightness-110 active:scale-95"
               >
                 Save
               </button>
               <button
                 type="button"
                 onClick={() => setIsEditing(null)}
-                className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white font-medium"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
               >
                 Cancel
               </button>
@@ -163,49 +168,51 @@ export default function AdminCompetitionsPage() {
         </div>
       )}
 
-      <div className="bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
-        <table className="w-full text-left">
-          <thead className="bg-slate-900/50">
-            <tr>
-              <th className="p-4 font-medium">Name</th>
-              <th className="p-4 font-medium">Type</th>
-              <th className="p-4 font-medium">Country</th>
-              <th className="p-4 font-medium">Tier</th>
-              <th className="p-4 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700">
-            {competitions.map((comp) => (
-              <tr key={comp.id} className="hover:bg-slate-700/30">
-                <td className="p-4">{comp.name}</td>
-                <td className="p-4 text-sm text-slate-400">{comp.type}</td>
-                <td className="p-4">{comp.countryCode || "-"}</td>
-                <td className="p-4">{comp.tier || "-"}</td>
-                <td className="p-4 flex gap-3">
-                  <button
-                    onClick={() => setIsEditing(comp)}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(comp.id)}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {competitions.length === 0 && (
+      <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
-                <td colSpan={5} className="p-8 text-center text-slate-500">
-                  No competitions found.
-                </td>
+                <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
+                <th className="px-5 py-4 font-semibold text-slate-300">Type</th>
+                <th className="px-5 py-4 font-semibold text-slate-300">Country</th>
+                <th className="px-5 py-4 font-semibold text-slate-300">Tier</th>
+                <th className="px-5 py-4 font-semibold text-slate-300 text-right">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/[0.06]">
+              {competitions.map((comp) => (
+                <tr key={comp.id} className="transition hover:bg-white/[0.02]">
+                  <td className="px-5 py-4 font-medium text-white">{comp.name}</td>
+                  <td className="px-5 py-4 text-slate-400">{comp.type}</td>
+                  <td className="px-5 py-4 text-slate-300">{comp.countryCode || "-"}</td>
+                  <td className="px-5 py-4 text-slate-300">{comp.tier || "-"}</td>
+                  <td className="px-5 py-4 flex justify-end gap-3">
+                    <button
+                      onClick={() => setIsEditing(comp)}
+                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(comp.id)}
+                      className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {competitions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                    No competitions found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

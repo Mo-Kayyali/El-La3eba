@@ -21,6 +21,6 @@ import { UsersModule } from '../users/users.module';
   ],
   controllers: [GameController],
   providers: [GameGateway, MatchmakingService, GameService, LeaderboardService, PlayerDenormService],
-  exports: [GameGateway],
+  exports: [GameGateway, PlayerDenormService],
 })
 export class GameModule {}

@@ -1,0 +1,259 @@
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { PlayerDenormService } from '../game/player-denorm.service';
+import { Position, PreferredFoot } from '@prisma/client';
+import { IsString, IsOptional, IsArray, IsUUID, IsBoolean, IsInt, IsEnum, IsDateString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class ClubHistoryDto {
+  @IsUUID()
+  clubId: string;
+
+  @IsOptional()
+  @IsInt()
+  startYear?: number;
+
+  @IsOptional()
+  @IsInt()
+  endYear?: number;
+
+  @IsBoolean()
+  isCurrent: boolean;
+}
+
+export class CreatePlayerDto {
+  @IsString()
+  firstName: string;
+
+  @IsString()
+  lastName: string;
+
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aliases?: string[];
+
+  @IsString()
+  nationality: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsInt()
+  heightCm?: number;
+
+  @IsOptional()
+  @IsEnum(PreferredFoot)
+  preferredFoot?: PreferredFoot;
+
+  @IsArray()
+  @IsEnum(Position, { each: true })
+  positions: Position[];
+
+  @IsOptional()
+  @IsEnum(Position)
+  primaryPosition?: Position;
+
+  @IsBoolean()
+  isRetired: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  currentClubId?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+}
+
+export class UpdatePlayerDto extends CreatePlayerDto {
+  // Make everything optional for update
+}
+
+// Re-write to make fields optional
+export class PatchPlayerDto {
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aliases?: string[];
+
+  @IsOptional()
+  @IsString()
+  nationality?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsInt()
+  heightCm?: number;
+
+  @IsOptional()
+  @IsEnum(PreferredFoot)
+  preferredFoot?: PreferredFoot;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(Position, { each: true })
+  positions?: Position[];
+
+  @IsOptional()
+  @IsEnum(Position)
+  primaryPosition?: Position;
+
+  @IsOptional()
+  @IsBoolean()
+  isRetired?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  currentClubId?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ClubHistoryDto)
+  clubHistory?: ClubHistoryDto[];
+}
+
+@Injectable()
+export class AdminPlayersService {
+  constructor(
+    private prisma: PrismaService,
+    private playerDenormService: PlayerDenormService,
+  ) {}
+
+  private async validateFks(nationality?: string, currentClubId?: string, clubHistory?: ClubHistoryDto[]) {
+    if (nationality) {
+      const country = await this.prisma.country.findUnique({ where: { id: nationality } });
+      if (!country) throw new BadRequestException(`Nationality code '${nationality}' does not exist.`);
+    }
+    if (currentClubId) {
+      const club = await this.prisma.club.findUnique({ where: { id: currentClubId } });
+      if (!club) throw new BadRequestException(`Club ID '${currentClubId}' does not exist.`);
+    }
+    if (clubHistory) {
+      for (const history of clubHistory) {
+        const club = await this.prisma.club.findUnique({ where: { id: history.clubId } });
+        if (!club) throw new BadRequestException(`History Club ID '${history.clubId}' does not exist.`);
+      }
+    }
+  }
+
+  async findAll() {
+    return this.prisma.player.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        currentClub: { select: { id: true, name: true, logoUrl: true } }
+      }
+    });
+  }
+
+  async findOne(id: string) {
+    const player = await this.prisma.player.findUnique({
+      where: { id },
+      include: {
+        currentClub: true,
+        playerClubs: {
+          include: { club: true },
+          orderBy: [{ isCurrent: 'desc' }, { startYear: 'asc' }]
+        }
+      }
+    });
+    if (!player) throw new NotFoundException('Player not found');
+    return player;
+  }
+
+  async create(dto: CreatePlayerDto) {
+    await this.validateFks(dto.nationality, dto.currentClubId);
+    
+    let aliases = dto.aliases;
+    if (!aliases || aliases.length === 0) {
+      aliases = [dto.firstName, dto.lastName].filter(Boolean);
+    }
+
+    return this.prisma.player.create({
+      data: {
+        ...dto,
+        aliases,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+      }
+    });
+  }
+
+  async update(id: string, dto: PatchPlayerDto) {
+    await this.findOne(id);
+    await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
+
+    const { clubHistory, dateOfBirth, ...playerData } = dto;
+    const dataToUpdate: any = { ...playerData };
+    if (dateOfBirth !== undefined) {
+      dataToUpdate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Update player fields
+      if (Object.keys(dataToUpdate).length > 0) {
+        await tx.player.update({ where: { id }, data: dataToUpdate });
+      }
+
+      // 2. Diff and replace club history
+      if (clubHistory !== undefined) {
+        // Complete replacement strategy for simplicity and correctness
+        await tx.playerClub.deleteMany({ where: { playerId: id } });
+        if (clubHistory.length > 0) {
+          await tx.playerClub.createMany({
+            data: clubHistory.map(ch => ({
+              playerId: id,
+              clubId: ch.clubId,
+              startYear: ch.startYear,
+              endYear: ch.endYear,
+              isCurrent: ch.isCurrent
+            }))
+          });
+        }
+      }
+    });
+
+    // 3. Regenerate denormalized arrays
+    if (clubHistory !== undefined) {
+      await this.playerDenormService.regenerateForPlayer(id);
+    }
+
+    return this.findOne(id);
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    try {
+      return await this.prisma.player.delete({ where: { id } });
+    } catch (error: any) {
+      if (error.code === 'P2003') {
+        throw new ConflictException('Cannot delete: this player is still referenced by questions or answers.');
+      }
+      throw error;
+    }
+  }
+}

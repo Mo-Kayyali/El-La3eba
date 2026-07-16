@@ -13,13 +13,17 @@ const competitions_controller_1 = require("./competitions.controller");
 const competitions_service_1 = require("./competitions.service");
 const clubs_controller_1 = require("./clubs.controller");
 const clubs_service_1 = require("./clubs.service");
+const players_controller_1 = require("./players.controller");
+const players_service_1 = require("./players.service");
+const game_module_1 = require("../game/game.module");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
 exports.AdminModule = AdminModule = __decorate([
     (0, common_1.Module)({
-        controllers: [admin_controller_1.AdminController, competitions_controller_1.AdminCompetitionsController, clubs_controller_1.AdminClubsController],
-        providers: [competitions_service_1.AdminCompetitionsService, clubs_service_1.AdminClubsService],
+        imports: [game_module_1.GameModule],
+        controllers: [admin_controller_1.AdminController, competitions_controller_1.AdminCompetitionsController, clubs_controller_1.AdminClubsController, players_controller_1.AdminPlayersController],
+        providers: [competitions_service_1.AdminCompetitionsService, clubs_service_1.AdminClubsService, players_service_1.AdminPlayersService],
     })
 ], AdminModule);
 //# sourceMappingURL=admin.module.js.map

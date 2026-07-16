@@ -1,0 +1,38 @@
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { AdminPlayersService, CreatePlayerDto, PatchPlayerDto } from './players.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Role } from '@prisma/client';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
+@Controller('admin/players')
+export class AdminPlayersController {
+  constructor(private readonly playersService: AdminPlayersService) {}
+
+  @Post()
+  create(@Body() createDto: CreatePlayerDto) {
+    return this.playersService.create(createDto);
+  }
+
+  @Get()
+  findAll() {
+    return this.playersService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.playersService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateDto: PatchPlayerDto) {
+    return this.playersService.update(id, updateDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.playersService.remove(id);
+  }
+}
