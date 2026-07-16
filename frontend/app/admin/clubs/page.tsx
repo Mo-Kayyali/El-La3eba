@@ -3,24 +3,31 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 
 type Club = {
   id: string;
   name: string;
   aliases: string[];
-  countryCode: string;
+  countryCode: string | null;
   currentCompetitionId: string | null;
   logoUrl: string | null;
+};
+
+type Competition = {
+  id: string;
+  name: string;
 };
 
 export default function AdminClubsPage() {
   const router = useRouter();
   const { user, bootstrapped } = useAuthStore();
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [isEditing, setIsEditing] = useState<Partial<Club> | null>(null);
 
   useEffect(() => {
@@ -29,13 +36,17 @@ export default function AdminClubsPage() {
       router.replace("/");
       return;
     }
-    fetchClubs();
+    fetchData();
   }, [bootstrapped, user, router]);
 
-  const fetchClubs = async () => {
+  const fetchData = async () => {
     try {
-      const { data } = await api.get<Club[]>("/admin/clubs");
-      setClubs(data);
+      const [clubsRes, compsRes] = await Promise.all([
+        api.get<Club[]>("/admin/clubs"),
+        api.get<Competition[]>("/admin/competitions"),
+      ]);
+      setClubs(clubsRes.data);
+      setCompetitions(compsRes.data);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -50,9 +61,9 @@ export default function AdminClubsPage() {
     const aliasesRaw = formData.get("aliases") as string;
     
     const payload = {
-      name: formData.get("name") as string,
-      aliases: aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : [],
-      countryCode: formData.get("countryCode") as string,
+      name: formData.get("name"),
+      aliases: aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined,
+      countryCode: formData.get("countryCode"),
       currentCompetitionId: (formData.get("currentCompetitionId") as string) || null,
       logoUrl: (formData.get("logoUrl") as string) || null,
     };
@@ -64,7 +75,7 @@ export default function AdminClubsPage() {
         await api.post("/admin/clubs", payload);
       }
       setIsEditing(null);
-      fetchClubs();
+      fetchData();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -75,7 +86,7 @@ export default function AdminClubsPage() {
     setError("");
     try {
       await api.delete(`/admin/clubs/${id}`);
-      fetchClubs();
+      fetchData();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -85,6 +96,12 @@ export default function AdminClubsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 text-slate-200">
+      <div className="mb-6">
+        <Link href="/admin" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+      </div>
       <div className="mb-8 flex items-center justify-between border-b border-white/[0.06] pb-5">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Clubs & Teams</h1>

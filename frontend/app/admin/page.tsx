@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/admin/competitions"
           className="group relative flex flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-slate-900/50 p-8 text-center transition hover:border-blue-500/50 hover:bg-slate-800/50"
