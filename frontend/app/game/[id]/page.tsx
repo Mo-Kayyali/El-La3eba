@@ -17,6 +17,18 @@ type Player = {
   [key: string]: unknown;
 };
 
+type Question = {
+  id: string;
+  text: string;
+  gameMode: string;
+  answerType: string;
+  filterType?: string | null;
+  filterValue?: string | null;
+  photoPlayerId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 /** A guess entry in the activity feed. Backend now sends objects with guessedBy. */
 type GuessEntry = { name: string; guessedBy: string } | string;
 
@@ -26,7 +38,7 @@ type GameState = {
   scores?: Record<string, number> | number[];
   strikes?: Record<string, number> | number[];
   guessedPlayers?: GuessEntry[];
-  currentQuestion?: string;
+  currentQuestion?: Question;
   currentRound?: number;
   overallScores?: Record<string, number> | number[];
   status?: "in_progress" | "match_completed" | string;
@@ -611,7 +623,7 @@ export default function GamePage() {
   }, [isMatchOver]);
 
   const currentRound = gameState?.currentRound ?? 1;
-  const question = gameState?.currentQuestion ?? "Waiting for question...";
+  const question = gameState?.currentQuestion?.text ?? "Waiting for question...";
   const guessedPlayers = (gameState?.guessedPlayers ?? []) as GuessEntry[];
 
   const leftRoundScore = getByKeyOrIndex(gameState?.scores, leftId, 0);
