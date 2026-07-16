@@ -5,31 +5,45 @@ export declare class AdminQuestionsController {
     constructor(questionsService: AdminQuestionsService);
     create(createDto: CreateQuestionDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
-        answerType: import(".prisma/client").$Enums.AnswerType;
-        filterType: import(".prisma/client").$Enums.FilterType | null;
-        filterValue: string | null;
+        logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findAll(gameMode?: GameMode): import(".prisma/client").Prisma.PrismaPromise<({
         _count: {
             answers: number;
         };
+        clauses: {
+            id: string;
+            questionId: string;
+            filterType: import(".prisma/client").$Enums.FilterType;
+            filterValue: string;
+        }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
-        answerType: import(".prisma/client").$Enums.AnswerType;
-        filterType: import(".prisma/client").$Enums.FilterType | null;
-        filterValue: string | null;
+        logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     findOne(id: string): import(".prisma/client").Prisma.Prisma__QuestionClient<({
+        photoPlayer: {
+            name: string;
+            imageUrl: string | null;
+        } | null;
+        clauses: {
+            id: string;
+            questionId: string;
+            filterType: import(".prisma/client").$Enums.FilterType;
+            filterValue: string;
+        }[];
         answers: ({
             player: {
                 name: string;
@@ -43,31 +57,25 @@ export declare class AdminQuestionsController {
             rank: number | null;
             slotLabel: string | null;
         })[];
-        photoPlayer: {
-            name: string;
-            imageUrl: string | null;
-        } | null;
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
-        answerType: import(".prisma/client").$Enums.AnswerType;
-        filterType: import(".prisma/client").$Enums.FilterType | null;
-        filterValue: string | null;
+        logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
     update(id: string, updateDto: PatchQuestionDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
-        answerType: import(".prisma/client").$Enums.AnswerType;
-        filterType: import(".prisma/client").$Enums.FilterType | null;
-        filterValue: string | null;
+        logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     remove(id: string): Promise<{
         success: boolean;

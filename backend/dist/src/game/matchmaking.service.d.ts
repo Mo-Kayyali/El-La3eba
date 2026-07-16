@@ -70,17 +70,8 @@ export declare class MatchmakingService {
             [player2Id]: number;
         };
         guessedPlayers: never[];
-        currentQuestion: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            text: string;
-            gameMode: import(".prisma/client").$Enums.GameMode;
-            answerType: import(".prisma/client").$Enums.AnswerType;
-            filterType: import(".prisma/client").$Enums.FilterType | null;
-            filterValue: string | null;
-            photoPlayerId: string | null;
-        } | null;
+        usedQuestionIds: string[];
+        currentQuestion: any;
         isRanked: boolean;
     }>;
     deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;

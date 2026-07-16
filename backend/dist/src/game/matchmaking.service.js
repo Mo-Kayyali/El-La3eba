@@ -340,9 +340,15 @@ return selected
             currentRound: 1,
             strikes: { [player1Id]: 0, [player2Id]: 0 },
             guessedPlayers: [],
-            currentQuestion: await this.gameService.getRandomQuestion('STRIKES'),
+            usedQuestionIds: [],
+            currentQuestion: null,
             isRanked,
         };
+        const firstQuestion = await this.gameService.getRandomQuestion('STRIKES');
+        gameState.currentQuestion = firstQuestion;
+        if (firstQuestion) {
+            gameState.usedQuestionIds.push(firstQuestion.id);
+        }
         const gameKey = `game:${gameSessionId}`;
         const stateJson = JSON.stringify(gameState);
         const multi = this.redisClient.multi();

@@ -746,7 +746,12 @@ export class GameGateway
             latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.guessedPlayers = [];
-            latest.currentQuestion = await this.gameService.getRandomQuestion('STRIKES');
+            const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.usedQuestionIds || []);
+            latest.currentQuestion = nextQuestion;
+            if (nextQuestion) {
+              if (!latest.usedQuestionIds) latest.usedQuestionIds = [];
+              latest.usedQuestionIds.push(nextQuestion.id);
+            }
             // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
             if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
             else if (latest.currentRound === 3)
@@ -1708,7 +1713,12 @@ export class GameGateway
             latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.guessedPlayers = [];
-            latest.currentQuestion = await this.gameService.getRandomQuestion('STRIKES');
+            const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.usedQuestionIds || []);
+            latest.currentQuestion = nextQuestion;
+            if (nextQuestion) {
+              if (!latest.usedQuestionIds) latest.usedQuestionIds = [];
+              latest.usedQuestionIds.push(nextQuestion.id);
+            }
             // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
             if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
             else if (latest.currentRound === 3)

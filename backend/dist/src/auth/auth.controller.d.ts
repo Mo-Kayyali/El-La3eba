@@ -37,10 +37,10 @@ export declare class AuthController {
             gameSessionId: string;
             createdAt: string;
         } | null;
-        email: string;
-        username: string;
         id: string;
         createdAt: Date;
+        email: string;
+        username: string;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;

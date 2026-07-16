@@ -22,8 +22,11 @@ enum Role {
 enum CompetitionType {
   DOMESTIC_LEAGUE
   DOMESTIC_CUP
-  CONTINENTAL_CLUB
-  INTERNATIONAL_NATIONAL_TEAM
+  CONTINENTAL_CLUB_COMPETITION
+  INTERNATIONAL_TOURNAMENT
+  GLOBAL_CLUB_CHAMPIONSHIP
+  DOMESTIC_SUPER_CUP
+  CONTINENTAL_SUPER_CUP
 }
 
 enum Position {
@@ -53,6 +56,11 @@ enum GameMode {
   TOP_10
   PHOTO_GUESS
   LINEUP
+}
+
+enum LogicOperator {
+  AND
+  OR
 }
 
 enum AnswerType {
@@ -150,6 +158,7 @@ model Competition {
 
   country Country? @relation(fields: [countryCode], references: [id])
   clubs   Club[]   @relation("ClubCurrentCompetition")
+  clubCompetitions ClubCompetition[]
 }
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
@@ -170,8 +179,24 @@ model Club {
   currentCompetition Competition? @relation("ClubCurrentCompetition", fields: [currentCompetitionId], references: [id])
   currentPlayers     Player[]
   playerClubs        PlayerClub[]
+  clubCompetitions   ClubCompetition[]
 
   @@index([competitions], type: Gin)
+}
+
+// ─── Club ↔ Competition join table ─────────────────────────────────────────────
+
+model ClubCompetition {
+  id            String  @id @default(uuid())
+  clubId        String
+  competitionId String
+
+  club        Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, competitionId])
+  @@index([clubId])
+  @@index([competitionId])
 }
 
 // ─── Players ──────────────────────────────────────────────────────────────────
@@ -239,19 +264,30 @@ model Question {
   text          String
   gameMode      GameMode
   answerType    AnswerType
-  filterType    FilterType? // populated when answerType = FILTER
-  filterValue   String?     // e.g. competition name, nationality code, club name
-  photoPlayerId String?     // populated when gameMode = PHOTO_GUESS
+  logicOperator LogicOperator? // applies when answerType = FILTER and there are >1 clauses
+  photoPlayerId String?        // populated when gameMode = PHOTO_GUESS
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  photoPlayer     Player?          @relation("QuestionPhotoPlayer", fields: [photoPlayerId], references: [id])
+  photoPlayer     Player?                @relation("QuestionPhotoPlayer", fields: [photoPlayerId], references: [id])
+  clauses         QuestionFilterClause[]
   answers         QuestionAnswer[]
   suggestions     AnswerSuggestion[]
 
   @@index([gameMode])
-  @@index([answerType, filterType])
+  @@index([answerType])
+}
+
+model QuestionFilterClause {
+  id          String     @id @default(uuid())
+  questionId  String
+  filterType  FilterType
+  filterValue String
+
+  question    Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
 }
 
 model QuestionAnswer {

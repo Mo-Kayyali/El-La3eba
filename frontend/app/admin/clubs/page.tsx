@@ -21,14 +21,20 @@ type Competition = {
   name: string;
 };
 
+type Country = {
+  id: string;
+  name: string;
+};
+
 export default function AdminClubsPage() {
   const router = useRouter();
   const { user, bootstrapped } = useAuthStore();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [countries, setCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isEditing, setIsEditing] = useState<Partial<Club> | null>(null);
+  const [isEditing, setIsEditing] = useState<Partial<Club> & { competitionIds?: string[] } | null>(null);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -41,12 +47,14 @@ export default function AdminClubsPage() {
 
   const fetchData = async () => {
     try {
-      const [clubsRes, compsRes] = await Promise.all([
+      const [clubsRes, compsRes, countriesRes] = await Promise.all([
         api.get<Club[]>("/admin/clubs"),
         api.get<Competition[]>("/admin/competitions"),
+        api.get<Country[]>("/admin/countries"),
       ]);
       setClubs(clubsRes.data);
       setCompetitions(compsRes.data);
+      setCountries(countriesRes.data);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -59,14 +67,21 @@ export default function AdminClubsPage() {
     setError("");
     const formData = new FormData(e.currentTarget);
     const aliasesRaw = formData.get("aliases") as string;
+    const competitionIdsRaw = formData.getAll("competitionIds") as string[];
     
     const payload = {
       name: formData.get("name"),
       aliases: aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined,
       countryCode: formData.get("countryCode"),
       currentCompetitionId: (formData.get("currentCompetitionId") as string) || null,
+      competitionIds: competitionIdsRaw,
       logoUrl: (formData.get("logoUrl") as string) || null,
     };
+
+    // Auto-set currentCompetitionId to the first competition if empty and competitions selected
+    if (!payload.currentCompetitionId && payload.competitionIds.length > 0) {
+      payload.currentCompetitionId = payload.competitionIds[0];
+    }
 
     try {
       if (isEditing?.id) {
@@ -147,23 +162,54 @@ export default function AdminClubsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country Code (ISO-3)</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country Code</label>
                 <input
                   name="countryCode"
+                  list="countries-list"
                   defaultValue={isEditing.countryCode || ""}
                   required
-                  placeholder="e.g. ENG"
+                  placeholder="Type code or search name..."
                   className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                 />
+                <datalist id="countries-list">
+                  {countries.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.id})
+                    </option>
+                  ))}
+                </datalist>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Current Competition ID</label>
-                <input
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Current / Display Competition</label>
+                <select
                   name="currentCompetitionId"
                   defaultValue={isEditing.currentCompetitionId || ""}
-                  placeholder="Optional UUID"
-                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
-                />
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                >
+                  <option value="">-- None --</option>
+                  {competitions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Competitions (Multi-select)</label>
+                <select
+                  name="competitionIds"
+                  multiple
+                  defaultValue={isEditing.competitionIds || []}
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                  size={5}
+                >
+                  {competitions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-slate-500">Hold Ctrl/Cmd to select multiple. Current competition will default to the first selected if left empty.</p>
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-semibold text-slate-300">Logo URL</label>

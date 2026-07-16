@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { GameMode, AnswerType, FilterType } from '@prisma/client';
+import { GameMode, AnswerType, FilterType, LogicOperator } from '@prisma/client';
 import { IsString, IsOptional, IsEnum, IsUUID, IsInt, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -17,6 +17,14 @@ export class QuestionAnswerDto {
   slotLabel?: string;
 }
 
+export class QuestionFilterClauseDto {
+  @IsEnum(FilterType)
+  filterType: FilterType;
+
+  @IsString()
+  filterValue: string;
+}
+
 export class CreateQuestionDto {
   @IsString()
   text: string;
@@ -29,12 +37,14 @@ export class CreateQuestionDto {
   answerType?: AnswerType;
 
   @IsOptional()
-  @IsEnum(FilterType)
-  filterType?: FilterType;
+  @IsEnum(LogicOperator)
+  logicOperator?: LogicOperator;
 
   @IsOptional()
-  @IsString()
-  filterValue?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuestionFilterClauseDto)
+  clauses?: QuestionFilterClauseDto[];
 
   @IsOptional()
   @IsUUID()
@@ -54,8 +64,9 @@ export class AdminQuestionsService {
   constructor(private prisma: PrismaService) {}
 
   async validateShape(dto: CreateQuestionDto | PatchQuestionDto) {
-    let { gameMode, answerType, filterType, filterValue, photoPlayerId, answers } = dto;
+    let { gameMode, answerType, logicOperator, photoPlayerId, answers, clauses } = dto;
     answers = answers || [];
+    clauses = clauses || [];
 
     // Auto-set answerType
     if (gameMode === GameMode.TOP_10 || gameMode === GameMode.LINEUP || gameMode === GameMode.PHOTO_GUESS) {
@@ -68,7 +79,8 @@ export class AdminQuestionsService {
     }
 
     if (answerType === AnswerType.FILTER) {
-      if (!filterType || !filterValue) throw new BadRequestException('filterType and filterValue required for FILTER');
+      if (clauses.length === 0) throw new BadRequestException('at least 1 clause required for FILTER');
+      if (clauses.length > 1 && !logicOperator) throw new BadRequestException('logicOperator required when there are multiple clauses');
       if (answers.length > 0) throw new BadRequestException('answers array must be empty for FILTER');
     }
 
@@ -108,7 +120,7 @@ export class AdminQuestionsService {
       if (!found) throw new BadRequestException('photoPlayerId reference is invalid');
     }
 
-    return { gameMode, answerType, filterType, filterValue, photoPlayerId, answers };
+    return { gameMode, answerType, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
   }
 
   async create(createDto: CreateQuestionDto) {
@@ -120,11 +132,20 @@ export class AdminQuestionsService {
           text: createDto.text,
           gameMode: validated.gameMode,
           answerType: validated.answerType!,
-          filterType: validated.filterType || null,
-          filterValue: validated.filterValue || null,
+          logicOperator: validated.logicOperator,
           photoPlayerId: validated.photoPlayerId || null,
         }
       });
+
+      if (validated.clauses.length > 0) {
+        await tx.questionFilterClause.createMany({
+          data: validated.clauses.map(c => ({
+            questionId: question.id,
+            filterType: c.filterType,
+            filterValue: c.filterValue,
+          }))
+        });
+      }
 
       if (validated.answers.length > 0) {
         await tx.questionAnswer.createMany({
@@ -146,7 +167,8 @@ export class AdminQuestionsService {
     return this.prisma.question.findMany({
       where,
       include: {
-        _count: { select: { answers: true } }
+        _count: { select: { answers: true } },
+        clauses: true
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -160,7 +182,8 @@ export class AdminQuestionsService {
           include: { player: { select: { name: true, aliases: true, imageUrl: true } } },
           orderBy: { rank: 'asc' }
         },
-        photoPlayer: { select: { name: true, imageUrl: true } }
+        photoPlayer: { select: { name: true, imageUrl: true } },
+        clauses: true
       }
     });
   }
@@ -175,8 +198,7 @@ export class AdminQuestionsService {
           text: updateDto.text,
           gameMode: validated.gameMode,
           answerType: validated.answerType!,
-          filterType: validated.filterType || null,
-          filterValue: validated.filterValue || null,
+          logicOperator: validated.logicOperator,
           photoPlayerId: validated.photoPlayerId || null,
         }
       });
@@ -184,6 +206,19 @@ export class AdminQuestionsService {
       await tx.questionAnswer.deleteMany({
         where: { questionId: id }
       });
+      await tx.questionFilterClause.deleteMany({
+        where: { questionId: id }
+      });
+
+      if (validated.clauses.length > 0) {
+        await tx.questionFilterClause.createMany({
+          data: validated.clauses.map(c => ({
+            questionId: id,
+            filterType: c.filterType,
+            filterValue: c.filterValue,
+          }))
+        });
+      }
 
       if (validated.answers.length > 0) {
         await tx.questionAnswer.createMany({

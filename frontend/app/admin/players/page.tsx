@@ -60,6 +60,7 @@ export default function AdminPlayersPage() {
   const [isEditing, setIsEditing] = useState<Partial<Player> | null>(null);
   const [clubHistory, setClubHistory] = useState<PlayerClubHistory[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
+  const [primaryPosition, setPrimaryPosition] = useState<string>("");
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -92,6 +93,7 @@ export default function AdminPlayersPage() {
       const { data } = await api.get<Player>(`/admin/players/${player.id}`);
       setIsEditing(data);
       setSelectedPositions(data.positions || []);
+      setPrimaryPosition(data.primaryPosition || "");
       setClubHistory(
         (data.playerClubs || []).map(pc => ({
           clubId: pc.club.id,
@@ -108,6 +110,7 @@ export default function AdminPlayersPage() {
   const handleCreateNew = () => {
     setIsEditing({ isRetired: false });
     setSelectedPositions([]);
+    setPrimaryPosition("");
     setClubHistory([]);
   };
 
@@ -124,12 +127,12 @@ export default function AdminPlayersPage() {
       aliases: aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined,
       nationality: formData.get("nationality") as string,
       currentClubId: (formData.get("currentClubId") as string) || null,
-      primaryPosition: (formData.get("primaryPosition") as string) || null,
+      primaryPosition: primaryPosition || null,
       positions: selectedPositions,
       preferredFoot: (formData.get("preferredFoot") as string) || null,
       isRetired: formData.get("isRetired") === "on",
-      heightCm: formData.get("heightCm") ? Number(formData.get("heightCm")) : null,
-      dateOfBirth: (formData.get("dateOfBirth") as string) ? new Date(formData.get("dateOfBirth") as string).toISOString() : null,
+      heightCm: formData.get("heightCm") ? Number(formData.get("heightCm")) : undefined,
+      dateOfBirth: (formData.get("dateOfBirth") as string) ? new Date(formData.get("dateOfBirth") as string).toISOString() : undefined,
       imageUrl: (formData.get("imageUrl") as string) || null,
       clubHistory: clubHistory.map(h => ({
         ...h,
@@ -163,6 +166,9 @@ export default function AdminPlayersPage() {
   };
 
   const togglePosition = (pos: string) => {
+    if (selectedPositions.includes(pos) && primaryPosition === pos) {
+      setPrimaryPosition("");
+    }
     setSelectedPositions(prev =>
       prev.includes(pos) ? prev.filter(p => p !== pos) : [...prev, pos]
     );
@@ -259,15 +265,17 @@ export default function AdminPlayersPage() {
                 
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Nationality</label>
-                  <select
+                  <input
                     name="nationality"
+                    list="countries-list"
                     defaultValue={isEditing.nationality || ""}
                     required
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
-                  >
-                    <option value="" className="bg-slate-900" disabled>Select Country</option>
-                    {countries.map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name} ({c.id})</option>)}
-                  </select>
+                    placeholder="Type code or search name..."
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                  />
+                  <datalist id="countries-list">
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
+                  </datalist>
                 </div>
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Current Club</label>
@@ -307,11 +315,19 @@ export default function AdminPlayersPage() {
                   <label className="text-xs font-semibold text-slate-300">Primary Position</label>
                   <select
                     name="primaryPosition"
-                    defaultValue={isEditing.primaryPosition || ""}
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                    value={primaryPosition}
+                    onChange={(e) => setPrimaryPosition(e.target.value)}
+                    disabled={selectedPositions.length === 0}
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="" className="bg-slate-900">None</option>
-                    {POSITIONS.map(p => <option key={p} value={p} className="bg-slate-900">{p}</option>)}
+                    {selectedPositions.length === 0 ? (
+                      <option value="" disabled className="bg-slate-900">Select positions first...</option>
+                    ) : (
+                      <>
+                        <option value="" className="bg-slate-900">None</option>
+                        {selectedPositions.map(p => <option key={p} value={p} className="bg-slate-900">{p}</option>)}
+                      </>
+                    )}
                   </select>
                 </div>
                 

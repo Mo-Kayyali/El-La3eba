@@ -100,15 +100,32 @@ async function main() {
     await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "fuzzystrmatch";`);
     await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS "pg_trgm";`);
     console.log('  Extensions OK.');
+    console.log('Removing strict ISO GBR code...');
+    await prisma.country.deleteMany({ where: { id: 'GBR' } });
     console.log('Seeding countries...');
     const iso3166 = require('iso-3166-1');
-    const countries = iso3166.all();
+    const countries = iso3166.all().filter((c) => c.alpha3 !== 'GBR');
     let countryCount = 0;
     for (const c of countries) {
         await prisma.country.upsert({
             where: { id: c.alpha3 },
             create: { id: c.alpha3, name: c.country },
             update: { name: c.country },
+        });
+        countryCount++;
+    }
+    const customFootballNations = [
+        { id: 'ENG', name: 'England' },
+        { id: 'SCO', name: 'Scotland' },
+        { id: 'WAL', name: 'Wales' },
+        { id: 'NIR', name: 'Northern Ireland' },
+        { id: 'XKX', name: 'Kosovo' },
+    ];
+    for (const c of customFootballNations) {
+        await prisma.country.upsert({
+            where: { id: c.id },
+            create: { id: c.id, name: c.name },
+            update: { name: c.name },
         });
         countryCount++;
     }

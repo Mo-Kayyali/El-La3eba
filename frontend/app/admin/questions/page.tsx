@@ -24,13 +24,18 @@ type QuestionAnswer = {
   player?: { name: string; aliases: string[] };
 };
 
+type QuestionFilterClause = {
+  filterType: string;
+  filterValue: string;
+};
+
 type Question = {
   id: string;
   text: string;
   gameMode: "STRIKES" | "TOP_10" | "LINEUP" | "PHOTO_GUESS";
   answerType: "FILTER" | "LIST";
-  filterType: string | null;
-  filterValue: string | null;
+  logicOperator: "AND" | "OR" | null;
+  clauses?: QuestionFilterClause[];
   photoPlayerId: string | null;
   photoPlayer?: { name: string } | null;
   _count?: { answers: number };
@@ -142,6 +147,9 @@ export default function AdminQuestionsPage() {
   const router = useRouter();
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [competitions, setCompetitions] = useState<any[]>([]);
+  const [countries, setCountries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -151,8 +159,8 @@ export default function AdminQuestionsPage() {
   const [text, setText] = useState("");
   const [gameMode, setGameMode] = useState<"STRIKES" | "TOP_10" | "LINEUP" | "PHOTO_GUESS">("STRIKES");
   const [answerType, setAnswerType] = useState<"FILTER" | "LIST">("FILTER");
-  const [filterType, setFilterType] = useState("NATIONALITY");
-  const [filterValue, setFilterValue] = useState("");
+  const [logicOperator, setLogicOperator] = useState<"AND" | "OR">("AND");
+  const [clauses, setClauses] = useState<QuestionFilterClause[]>([{ filterType: "NATIONALITY", filterValue: "" }]);
   const [photoPlayerId, setPhotoPlayerId] = useState("");
   const [photoPlayerName, setPhotoPlayerName] = useState("");
   const [answers, setAnswers] = useState<QuestionAnswer[]>([]);
@@ -178,8 +186,16 @@ export default function AdminQuestionsPage() {
 
   const fetchQuestions = async () => {
     try {
-      const res = await api.get<Question[]>("/admin/questions");
+      const [res, clubsRes, compsRes, countriesRes] = await Promise.all([
+        api.get<Question[]>("/admin/questions"),
+        api.get<any[]>("/admin/clubs"),
+        api.get<any[]>("/admin/competitions"),
+        api.get<any[]>("/admin/countries"),
+      ]);
       setQuestions(res.data);
+      setClubs(clubsRes.data);
+      setCompetitions(compsRes.data);
+      setCountries(countriesRes.data);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -192,14 +208,18 @@ export default function AdminQuestionsPage() {
     setText(q.text);
     setGameMode(q.gameMode);
     setAnswerType(q.answerType);
-    setFilterType(q.filterType || "NATIONALITY");
-    setFilterValue(q.filterValue || "");
+    setLogicOperator(q.logicOperator || "AND");
     
     try {
       // Fetch full question with answers
       const res = await api.get<Question>(`/admin/questions/${q.id}`);
       const fullQ = res.data;
       setAnswers(fullQ.answers || []);
+      if (fullQ.answerType === "FILTER" && fullQ.clauses && fullQ.clauses.length > 0) {
+        setClauses(fullQ.clauses);
+      } else {
+        setClauses([{ filterType: "NATIONALITY", filterValue: "" }]);
+      }
       setPhotoPlayerId(fullQ.photoPlayerId || "");
       setPhotoPlayerName(fullQ.photoPlayer?.name || "");
       setShowForm(true);
@@ -224,8 +244,8 @@ export default function AdminQuestionsPage() {
     setText("");
     setGameMode("STRIKES");
     setAnswerType("FILTER");
-    setFilterType("NATIONALITY");
-    setFilterValue("");
+    setLogicOperator("AND");
+    setClauses([{ filterType: "NATIONALITY", filterValue: "" }]);
     setPhotoPlayerId("");
     setPhotoPlayerName("");
     setAnswers([]);
@@ -254,13 +274,16 @@ export default function AdminQuestionsPage() {
       payload.answerType = answerType;
 
       if (answerType === "FILTER") {
-        if (!filterValue.trim()) {
-          setFormError("Filter Value is required");
+        const cleanClauses = clauses.filter(c => c.filterValue.trim() !== "");
+        if (cleanClauses.length === 0) {
+          setFormError("At least one valid clause is required");
           setIsSubmitting(false);
           return;
         }
-        payload.filterType = filterType;
-        payload.filterValue = filterValue;
+        payload.clauses = cleanClauses;
+        if (cleanClauses.length > 1) {
+          payload.logicOperator = logicOperator;
+        }
       } else {
         if (answers.length === 0) {
           setFormError("At least one answer is required for LIST");
@@ -461,33 +484,139 @@ export default function AdminQuestionsPage() {
 
               {/* STRIKES + FILTER */}
               {gameMode === "STRIKES" && answerType === "FILTER" && (
-                <div className="grid gap-6 sm:grid-cols-2 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-300">
-                      Filter Type
-                    </label>
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      className="block w-full rounded-xl border border-white/10 bg-slate-800 p-3 text-white outline-none focus:border-blue-500"
+                <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-slate-300">Filter Clauses</label>
+                    <button
+                      type="button"
+                      onClick={() => setClauses([...clauses, { filterType: "NATIONALITY", filterValue: "" }])}
+                      className="text-xs font-bold text-blue-400 hover:text-blue-300"
                     >
-                      <option value="NATIONALITY">Nationality Code (e.g. ESP)</option>
-                      <option value="CLUB">Club Name (e.g. Real Madrid)</option>
-                      <option value="COMPETITION">Competition Name (e.g. Premier League)</option>
-                    </select>
+                      + Add Clause
+                    </button>
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-300">
-                      Filter Value
-                    </label>
-                    <input
-                      type="text"
-                      value={filterValue}
-                      onChange={(e) => setFilterValue(e.target.value)}
-                      placeholder="e.g. ESP"
-                      className="block w-full rounded-xl border border-white/10 bg-slate-800 p-3 text-white outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  
+                  {clauses.length > 1 && (
+                    <div className="flex items-center gap-4 mb-4 bg-slate-900/50 p-3 rounded-lg border border-white/5">
+                      <span className="text-sm font-medium text-slate-400">Match rule for multiple clauses:</span>
+                      <select
+                        value={logicOperator}
+                        onChange={(e) => setLogicOperator(e.target.value as any)}
+                        className="rounded-lg bg-slate-800 border border-white/10 px-3 py-1.5 text-sm text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="AND">AND (Must match all)</option>
+                        <option value="OR">OR (Match any one)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {clauses.map((clause, idx) => (
+                    <div key={idx} className="flex flex-col sm:flex-row gap-3 items-start bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                      <div className="flex-1 w-full sm:max-w-[200px]">
+                        <select
+                          value={clause.filterType}
+                          onChange={(e) => {
+                            const newClauses = [...clauses];
+                            newClauses[idx].filterType = e.target.value;
+                            newClauses[idx].filterValue = "";
+                            setClauses(newClauses);
+                          }}
+                          className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                        >
+                          <option value="NATIONALITY">Nationality</option>
+                          <option value="CLUB">Club</option>
+                          <option value="COMPETITION">Competition</option>
+                          <option value="POSITION">Position (Specific)</option>
+                          <option value="POSITION_CATEGORY">Position Category</option>
+                        </select>
+                      </div>
+                      
+                      <div className="flex-[2] w-full flex items-center gap-2">
+                        {clause.filterType === "NATIONALITY" && (
+                          <select
+                            value={clause.filterValue}
+                            onChange={(e) => {
+                              const newClauses = [...clauses];
+                              newClauses[idx].filterValue = e.target.value;
+                              setClauses(newClauses);
+                            }}
+                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select Country...</option>
+                            {countries.map(c => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
+                          </select>
+                        )}
+                        {clause.filterType === "CLUB" && (
+                          <select
+                            value={clause.filterValue}
+                            onChange={(e) => {
+                              const newClauses = [...clauses];
+                              newClauses[idx].filterValue = e.target.value;
+                              setClauses(newClauses);
+                            }}
+                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select Club...</option>
+                            {clubs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        )}
+                        {clause.filterType === "COMPETITION" && (
+                          <select
+                            value={clause.filterValue}
+                            onChange={(e) => {
+                              const newClauses = [...clauses];
+                              newClauses[idx].filterValue = e.target.value;
+                              setClauses(newClauses);
+                            }}
+                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select Competition...</option>
+                            {competitions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        )}
+                        {clause.filterType === "POSITION" && (
+                          <select
+                            value={clause.filterValue}
+                            onChange={(e) => {
+                              const newClauses = [...clauses];
+                              newClauses[idx].filterValue = e.target.value;
+                              setClauses(newClauses);
+                            }}
+                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select Position...</option>
+                            {["GK", "RB", "CB", "LB", "CDM", "CM", "CAM", "RM", "LM", "RW", "LW", "CF", "ST"].map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        )}
+                        {clause.filterType === "POSITION_CATEGORY" && (
+                          <select
+                            value={clause.filterValue}
+                            onChange={(e) => {
+                              const newClauses = [...clauses];
+                              newClauses[idx].filterValue = e.target.value;
+                              setClauses(newClauses);
+                            }}
+                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select Category...</option>
+                            {["GOALKEEPER", "DEFENDER", "MIDFIELDER", "ATTACKER"].map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newClauses = [...clauses];
+                            newClauses.splice(idx, 1);
+                            setClauses(newClauses);
+                          }}
+                          className="text-slate-400 hover:text-red-400 transition shrink-0 ml-2"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -646,7 +775,7 @@ export default function AdminQuestionsPage() {
                           {q.gameMode === "STRIKES" && (
                             <span className="text-xs text-slate-400">
                               {q.answerType}
-                              {q.answerType === "FILTER" ? ` (${q.filterType}: ${q.filterValue})` : ` (${q._count?.answers} answers)`}
+                              {q.answerType === "FILTER" ? ` (${q.clauses?.length || 0} clauses)` : ` (${q._count?.answers} answers)`}
                             </span>
                           )}
                           {(q.gameMode === "TOP_10" || q.gameMode === "LINEUP") && (

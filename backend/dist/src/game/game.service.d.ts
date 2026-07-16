@@ -4,6 +4,6 @@ export declare class GameService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     guessPlayer(guessName: string): Promise<any>;
-    getRandomQuestion(gameMode?: GameMode): Promise<Question | null>;
+    getRandomQuestion(gameMode?: GameMode, excludeIds?: string[]): Promise<Question | null>;
     validateAnswer(question: Question, player: any): Promise<boolean>;
 }

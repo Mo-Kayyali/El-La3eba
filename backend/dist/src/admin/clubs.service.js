@@ -18,6 +18,7 @@ class CreateClubDto {
     aliases;
     countryCode;
     currentCompetitionId;
+    competitionIds;
     logoUrl;
 }
 exports.CreateClubDto = CreateClubDto;
@@ -42,6 +43,12 @@ __decorate([
 ], CreateClubDto.prototype, "currentCompetitionId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUUID)('all', { each: true }),
+    __metadata("design:type", Array)
+], CreateClubDto.prototype, "competitionIds", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateClubDto.prototype, "logoUrl", void 0);
@@ -50,6 +57,7 @@ class UpdateClubDto {
     aliases;
     countryCode;
     currentCompetitionId;
+    competitionIds;
     logoUrl;
 }
 exports.UpdateClubDto = UpdateClubDto;
@@ -76,13 +84,22 @@ __decorate([
 ], UpdateClubDto.prototype, "currentCompetitionId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsUUID)('all', { each: true }),
+    __metadata("design:type", Array)
+], UpdateClubDto.prototype, "competitionIds", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateClubDto.prototype, "logoUrl", void 0);
+const club_denorm_service_1 = require("../game/club-denorm.service");
 let AdminClubsService = class AdminClubsService {
     prisma;
-    constructor(prisma) {
+    clubDenormService;
+    constructor(prisma, clubDenormService) {
         this.prisma = prisma;
+        this.clubDenormService = clubDenormService;
     }
     async validateFks(countryCode, currentCompetitionId) {
         if (countryCode) {
@@ -96,25 +113,78 @@ let AdminClubsService = class AdminClubsService {
                 throw new common_1.BadRequestException(`Competition ID '${currentCompetitionId}' does not exist.`);
         }
     }
+    async validateCompetitions(competitionIds) {
+        if (competitionIds && competitionIds.length > 0) {
+            const comps = await this.prisma.competition.findMany({
+                where: { id: { in: competitionIds } }
+            });
+            if (comps.length !== competitionIds.length) {
+                throw new common_1.BadRequestException('One or more competition IDs are invalid.');
+            }
+        }
+    }
     async findAll() {
         return this.prisma.club.findMany({
             orderBy: { name: 'asc' },
         });
     }
     async findOne(id) {
-        const club = await this.prisma.club.findUnique({ where: { id } });
+        const club = await this.prisma.club.findUnique({
+            where: { id },
+            include: {
+                clubCompetitions: {
+                    select: { competitionId: true }
+                }
+            }
+        });
         if (!club)
             throw new common_1.NotFoundException('Club not found');
-        return club;
+        return {
+            ...club,
+            competitionIds: club.clubCompetitions.map(cc => cc.competitionId)
+        };
     }
     async create(dto) {
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
-        return this.prisma.club.create({ data: dto });
+        await this.validateCompetitions(dto.competitionIds);
+        const { competitionIds, ...clubData } = dto;
+        const club = await this.prisma.club.create({ data: clubData });
+        if (competitionIds && competitionIds.length > 0) {
+            await this.prisma.clubCompetition.createMany({
+                data: competitionIds.map(compId => ({
+                    clubId: club.id,
+                    competitionId: compId
+                }))
+            });
+            await this.clubDenormService.regenerateForClub(club.id);
+        }
+        return this.findOne(club.id);
     }
     async update(id, dto) {
         await this.findOne(id);
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
-        return this.prisma.club.update({ where: { id }, data: dto });
+        await this.validateCompetitions(dto.competitionIds);
+        const { competitionIds, ...clubData } = dto;
+        await this.prisma.$transaction(async (tx) => {
+            if (Object.keys(clubData).length > 0) {
+                await tx.club.update({ where: { id }, data: clubData });
+            }
+            if (competitionIds !== undefined) {
+                await tx.clubCompetition.deleteMany({ where: { clubId: id } });
+                if (competitionIds.length > 0) {
+                    await tx.clubCompetition.createMany({
+                        data: competitionIds.map(compId => ({
+                            clubId: id,
+                            competitionId: compId
+                        }))
+                    });
+                }
+            }
+        });
+        if (competitionIds !== undefined) {
+            await this.clubDenormService.regenerateForClub(id);
+        }
+        return this.findOne(id);
     }
     async remove(id) {
         await this.findOne(id);
@@ -132,6 +202,7 @@ let AdminClubsService = class AdminClubsService {
 exports.AdminClubsService = AdminClubsService;
 exports.AdminClubsService = AdminClubsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        club_denorm_service_1.ClubDenormService])
 ], AdminClubsService);
 //# sourceMappingURL=clubs.service.js.map

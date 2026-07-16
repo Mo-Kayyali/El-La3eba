@@ -292,13 +292,24 @@ let AdminPlayersService = class AdminPlayersService {
         if (!aliases || aliases.length === 0) {
             aliases = [dto.firstName, dto.lastName].filter(Boolean);
         }
-        return this.prisma.player.create({
+        const player = await this.prisma.player.create({
             data: {
                 ...dto,
                 aliases,
                 dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
             }
         });
+        if (player.currentClubId) {
+            await this.prisma.playerClub.create({
+                data: {
+                    playerId: player.id,
+                    clubId: player.currentClubId,
+                    isCurrent: true,
+                }
+            });
+            await this.playerDenormService.regenerateForPlayer(player.id);
+        }
+        return player;
     }
     async update(id, dto) {
         await this.findOne(id);
@@ -326,10 +337,19 @@ let AdminPlayersService = class AdminPlayersService {
                     });
                 }
             }
+            const currentClubId = 'currentClubId' in dataToUpdate ? dataToUpdate.currentClubId : (await tx.player.findUnique({ where: { id }, select: { currentClubId: true } }))?.currentClubId;
+            if (currentClubId) {
+                const existing = await tx.playerClub.findFirst({
+                    where: { playerId: id, clubId: currentClubId, isCurrent: true }
+                });
+                if (!existing) {
+                    await tx.playerClub.create({
+                        data: { playerId: id, clubId: currentClubId, isCurrent: true }
+                    });
+                }
+            }
         });
-        if (clubHistory !== undefined) {
-            await this.playerDenormService.regenerateForPlayer(id);
-        }
+        await this.playerDenormService.regenerateForPlayer(id);
         return this.findOne(id);
     }
     async remove(id) {

@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AdminQuestionsService = exports.PatchQuestionDto = exports.CreateQuestionDto = exports.QuestionAnswerDto = void 0;
+exports.AdminQuestionsService = exports.PatchQuestionDto = exports.CreateQuestionDto = exports.QuestionFilterClauseDto = exports.QuestionAnswerDto = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
@@ -35,12 +35,25 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], QuestionAnswerDto.prototype, "slotLabel", void 0);
+class QuestionFilterClauseDto {
+    filterType;
+    filterValue;
+}
+exports.QuestionFilterClauseDto = QuestionFilterClauseDto;
+__decorate([
+    (0, class_validator_1.IsEnum)(client_1.FilterType),
+    __metadata("design:type", String)
+], QuestionFilterClauseDto.prototype, "filterType", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], QuestionFilterClauseDto.prototype, "filterValue", void 0);
 class CreateQuestionDto {
     text;
     gameMode;
     answerType;
-    filterType;
-    filterValue;
+    logicOperator;
+    clauses;
     photoPlayerId;
     answers;
 }
@@ -60,14 +73,16 @@ __decorate([
 ], CreateQuestionDto.prototype, "answerType", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsEnum)(client_1.FilterType),
+    (0, class_validator_1.IsEnum)(client_1.LogicOperator),
     __metadata("design:type", String)
-], CreateQuestionDto.prototype, "filterType", void 0);
+], CreateQuestionDto.prototype, "logicOperator", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreateQuestionDto.prototype, "filterValue", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => QuestionFilterClauseDto),
+    __metadata("design:type", Array)
+], CreateQuestionDto.prototype, "clauses", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),
@@ -89,8 +104,9 @@ let AdminQuestionsService = class AdminQuestionsService {
         this.prisma = prisma;
     }
     async validateShape(dto) {
-        let { gameMode, answerType, filterType, filterValue, photoPlayerId, answers } = dto;
+        let { gameMode, answerType, logicOperator, photoPlayerId, answers, clauses } = dto;
         answers = answers || [];
+        clauses = clauses || [];
         if (gameMode === client_1.GameMode.TOP_10 || gameMode === client_1.GameMode.LINEUP || gameMode === client_1.GameMode.PHOTO_GUESS) {
             answerType = client_1.AnswerType.LIST;
         }
@@ -101,8 +117,10 @@ let AdminQuestionsService = class AdminQuestionsService {
                 throw new common_1.BadRequestException('answers array must be empty for PHOTO_GUESS');
         }
         if (answerType === client_1.AnswerType.FILTER) {
-            if (!filterType || !filterValue)
-                throw new common_1.BadRequestException('filterType and filterValue required for FILTER');
+            if (clauses.length === 0)
+                throw new common_1.BadRequestException('at least 1 clause required for FILTER');
+            if (clauses.length > 1 && !logicOperator)
+                throw new common_1.BadRequestException('logicOperator required when there are multiple clauses');
             if (answers.length > 0)
                 throw new common_1.BadRequestException('answers array must be empty for FILTER');
         }
@@ -144,7 +162,7 @@ let AdminQuestionsService = class AdminQuestionsService {
             if (!found)
                 throw new common_1.BadRequestException('photoPlayerId reference is invalid');
         }
-        return { gameMode, answerType, filterType, filterValue, photoPlayerId, answers };
+        return { gameMode, answerType, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
     }
     async create(createDto) {
         const validated = await this.validateShape(createDto);
@@ -154,11 +172,19 @@ let AdminQuestionsService = class AdminQuestionsService {
                     text: createDto.text,
                     gameMode: validated.gameMode,
                     answerType: validated.answerType,
-                    filterType: validated.filterType || null,
-                    filterValue: validated.filterValue || null,
+                    logicOperator: validated.logicOperator,
                     photoPlayerId: validated.photoPlayerId || null,
                 }
             });
+            if (validated.clauses.length > 0) {
+                await tx.questionFilterClause.createMany({
+                    data: validated.clauses.map(c => ({
+                        questionId: question.id,
+                        filterType: c.filterType,
+                        filterValue: c.filterValue,
+                    }))
+                });
+            }
             if (validated.answers.length > 0) {
                 await tx.questionAnswer.createMany({
                     data: validated.answers.map(a => ({
@@ -177,7 +203,8 @@ let AdminQuestionsService = class AdminQuestionsService {
         return this.prisma.question.findMany({
             where,
             include: {
-                _count: { select: { answers: true } }
+                _count: { select: { answers: true } },
+                clauses: true
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -190,7 +217,8 @@ let AdminQuestionsService = class AdminQuestionsService {
                     include: { player: { select: { name: true, aliases: true, imageUrl: true } } },
                     orderBy: { rank: 'asc' }
                 },
-                photoPlayer: { select: { name: true, imageUrl: true } }
+                photoPlayer: { select: { name: true, imageUrl: true } },
+                clauses: true
             }
         });
     }
@@ -203,14 +231,25 @@ let AdminQuestionsService = class AdminQuestionsService {
                     text: updateDto.text,
                     gameMode: validated.gameMode,
                     answerType: validated.answerType,
-                    filterType: validated.filterType || null,
-                    filterValue: validated.filterValue || null,
+                    logicOperator: validated.logicOperator,
                     photoPlayerId: validated.photoPlayerId || null,
                 }
             });
             await tx.questionAnswer.deleteMany({
                 where: { questionId: id }
             });
+            await tx.questionFilterClause.deleteMany({
+                where: { questionId: id }
+            });
+            if (validated.clauses.length > 0) {
+                await tx.questionFilterClause.createMany({
+                    data: validated.clauses.map(c => ({
+                        questionId: id,
+                        filterType: c.filterType,
+                        filterValue: c.filterValue,
+                    }))
+                });
+            }
             if (validated.answers.length > 0) {
                 await tx.questionAnswer.createMany({
                     data: validated.answers.map(a => ({

@@ -36,7 +36,7 @@ development, targeting eventual public deployment at ~1000 concurrent users.
 
 ```
 Enum Role              PLAYER | ADMIN
-Enum CompetitionType   DOMESTIC_LEAGUE | DOMESTIC_CUP | CONTINENTAL_CLUB | INTERNATIONAL_NATIONAL_TEAM
+Enum CompetitionType   DOMESTIC_LEAGUE | DOMESTIC_CUP | CONTINENTAL_CLUB_COMPETITION | INTERNATIONAL_TOURNAMENT | GLOBAL_CLUB_CHAMPIONSHIP | DOMESTIC_SUPER_CUP | CONTINENTAL_SUPER_CUP
 Enum Position          GK | RB | CB | LB | RWB | LWB | CDM | CM | CAM | RM | LM | RW | LW | CF | ST
 Enum PreferredFoot     LEFT | RIGHT | BOTH
 Enum GameMode          STRIKES | TOP_10 | PHOTO_GUESS | LINEUP
@@ -77,9 +77,16 @@ Club
   aliases              string[]
   countryCode          string (fk -> Country)
   currentCompetitionId uuid? (fk -> Competition)
-  competitions         string[]  // denormalised historical list; GIN indexed
+  competitions         string[]  // denormalised historical list; GIN indexed (derived from ClubCompetition)
   logoUrl              string?
   // Indexes: GIN on competitions[]
+
+ClubCompetition
+  id            uuid (pk)
+  clubId        uuid (fk -> Club, cascade delete)
+  competitionId uuid (fk -> Competition, cascade delete)
+  // Unique: (clubId, competitionId)
+  // Indexes: B-tree on clubId, competitionId
 
 Player  (replaces FootballPlayer — clean slate, no data migration)
   id              uuid (pk)
@@ -119,12 +126,18 @@ Question
   text          string
   gameMode      GameMode
   answerType    AnswerType
-  filterType    FilterType?  // populated when answerType = FILTER
-  filterValue   string?      // e.g. competition name, nationality code
+  logicOperator LogicOperator? // AND or OR, populated when >1 clause
   photoPlayerId uuid? (fk -> Player)  // populated when gameMode = PHOTO_GUESS
   createdAt     datetime
   updatedAt     datetime
-  // Indexes: gameMode; (answerType, filterType)
+  // Indexes: gameMode; answerType
+
+QuestionFilterClause
+  id          uuid (pk)
+  questionId  uuid (fk -> Question, cascade delete)
+  filterType  FilterType
+  filterValue string
+  // Indexes: questionId
 
 QuestionAnswer
   id         uuid (pk)
@@ -210,13 +223,17 @@ Provides comprehensive CRUD operations.
 - **Post-match UX & Rematch:** `matchOver` always includes an explicit boolean `forfeit` (`true` for manual disconnect-forfeit or `forfeitMatch`; `false` for normal endings). Manual forfeits also send `forfeitedByUserId`; disconnect-forfeit sends `disconnectedUserId` and `forfeitedByUserId`. After `status === 'match_completed'`, clients may emit `leaveEndedMatch` with `{ gameSessionId }`; the server broadcasts `opponentLeft` to the room and performs defensive active-game key cleanup for the leaving user. Players can request a rematch **after any match ending (including manual forfeits)**. If the match ended via disconnect-forfeit, the frontend intercepts `disconnectedUserId` to immediately flag the opponent as having left and disable the rematch button. When both accept, the server initializes a fresh game session and synchronously updates `user_active_game:{userId}` for both players to instantly secure the active-game lock. The gateway explicitly emits a `rematchStarting` event to the *new* `gameSessionId` room, which the frontend handles by triggering a full navigation to explicitly join the new room identically to a fresh match.
 - **Profile Management:** The `PATCH /users/profile` endpoint requires the `currentPassword` (validated securely via bcrypt) whenever a user attempts to change their password. The frontend profile edit UI surfaces this field unconditionally to prevent ambiguous conditional rendering.
 - **State Management:** Redis JSON structures locked by `gameSessionId`.
-- **Structured schema (2026-07-16):** FootballPlayer table dropped; Country, Competition, Club, Player, PlayerClub, Question, QuestionAnswer, and AnswerSuggestion models created (migration `20260716000000_structured_schema_v2`). `User.role` (enum Role: PLAYER | ADMIN) added. `PlayerDenormService` (`src/game/player-denorm.service.ts`) owns regeneration of `Player.clubs` and `Player.competitions` — callers must never set those arrays directly. `game.questions.ts` is now a stub (hardcoded question strings removed); real question data lives in the `Question` / `QuestionAnswer` DB tables.
+- **Structured schema (2026-07-16):** FootballPlayer table dropped; Country, Competition, Club, ClubCompetition, Player, PlayerClub, Question, QuestionAnswer, and AnswerSuggestion models created. `User.role` (enum Role: PLAYER | ADMIN) added.
+- **Denormalization Logic (`player-denorm.service.ts` & `club-denorm.service.ts`):** Owns regeneration of `Player.clubs`, `Player.competitions`, and `Club.competitions`. Callers must never set those arrays directly. 
+  - When `ClubCompetition` changes, `Club.competitions` is synced, which cascades to sync all associated players.
+  - When `Player.currentClubId` is explicitly set via the Admin UI (create/update), the backend automatically creates a `PlayerClub` row with `isCurrent: true` if it does not already exist, to ensure proper filtering.
+- `game.questions.ts` is now a stub (hardcoded question strings removed); real question data lives in the `Question` / `QuestionAnswer` DB tables.
 - **Fuzzy Search:** Scales tolerance by guess length — ≤4 chars (0 typos), ≥5 (1 typo), ≥8 (2 typos). Uses `pg_trgm`, `unaccent`, and `levenshtein` (`fuzzystrmatch`) in Prisma `$queryRaw` targeting the `Player` table. GIN + pg_trgm expression indexes power the prefilter (indexing `lower(unaccent_immutable(name))` and `lower(unaccent_immutable(array_to_string_immutable(aliases, ' ')))`), accessed via the pg_trgm `<%` / `%>` word similarity operators with a locally scoped threshold in a `$transaction`.
 - **Guess Validation:** Guesses are answer-type-aware. After resolving a player via fuzzy search, the gateway checks the active `Question`:
-  - `FILTER`: Validates against the player's attributes (`COMPETITION` -> `Player.competitions`, `CLUB` -> `Player.clubs`, `NATIONALITY` -> `Player.nationality`, `POSITION` -> `Player.positions`, `POSITION_CATEGORY` -> mapped position categories defined in `position.util.ts`).
+  - `FILTER`: Evaluates all associated `QuestionFilterClause` rows against the player's attributes (`COMPETITION` -> `Player.competitions`, `CLUB` -> `Player.clubs`, `NATIONALITY` -> `Player.nationality`, `POSITION` -> `Player.positions`, `POSITION_CATEGORY` -> mapped position categories defined in `position.util.ts`). The per-clause boolean results are combined using the question's `logicOperator` (`AND` or `OR`).
   - `LIST`: Checks for an existing `QuestionAnswer` row matching `(questionId, playerId)`.
   - Already-guessed players in the current game session are rejected as "already taken" (strike).
-- **Question Picker:** Replaced the old hardcoded questions stub with a real DB-backed random picker (`GameService.getRandomQuestion(gameMode)`).
+- **Question Picker & Exclusion Logic:** Replaced the old hardcoded questions stub with a real DB-backed random picker (`GameService.getRandomQuestion(gameMode)`). The game state (`gameSessionId`) tracks `usedQuestionIds` throughout the match. `getRandomQuestion` uses this list to strictly prevent repeating questions in the same match. If the remaining pool is exhausted (0 candidates left), the backend automatically resets the exclusion list *except* for the single most-recently-used question, guaranteeing a match never shows the exact same question twice in a row, even with a small database pool.
 - ⚠️ **CURRENT PLAYABILITY:** The game is currently **unplayable end-to-end** because no real `Question` content has been seeded yet. The DB picker will return `null` and guesses cannot be fully validated. This is expected and not a bug until the seeding task is complete.
 - **Leaderboard cache:** `LeaderboardService` refreshes the Redis `global_leaderboard` key on a **10-minute** cron (`CronExpression.EVERY_10_MINUTES`). The lobby refetches `GET /auth/me` on each visit so the navbar tier tracks fresh `user.mmr` after matches.
 - **Friends + presence:** Friendship rows are directional `Friendship` records (`PENDING` / `ACCEPTED`) between two `User` rows (see schema above). `GET /friends` returns accepted friends plus incoming/outgoing requests; `POST /friends/request`, `POST /friends/:id/accept`, `POST /friends/:id/reject`, `POST /friends/:id/cancel`, and `POST /friends/:id/remove` power the REST flow. Redis keeps `presence` hash entries per user (`online`, `in-game:{gameSessionId}`), and the WebSocket gateway periodically emits `friendsPresenceUpdated` to each user's personal room. The friends page uses this to render live Online/Offline/In-Game indicators, disables new invites unless a friend is online, and supports Remove Friend / Cancel Request actions.

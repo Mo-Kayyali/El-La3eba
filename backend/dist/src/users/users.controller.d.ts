@@ -4,8 +4,8 @@ export declare class UsersController {
     private readonly usersService;
     constructor(usersService: UsersService);
     getPublicProfile(userId: string): Promise<{
-        username: string;
         id: string;
+        username: string;
         gamesPlayed: number;
         wins: number;
     }>;
@@ -14,10 +14,10 @@ export declare class UsersController {
             userId: string;
         };
     }, dto: UpdateProfileDto): Promise<{
-        email: string;
-        username: string;
         id: string;
         createdAt: Date;
+        email: string;
+        username: string;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;

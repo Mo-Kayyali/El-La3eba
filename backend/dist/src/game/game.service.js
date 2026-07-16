@@ -69,36 +69,63 @@ let GameService = class GameService {
         ]);
         return matches.length > 0 ? matches[0] : null;
     }
-    async getRandomQuestion(gameMode = 'STRIKES') {
-        const questions = await this.prisma.$queryRaw `
-      SELECT * FROM "Question"
-      WHERE "gameMode" = ${gameMode}::"GameMode"
-      ORDER BY RANDOM()
-      LIMIT 1
-    `;
-        return questions.length > 0 ? questions[0] : null;
+    async getRandomQuestion(gameMode = 'STRIKES', excludeIds = []) {
+        let effectiveExclude = excludeIds;
+        if (effectiveExclude.length > 0) {
+            const countWithExclusion = await this.prisma.question.count({
+                where: { gameMode, id: { notIn: effectiveExclude } },
+            });
+            if (countWithExclusion === 0) {
+                effectiveExclude = [excludeIds[excludeIds.length - 1]];
+            }
+        }
+        const availableCount = await this.prisma.question.count({
+            where: { gameMode, id: { notIn: effectiveExclude } },
+        });
+        if (availableCount === 0) {
+            return this.prisma.question.findFirst({ where: { gameMode }, include: { clauses: true } });
+        }
+        const skip = Math.floor(Math.random() * availableCount);
+        const questions = await this.prisma.question.findMany({
+            where: { gameMode, id: { notIn: effectiveExclude } },
+            skip,
+            take: 1,
+            include: { clauses: true },
+        });
+        return questions[0] || null;
     }
     async validateAnswer(question, player) {
         if (!question || !player)
             return false;
         if (question.answerType === 'FILTER') {
-            if (question.filterType === 'COMPETITION') {
-                return player.competitions?.includes(question.filterValue) ?? false;
+            const clauses = question.clauses || [];
+            if (clauses.length === 0)
+                return false;
+            const evaluateClause = (clause) => {
+                if (clause.filterType === 'COMPETITION') {
+                    return player.competitions?.includes(clause.filterValue) ?? false;
+                }
+                else if (clause.filterType === 'CLUB') {
+                    return player.clubs?.includes(clause.filterValue) ?? false;
+                }
+                else if (clause.filterType === 'NATIONALITY') {
+                    return player.nationality === clause.filterValue;
+                }
+                else if (clause.filterType === 'POSITION') {
+                    return player.positions?.includes(clause.filterValue) ?? false;
+                }
+                else if (clause.filterType === 'POSITION_CATEGORY') {
+                    const allowedPositions = clause.filterValue ? position_util_1.POSITION_CATEGORY_MAP[clause.filterValue] || [] : [];
+                    return player.positions?.some((p) => allowedPositions.includes(p)) ?? false;
+                }
+                return false;
+            };
+            if (question.logicOperator === 'OR') {
+                return clauses.some(evaluateClause);
             }
-            else if (question.filterType === 'CLUB') {
-                return player.clubs?.includes(question.filterValue) ?? false;
+            else {
+                return clauses.every(evaluateClause);
             }
-            else if (question.filterType === 'NATIONALITY') {
-                return player.nationality === question.filterValue;
-            }
-            else if (question.filterType === 'POSITION') {
-                return player.positions?.includes(question.filterValue) ?? false;
-            }
-            else if (question.filterType === 'POSITION_CATEGORY') {
-                const allowedPositions = question.filterValue ? position_util_1.POSITION_CATEGORY_MAP[question.filterValue] || [] : [];
-                return player.positions?.some((p) => allowedPositions.includes(p)) ?? false;
-            }
-            return false;
         }
         else if (question.answerType === 'LIST') {
             const qa = await this.prisma.questionAnswer.findUnique({

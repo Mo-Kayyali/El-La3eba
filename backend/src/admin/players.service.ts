@@ -226,13 +226,26 @@ export class AdminPlayersService {
       aliases = [dto.firstName, dto.lastName].filter(Boolean);
     }
 
-    return this.prisma.player.create({
+    const player = await this.prisma.player.create({
       data: {
         ...dto,
         aliases,
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
       }
     });
+
+    if (player.currentClubId) {
+      await this.prisma.playerClub.create({
+        data: {
+          playerId: player.id,
+          clubId: player.currentClubId,
+          isCurrent: true,
+        }
+      });
+      await this.playerDenormService.regenerateForPlayer(player.id);
+    }
+
+    return player;
   }
 
   async update(id: string, dto: PatchPlayerDto) {
@@ -267,12 +280,23 @@ export class AdminPlayersService {
           });
         }
       }
-    });
 
+      // AUTO-SYNC currentClubId
+      const currentClubId = 'currentClubId' in dataToUpdate ? dataToUpdate.currentClubId : (await tx.player.findUnique({ where: { id }, select: { currentClubId: true } }))?.currentClubId;
+      if (currentClubId) {
+        const existing = await tx.playerClub.findFirst({
+          where: { playerId: id, clubId: currentClubId, isCurrent: true }
+        });
+        if (!existing) {
+          await tx.playerClub.create({
+            data: { playerId: id, clubId: currentClubId, isCurrent: true }
+          });
+        }
+      }
+    });
     // 3. Regenerate denormalized arrays
-    if (clubHistory !== undefined) {
-      await this.playerDenormService.regenerateForPlayer(id);
-    }
+    // Call unconditionally since auto-sync or clubHistory might have changed the data
+    await this.playerDenormService.regenerateForPlayer(id);
 
     return this.findOne(id);
   }
