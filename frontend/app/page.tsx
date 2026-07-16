@@ -110,11 +110,13 @@ export default function AuthPage() {
     [mode],
   );
 
+  const userRole = useAuthStore((s) => s.user?.role);
+
   useEffect(() => {
     if (!bootstrapped || !isAuthenticated) return;
     if (activeGameSessionId) return;
-    router.replace("/lobby");
-  }, [activeGameSessionId, bootstrapped, isAuthenticated, router]);
+    router.replace(userRole === "ADMIN" ? "/admin" : "/lobby");
+  }, [activeGameSessionId, bootstrapped, isAuthenticated, router, userRole]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -137,7 +139,7 @@ export default function AuthPage() {
 
         setAuth({ accessToken, user });
         syncAxiosAuthFromStore();
-        router.push("/lobby");
+        router.push(user.role === "ADMIN" ? "/admin" : "/lobby");
         return;
       }
 

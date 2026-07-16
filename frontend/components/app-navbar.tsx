@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, User, Users } from "lucide-react";
+import { LogOut, User, Users, Shield } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
 import { useNotificationStore } from "@/src/store/notificationStore";
@@ -27,7 +27,8 @@ export function AppNavbar() {
   const showNavbar =
     pathname === "/lobby" ||
     pathname === "/friends" ||
-    pathname.startsWith("/profile");
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/admin");
 
   if (!showNavbar) return null;
 
@@ -79,6 +80,19 @@ export function AppNavbar() {
             <User className="h-3.5 w-3.5" />
             {username}
           </Link>
+          {user?.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                isActive(pathname, "/admin") || pathname.startsWith("/admin/")
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300"
+              }`}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Admin
+            </Link>
+          )}
           <button
             onClick={() => {
               disconnectSocket();
