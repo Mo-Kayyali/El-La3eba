@@ -17,9 +17,10 @@ let SuggestionsService = class SuggestionsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async getPendingSuggestions() {
+    async getAllSuggestions(status) {
+        const whereClause = status ? { status } : {};
         return this.prisma.answerSuggestion.findMany({
-            where: { status: 'PENDING' },
+            where: whereClause,
             include: {
                 question: true,
                 player: true,

@@ -18,6 +18,7 @@ class CreateCompetitionDto {
     name;
     type;
     countryCode;
+    region;
     tier;
 }
 exports.CreateCompetitionDto = CreateCompetitionDto;
@@ -36,6 +37,11 @@ __decorate([
 ], CreateCompetitionDto.prototype, "countryCode", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.Region),
+    __metadata("design:type", String)
+], CreateCompetitionDto.prototype, "region", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
 ], CreateCompetitionDto.prototype, "tier", void 0);
@@ -43,6 +49,7 @@ class UpdateCompetitionDto {
     name;
     type;
     countryCode;
+    region;
     tier;
 }
 exports.UpdateCompetitionDto = UpdateCompetitionDto;
@@ -61,6 +68,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateCompetitionDto.prototype, "countryCode", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(client_1.Region),
+    __metadata("design:type", String)
+], UpdateCompetitionDto.prototype, "region", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
@@ -82,12 +94,55 @@ let AdminCompetitionsService = class AdminCompetitionsService {
             throw new common_1.NotFoundException('Competition not found');
         return comp;
     }
+    validateRules(type, countryCode, region) {
+        if ([
+            client_1.CompetitionType.DOMESTIC_LEAGUE,
+            client_1.CompetitionType.DOMESTIC_CUP,
+            client_1.CompetitionType.DOMESTIC_SUPER_CUP,
+        ].includes(type)) {
+            if (!countryCode)
+                throw new common_1.BadRequestException('Domestic competitions require a countryCode.');
+            if (region)
+                throw new common_1.BadRequestException('Domestic competitions cannot have a region.');
+        }
+        else if ([
+            client_1.CompetitionType.CONTINENTAL_CLUB_COMPETITION,
+            client_1.CompetitionType.CONTINENTAL_SUPER_CUP,
+        ].includes(type)) {
+            if (!region || region === client_1.Region.WORLD) {
+                throw new common_1.BadRequestException('Continental competitions require a valid continent region (not WORLD).');
+            }
+            if (countryCode)
+                throw new common_1.BadRequestException('Continental competitions cannot have a countryCode.');
+        }
+        else if ([
+            client_1.CompetitionType.INTERNATIONAL_TOURNAMENT,
+            client_1.CompetitionType.GLOBAL_CLUB_CHAMPIONSHIP,
+        ].includes(type)) {
+            if (!region)
+                throw new common_1.BadRequestException('International/Global competitions require a region.');
+            if (countryCode)
+                throw new common_1.BadRequestException('International/Global competitions cannot have a countryCode.');
+        }
+    }
     async create(dto) {
+        this.validateRules(dto.type, dto.countryCode, dto.region);
         return this.prisma.competition.create({ data: dto });
     }
     async update(id, dto) {
-        await this.findOne(id);
-        return this.prisma.competition.update({ where: { id }, data: dto });
+        const comp = await this.findOne(id);
+        const newType = dto.type !== undefined ? dto.type : comp.type;
+        const newCountryCode = dto.countryCode !== undefined ? dto.countryCode : comp.countryCode;
+        const newRegion = dto.region !== undefined ? dto.region : comp.region;
+        this.validateRules(newType, newCountryCode, newRegion);
+        const updateData = { ...dto };
+        if ([client_1.CompetitionType.DOMESTIC_LEAGUE, client_1.CompetitionType.DOMESTIC_CUP, client_1.CompetitionType.DOMESTIC_SUPER_CUP].includes(newType)) {
+            updateData.region = null;
+        }
+        else {
+            updateData.countryCode = null;
+        }
+        return this.prisma.competition.update({ where: { id }, data: updateData });
     }
     async remove(id) {
         await this.findOne(id);

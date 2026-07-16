@@ -25,8 +25,8 @@ let SuggestionsController = class SuggestionsController {
     constructor(suggestionsService) {
         this.suggestionsService = suggestionsService;
     }
-    async getPendingSuggestions() {
-        return this.suggestionsService.getPendingSuggestions();
+    async getAllSuggestions(status) {
+        return this.suggestionsService.getAllSuggestions(status);
     }
     async approveSuggestion(id, body) {
         return this.suggestionsService.approveSuggestion(id, body.reviewNote);
@@ -38,11 +38,12 @@ let SuggestionsController = class SuggestionsController {
 exports.SuggestionsController = SuggestionsController;
 __decorate([
     (0, common_1.Get)(),
-    (0, swagger_1.ApiOperation)({ summary: 'List pending suggestions' }),
+    (0, swagger_1.ApiOperation)({ summary: 'List suggestions' }),
+    __param(0, (0, common_1.Query)('status')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
-], SuggestionsController.prototype, "getPendingSuggestions", null);
+], SuggestionsController.prototype, "getAllSuggestions", null);
 __decorate([
     (0, common_1.Post)(':id/approve'),
     (0, swagger_1.ApiOperation)({ summary: 'Approve a suggestion' }),

@@ -2,7 +2,7 @@ import { SuggestionsService } from './suggestions.service';
 export declare class SuggestionsController {
     private readonly suggestionsService;
     constructor(suggestionsService: SuggestionsService);
-    getPendingSuggestions(): Promise<({
+    getAllSuggestions(status?: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<({
         question: {
             id: string;
             answerType: import(".prisma/client").$Enums.AnswerType;

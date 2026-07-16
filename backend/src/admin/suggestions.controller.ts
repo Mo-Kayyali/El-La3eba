@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -15,9 +15,9 @@ export class SuggestionsController {
   constructor(private readonly suggestionsService: SuggestionsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List pending suggestions' })
-  async getPendingSuggestions() {
-    return this.suggestionsService.getPendingSuggestions();
+  @ApiOperation({ summary: 'List suggestions' })
+  async getAllSuggestions(@Query('status') status?: 'PENDING' | 'APPROVED' | 'REJECTED') {
+    return this.suggestionsService.getAllSuggestions(status);
   }
 
   @Post(':id/approve')

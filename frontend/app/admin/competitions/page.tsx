@@ -12,6 +12,7 @@ type Competition = {
   name: string;
   type: string;
   countryCode: string | null;
+  region: string | null;
   tier: number | null;
 };
 
@@ -23,6 +24,13 @@ export default function AdminCompetitionsPage() {
   const [error, setError] = useState("");
 
   const [isEditing, setIsEditing] = useState<Partial<Competition> | null>(null);
+  const [selectedType, setSelectedType] = useState<string>("DOMESTIC_LEAGUE");
+
+  useEffect(() => {
+    if (isEditing) {
+      setSelectedType(isEditing.type || "DOMESTIC_LEAGUE");
+    }
+  }, [isEditing]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -48,12 +56,19 @@ export default function AdminCompetitionsPage() {
     e.preventDefault();
     setError("");
     const formData = new FormData(e.currentTarget);
-    const payload = {
+    const payload: any = {
       name: formData.get("name") as string,
       type: formData.get("type") as string,
-      countryCode: (formData.get("countryCode") as string) || null,
       tier: formData.get("tier") ? Number(formData.get("tier")) : null,
     };
+
+    if (["DOMESTIC_LEAGUE", "DOMESTIC_CUP", "DOMESTIC_SUPER_CUP"].includes(payload.type)) {
+      payload.countryCode = (formData.get("countryCode") as string) || null;
+      payload.region = null;
+    } else {
+      payload.countryCode = null;
+      payload.region = (formData.get("region") as string) || null;
+    }
 
     try {
       if (isEditing?.id) {
@@ -128,7 +143,8 @@ export default function AdminCompetitionsPage() {
                 <label className="mb-1.5 block text-xs font-semibold text-slate-300">Type</label>
                 <select
                   name="type"
-                  defaultValue={isEditing.type || "DOMESTIC_LEAGUE"}
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
                   className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                 >
                   <option value="DOMESTIC_LEAGUE" className="bg-slate-900">Domestic League</option>
@@ -140,15 +156,36 @@ export default function AdminCompetitionsPage() {
                   <option value="CONTINENTAL_SUPER_CUP" className="bg-slate-900">Continental Super Cup</option>
                 </select>
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country Code (ISO-3)</label>
-                <input
-                  name="countryCode"
-                  defaultValue={isEditing.countryCode || ""}
-                  placeholder="e.g. ENG"
-                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
-                />
-              </div>
+              {[ "DOMESTIC_LEAGUE", "DOMESTIC_CUP", "DOMESTIC_SUPER_CUP" ].includes(selectedType) ? (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country Code (ISO-3)</label>
+                  <input
+                    name="countryCode"
+                    defaultValue={isEditing.countryCode || ""}
+                    placeholder="e.g. ENG"
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-300">Region</label>
+                  <select
+                    name="region"
+                    defaultValue={isEditing.region || "EUROPE"}
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    <option value="EUROPE" className="bg-slate-900">Europe</option>
+                    <option value="AFRICA" className="bg-slate-900">Africa</option>
+                    <option value="ASIA" className="bg-slate-900">Asia</option>
+                    <option value="NORTH_AMERICA" className="bg-slate-900">North America</option>
+                    <option value="SOUTH_AMERICA" className="bg-slate-900">South America</option>
+                    <option value="OCEANIA" className="bg-slate-900">Oceania</option>
+                    {[ "INTERNATIONAL_TOURNAMENT", "GLOBAL_CLUB_CHAMPIONSHIP" ].includes(selectedType) && (
+                      <option value="WORLD" className="bg-slate-900">World</option>
+                    )}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-300">Tier</label>
                 <input
@@ -186,7 +223,7 @@ export default function AdminCompetitionsPage() {
               <tr>
                 <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Type</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Country</th>
+                <th className="px-5 py-4 font-semibold text-slate-300">Location</th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Tier</th>
                 <th className="px-5 py-4 font-semibold text-slate-300 text-right">Actions</th>
               </tr>
@@ -196,7 +233,7 @@ export default function AdminCompetitionsPage() {
                 <tr key={comp.id} className="transition hover:bg-white/[0.02]">
                   <td className="px-5 py-4 font-medium text-white">{comp.name}</td>
                   <td className="px-5 py-4 text-slate-400">{comp.type}</td>
-                  <td className="px-5 py-4 text-slate-300">{comp.countryCode || "-"}</td>
+                  <td className="px-5 py-4 text-slate-300">{comp.countryCode || comp.region || "-"}</td>
                   <td className="px-5 py-4 text-slate-300">{comp.tier || "-"}</td>
                   <td className="px-5 py-4 flex justify-end gap-3">
                     <button

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -56,8 +56,12 @@ const POSITIONS = [
   "GK", "RB", "CB", "LB", "CDM", "CM", "CAM", "RM", "LM", "RW", "LW", "CF", "ST"
 ];
 
-export default function AdminPlayersPage() {
+import { Suspense } from "react";
+
+function AdminPlayersContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
   const { user, bootstrapped } = useAuthStore();
   const [players, setPlayers] = useState<Player[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -72,6 +76,7 @@ export default function AdminPlayersPage() {
   const [primaryPosition, setPrimaryPosition] = useState<string>("");
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [selectedClubId, setSelectedClubId] = useState<string>("");
+  const [filterClubId, setFilterClubId] = useState<string>("");
 
   const firstNameRef = useRef<HTMLInputElement>(null);
   const lastNameRef = useRef<HTMLInputElement>(null);
@@ -105,6 +110,15 @@ export default function AdminPlayersPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (editId && players.length > 0 && !isEditing) {
+      const p = players.find(p => p.id === editId);
+      if (p) {
+        handleEdit(p);
+      }
+    }
+  }, [editId, players]);
 
   const handleEdit = async (player: Player) => {
     try {
@@ -610,6 +624,23 @@ export default function AdminPlayersPage() {
         </div>
       )}
 
+      <div className="mb-6 flex items-center justify-end">
+        <div className="w-64">
+          <select
+            value={filterClubId}
+            onChange={(e) => setFilterClubId(e.target.value)}
+            className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
+          >
+            <option value="">All Clubs</option>
+            {clubs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -623,7 +654,7 @@ export default function AdminPlayersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
-              {players.map((player) => (
+              {players.filter(p => !filterClubId || p.currentClubId === filterClubId).map((player) => (
                 <tr key={player.id} className="transition hover:bg-white/[0.02]">
                   <td className="px-5 py-4">
                     <div className="font-medium text-white">{player.name}</div>
@@ -654,7 +685,7 @@ export default function AdminPlayersPage() {
                   </td>
                 </tr>
               ))}
-              {players.length === 0 && (
+              {players.filter(p => !filterClubId || p.currentClubId === filterClubId).length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-slate-500">
                     No players found.
@@ -666,5 +697,13 @@ export default function AdminPlayersPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminPlayersPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-white">Loading...</div>}>
+      <AdminPlayersContent />
+    </Suspense>
   );
 }

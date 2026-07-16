@@ -29,6 +29,16 @@ enum CompetitionType {
   CONTINENTAL_SUPER_CUP
 }
 
+enum Region {
+  EUROPE
+  AFRICA
+  ASIA
+  NORTH_AMERICA
+  SOUTH_AMERICA
+  OCEANIA
+  WORLD
+}
+
 enum Position {
   GK
   RB
@@ -160,6 +170,7 @@ model Competition {
   name        String
   type        CompetitionType
   countryCode String?
+  region      Region?
   tier        Int?
 
   country          Country?          @relation(fields: [countryCode], references: [id])

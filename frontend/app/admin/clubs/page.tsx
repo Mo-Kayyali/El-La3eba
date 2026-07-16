@@ -14,6 +14,7 @@ type Club = {
   countryCode: string | null;
   currentCompetitionId: string | null;
   logoUrl: string | null;
+  clubCompetitions?: { competitionId: string }[];
 };
 
 type Competition = {
@@ -35,6 +36,8 @@ export default function AdminClubsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState<Partial<Club> & { competitionIds?: string[] } | null>(null);
+  const [selectedComps, setSelectedComps] = useState<string[]>([]);
+  const [filterCompId, setFilterCompId] = useState<string>("");
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -67,14 +70,13 @@ export default function AdminClubsPage() {
     setError("");
     const formData = new FormData(e.currentTarget);
     const aliasesRaw = formData.get("aliases") as string;
-    const competitionIdsRaw = formData.getAll("competitionIds") as string[];
     
     const payload = {
       name: formData.get("name"),
       aliases: aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined,
       countryCode: formData.get("countryCode"),
       currentCompetitionId: (formData.get("currentCompetitionId") as string) || null,
-      competitionIds: competitionIdsRaw,
+      competitionIds: selectedComps,
       logoUrl: (formData.get("logoUrl") as string) || null,
     };
 
@@ -107,6 +109,22 @@ export default function AdminClubsPage() {
     }
   };
 
+  const handleEdit = (club: Club) => {
+    const compIds = club.clubCompetitions?.map(cc => cc.competitionId) || [];
+    setIsEditing({ ...club, competitionIds: compIds });
+    setSelectedComps(compIds);
+  };
+
+  const handleCreateNew = () => {
+    setIsEditing({});
+    setSelectedComps([]);
+  };
+
+  const filteredClubs = clubs.filter(c => {
+    if (!filterCompId) return true;
+    return c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId);
+  });
+
   if (!bootstrapped || loading) return <div className="p-8">Loading...</div>;
 
   return (
@@ -123,11 +141,28 @@ export default function AdminClubsPage() {
           <p className="mt-1 text-sm text-slate-400">Manage football clubs, aliases, and logos.</p>
         </div>
         <button
-          onClick={() => setIsEditing({})}
+          onClick={handleCreateNew}
           className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20 transition"
         >
           Add Club
         </button>
+      </div>
+
+      <div className="mb-6 flex items-center justify-end">
+        <div className="w-64">
+          <select
+            value={filterCompId}
+            onChange={(e) => setFilterCompId(e.target.value)}
+            className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-emerald-500/40"
+          >
+            <option value="">All Competitions</option>
+            {competitions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -194,22 +229,45 @@ export default function AdminClubsPage() {
                   ))}
                 </select>
               </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Competitions (Multi-select)</label>
-                <select
-                  name="competitionIds"
-                  multiple
-                  defaultValue={isEditing.competitionIds || []}
-                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
-                  size={5}
-                >
-                  {competitions.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-[10px] text-slate-500">Hold Ctrl/Cmd to select multiple. Current competition will default to the first selected if left empty.</p>
+              <div className="sm:col-span-2 space-y-3">
+                <label className="block text-xs font-semibold text-slate-300">Competitions (Tag List)</label>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/10"
+                    onChange={(e) => {
+                      if (e.target.value && !selectedComps.includes(e.target.value)) {
+                        setSelectedComps([...selectedComps, e.target.value]);
+                      }
+                      e.target.value = "";
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Add a competition...</option>
+                    {competitions.filter(c => !selectedComps.includes(c.id)).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedComps.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedComps.map(compId => {
+                      const comp = competitions.find(c => c.id === compId);
+                      return (
+                        <div key={compId} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
+                          {comp?.name || "Unknown"}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedComps(selectedComps.filter(id => id !== compId))}
+                            className="text-slate-400 hover:text-red-400"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="mt-1 text-[10px] text-slate-500">Current competition will default to the first tag if left empty.</p>
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-xs font-semibold text-slate-300">Logo URL</label>
@@ -252,7 +310,7 @@ export default function AdminClubsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
-              {clubs.map((club) => (
+              {filteredClubs.map((club) => (
                 <tr key={club.id} className="transition hover:bg-white/[0.02]">
                   <td className="px-5 py-4 font-medium text-white">{club.name}</td>
                   <td className="px-5 py-4 text-slate-300">{club.countryCode}</td>
@@ -261,7 +319,7 @@ export default function AdminClubsPage() {
                   </td>
                   <td className="px-5 py-4 flex justify-end gap-3">
                     <button
-                      onClick={() => setIsEditing(club)}
+                      onClick={() => handleEdit(club)}
                       className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
                     >
                       Edit
@@ -275,7 +333,7 @@ export default function AdminClubsPage() {
                   </td>
                 </tr>
               ))}
-              {clubs.length === 0 && (
+              {filteredClubs.length === 0 && (
                 <tr>
                   <td colSpan={4} className="p-8 text-center text-slate-500">
                     No clubs found.

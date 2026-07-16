@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
 import { ArrowLeft, X, Search, Check, AlertCircle } from "lucide-react";
@@ -145,9 +145,13 @@ function PlayerSearch({
   );
 }
 
-export default function AdminQuestionsPage() {
+import { Suspense } from "react";
+
+function AdminQuestionsContent() {
   const { user, bootstrapped } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [clubs, setClubs] = useState<any[]>([]);
@@ -220,6 +224,15 @@ export default function AdminQuestionsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (editId && questions.length > 0 && !showForm) {
+      const q = questions.find(q => q.id === editId);
+      if (q) {
+        handleEdit(q);
+      }
+    }
+  }, [editId, questions]);
 
   const handleEdit = async (q: Question) => {
     setEditingId(q.id);
@@ -976,5 +989,13 @@ export default function AdminQuestionsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminQuestionsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-white">Loading...</div>}>
+      <AdminQuestionsContent />
+    </Suspense>
   );
 }

@@ -5,9 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SuggestionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getPendingSuggestions() {
+  async getAllSuggestions(status?: 'PENDING' | 'APPROVED' | 'REJECTED') {
+    const whereClause = status ? { status } : {};
     return this.prisma.answerSuggestion.findMany({
-      where: { status: 'PENDING' },
+      where: whereClause,
       include: {
         question: true,
         player: true,

@@ -7,6 +7,7 @@ export declare class AdminCompetitionsController {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     findAll(): Promise<{
@@ -14,6 +15,7 @@ export declare class AdminCompetitionsController {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }[]>;
     findOne(id: string): Promise<{
@@ -21,6 +23,7 @@ export declare class AdminCompetitionsController {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     update(id: string, updateDto: UpdateCompetitionDto): Promise<{
@@ -28,6 +31,7 @@ export declare class AdminCompetitionsController {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     remove(id: string): Promise<{
@@ -35,6 +39,7 @@ export declare class AdminCompetitionsController {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
 }

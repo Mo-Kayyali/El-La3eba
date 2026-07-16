@@ -36,6 +36,7 @@ development, targeting eventual public deployment at ~1000 concurrent users.
 
 ```
 Enum Role              PLAYER | ADMIN
+Enum Region            EUROPE | AFRICA | ASIA | NORTH_AMERICA | SOUTH_AMERICA | OCEANIA | WORLD
 Enum CompetitionType   DOMESTIC_LEAGUE | DOMESTIC_CUP | CONTINENTAL_CLUB_COMPETITION | INTERNATIONAL_TOURNAMENT | GLOBAL_CLUB_CHAMPIONSHIP | DOMESTIC_SUPER_CUP | CONTINENTAL_SUPER_CUP
 Enum Position          GK | RB | CB | LB | RWB | LWB | CDM | CM | CAM | RM | LM | RW | LW | CF | ST
 Enum PreferredFoot     LEFT | RIGHT | BOTH
@@ -70,6 +71,7 @@ Competition
   name         string
   type         CompetitionType
   countryCode  string? (fk -> Country)
+  region       Region?
   tier         int?
 
 Club
@@ -226,7 +228,8 @@ Provides comprehensive CRUD operations.
 - `PATCH /admin/questions/:id`
 - `DELETE /admin/questions/:id`
 
-- **Admin CRUD:** Basic CRUD endpoints for `Competition`, `Club`, and `Player` under `/admin/competitions`, `/admin/clubs`, and `/admin/players`, protected by `RolesGuard`. Create/Update endpoints strictly validate foreign keys (`countryCode`, `currentCompetitionId`, `nationality`, `currentClubId`), returning clean HTTP 400 Bad Request instead of raw DB errors. Player updates diff and replace `PlayerClub` relational history inside a transaction, subsequently calling `PlayerDenormService.regenerateForPlayer` to sync read-optimized GIN arrays (`clubs`, `competitions`). Delete endpoints catch Prisma `P2003` constraint violations, returning HTTP 409 Conflict if the entity is still referenced. Modernized admin UI panels exist at `/admin/competitions`, `/admin/clubs`, and `/admin/players`.
+- **Admin CRUD:** Basic CRUD endpoints for `Competition`, `Club`, and `Player` under `/admin/competitions`, `/admin/clubs`, and `/admin/players`, protected by `RolesGuard`. Create/Update endpoints strictly validate foreign keys (`countryCode`, `currentCompetitionId`, `nationality`, `currentClubId`), returning clean HTTP 400 Bad Request instead of raw DB errors. Player updates diff and replace `PlayerClub` relational history inside a transaction, subsequently calling `PlayerDenormService.regenerateForPlayer` to sync read-optimized GIN arrays (`clubs`, `competitions`). Delete endpoints catch Prisma `P2003` constraint violations, returning HTTP 409 Conflict if the entity is still referenced. Modernized admin UI panels exist at `/admin/competitions`, `/admin/clubs`, and `/admin/players` with features like tag lists for multi-select, robust filtering (e.g. by competition or club), and `?edit=id` deep links.
+- **Answer Suggestions History:** The suggestions review page (`/admin/suggestions`) allows filtering by `PENDING`, `APPROVED`, `REJECTED`, and `ALL`. Approved suggestions provide quick action links to edit the relevant player or question via `?edit=id`.
 - **Post-match UX & Rematch:** `matchOver` always includes an explicit boolean `forfeit` (`true` for manual disconnect-forfeit or `forfeitMatch`; `false` for normal endings). Manual forfeits also send `forfeitedByUserId`; disconnect-forfeit sends `disconnectedUserId` and `forfeitedByUserId`. After `status === 'match_completed'`, clients may emit `leaveEndedMatch` with `{ gameSessionId }`; the server broadcasts `opponentLeft` to the room and performs defensive active-game key cleanup for the leaving user. Players can request a rematch **after any match ending (including manual forfeits)**. If the match ended via disconnect-forfeit, the frontend intercepts `disconnectedUserId` to immediately flag the opponent as having left and disable the rematch button. When both accept, the server initializes a fresh game session and synchronously updates `user_active_game:{userId}` for both players to instantly secure the active-game lock. The gateway explicitly emits a `rematchStarting` event to the *new* `gameSessionId` room, which the frontend handles by triggering a full navigation to explicitly join the new room identically to a fresh match.
 - **Profile Management:** The `PATCH /users/profile` endpoint requires the `currentPassword` (validated securely via bcrypt) whenever a user attempts to change their password. The frontend profile edit UI surfaces this field unconditionally to prevent ambiguous conditional rendering.
 - **State Management:** Redis JSON structures locked by `gameSessionId`.

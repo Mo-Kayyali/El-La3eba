@@ -1,15 +1,17 @@
 import { PrismaService } from '../prisma/prisma.service';
-import { CompetitionType } from '@prisma/client';
+import { CompetitionType, Region } from '@prisma/client';
 export declare class CreateCompetitionDto {
     name: string;
     type: CompetitionType;
     countryCode?: string;
+    region?: Region;
     tier?: number;
 }
 export declare class UpdateCompetitionDto {
     name?: string;
     type?: CompetitionType;
     countryCode?: string;
+    region?: Region;
     tier?: number;
 }
 export declare class AdminCompetitionsService {
@@ -20,6 +22,7 @@ export declare class AdminCompetitionsService {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }[]>;
     findOne(id: string): Promise<{
@@ -27,13 +30,16 @@ export declare class AdminCompetitionsService {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
+    private validateRules;
     create(dto: CreateCompetitionDto): Promise<{
         id: string;
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     update(id: string, dto: UpdateCompetitionDto): Promise<{
@@ -41,6 +47,7 @@ export declare class AdminCompetitionsService {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     remove(id: string): Promise<{
@@ -48,6 +55,7 @@ export declare class AdminCompetitionsService {
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
+        region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
 }

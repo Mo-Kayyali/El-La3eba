@@ -42,6 +42,7 @@ export default function AdminSuggestionsPage() {
   const [reviewNote, setReviewNote] = useState("");
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">("PENDING");
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -50,12 +51,13 @@ export default function AdminSuggestionsPage() {
       return;
     }
     fetchSuggestions();
-  }, [bootstrapped, user, router]);
+  }, [bootstrapped, user, router, statusFilter]);
 
   const fetchSuggestions = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get("/admin/suggestions");
+      const url = statusFilter === "ALL" ? "/admin/suggestions" : `/admin/suggestions?status=${statusFilter}`;
+      const res = await api.get(url);
       setSuggestions(res.data);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to load suggestions");
@@ -109,9 +111,21 @@ export default function AdminSuggestionsPage() {
         <div>
           <h1 className="text-3xl font-extrabold text-white">Review Suggestions</h1>
           <p className="mt-1 text-slate-400">
-            Pending player reports for rejected correct answers.
+            Player reports for rejected correct answers.
           </p>
         </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {["PENDING", "APPROVED", "REJECTED", "ALL"].map((status) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status as any)}
+            className={`rounded-lg px-4 py-2 text-sm font-bold transition ${statusFilter === status ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+          >
+            {status}
+          </button>
+        ))}
       </div>
 
       {isLoading ? (
@@ -131,8 +145,12 @@ export default function AdminSuggestionsPage() {
             >
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                    PENDING
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    suggestion.status === "PENDING" ? "bg-amber-500/10 text-amber-400" :
+                    suggestion.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400" :
+                    "bg-red-500/10 text-red-400"
+                  }`}>
+                    {suggestion.status}
                   </span>
                   <span className="text-xs text-slate-500">
                     {new Date(suggestion.createdAt).toLocaleString()}
@@ -163,19 +181,44 @@ export default function AdminSuggestionsPage() {
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-3">
-                <button
-                  onClick={() => openModal(suggestion, "reject")}
-                  className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 transition"
-                >
-                  <X className="h-4 w-4" /> Reject
-                </button>
-                <button
-                  onClick={() => openModal(suggestion, "approve")}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition"
-                >
-                  <Check className="h-4 w-4" /> Approve
-                </button>
+              <div className="flex shrink-0 flex-col gap-2">
+                {suggestion.status === "PENDING" && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => openModal(suggestion, "reject")}
+                      className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20 transition"
+                    >
+                      <X className="h-4 w-4" /> Reject
+                    </button>
+                    <button
+                      onClick={() => openModal(suggestion, "approve")}
+                      className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition"
+                    >
+                      <Check className="h-4 w-4" /> Approve
+                    </button>
+                  </div>
+                )}
+                {suggestion.status === "APPROVED" && (
+                  <div className="flex flex-col items-end gap-2">
+                    <Link
+                      href={`/admin/players?edit=${suggestion.player.id}`}
+                      className="text-xs font-bold text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Edit this player's data
+                    </Link>
+                    <Link
+                      href={`/admin/questions?edit=${suggestion.question.id}`}
+                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline"
+                    >
+                      Edit this question
+                    </Link>
+                  </div>
+                )}
+                {suggestion.status === "REJECTED" && (
+                  <div className="text-sm font-bold text-red-400 self-end">
+                    Rejected
+                  </div>
+                )}
               </div>
             </div>
           ))}
