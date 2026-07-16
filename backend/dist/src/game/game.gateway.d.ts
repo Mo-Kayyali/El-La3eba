@@ -29,6 +29,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private sleep;
     private inviteCooldownKey;
     private inviteKey;
+    private invitesSentKey;
     private inviteTimerKey;
     private clearInviteExpiryTimer;
     private scheduleInviteExpiry;

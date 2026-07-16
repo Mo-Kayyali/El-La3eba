@@ -16,6 +16,7 @@ class UpdateProfileDto {
     username;
     email;
     password;
+    currentPassword;
 }
 exports.UpdateProfileDto = UpdateProfileDto;
 __decorate([
@@ -40,4 +41,9 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], UpdateProfileDto.prototype, "password", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateProfileDto.prototype, "currentPassword", void 0);
 //# sourceMappingURL=update-profile.dto.js.map

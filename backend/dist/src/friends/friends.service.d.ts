@@ -60,6 +60,7 @@ export declare class FriendsService {
             createdAt: Date;
         }[];
     }>;
+    getAcceptedFriendIds(currentUserId: string): Promise<string[]>;
     getFriendPresenceSnapshot(currentUserId: string): Promise<{
         userId: string;
         username: string;

@@ -321,7 +321,9 @@ return selected
         const p2Mmr = p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;
         const gameState = {
             players: [player1Id, player2Id],
+            winner: null,
             currentTurn: player1Id,
+            turnDeadlineAt: Date.now() + 10_000,
             playerNames: {
                 [player1Id]: player1Username ?? String(player1Id),
                 [player2Id]: player2Username ?? String(player2Id),
@@ -343,8 +345,8 @@ return selected
         const stateJson = JSON.stringify(gameState);
         const multi = this.redisClient.multi();
         multi.set(gameKey, stateJson);
-        multi.set(this.activeGameKey(player1Id), gameSessionId);
-        multi.set(this.activeGameKey(player2Id), gameSessionId);
+        this.setActiveGameSessionIdInMulti(multi, player1Id, gameSessionId);
+        this.setActiveGameSessionIdInMulti(multi, player2Id, gameSessionId);
         await multi.exec();
         return gameState;
     }
@@ -360,10 +362,12 @@ return selected
         }
     }
     setActiveGameSessionIdInMulti(multi, userId, gameSessionId) {
-        multi.set(this.activeGameKey(String(userId)), String(gameSessionId));
+        const key = this.activeGameKey(String(userId));
+        multi.set(key, String(gameSessionId));
+        multi.expire(key, 6 * 60 * 60);
     }
     async setActiveGameSessionIdForUser(userId, gameSessionId) {
-        await this.redisClient.set(this.activeGameKey(String(userId)), String(gameSessionId));
+        await this.redisClient.set(this.activeGameKey(String(userId)), String(gameSessionId), 'EX', 6 * 60 * 60);
     }
     async getActiveGameSessionIdForUser(userId) {
         const uid = String(userId);

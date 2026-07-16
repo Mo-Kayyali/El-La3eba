@@ -2,6 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { FriendshipStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -213,6 +215,22 @@ export class AuthService {
   }
 
   async requestVerification(userId: string, email: string) {
+    // Rate limit: one verification request per 60 seconds per user.
+    const cooldownKey = `verify_email_cooldown:${userId}`;
+    const allowed = await this.redisService.set(
+      cooldownKey,
+      '1',
+      'EX',
+      60,
+      'NX',
+    );
+    if (allowed !== 'OK') {
+      throw new HttpException(
+        'Please wait 60 seconds before requesting another verification code.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const key = `verify_email:${userId}`;
@@ -231,7 +249,15 @@ export class AuthService {
 
   async verifyEmail(userId: string, code: string) {
     const key = `verify_email:${userId}`;
-    const storedCode = await this.redisService.get(key);
+
+    // Atomically read and delete the code in one round-trip.
+    // Two concurrent verify calls cannot both succeed on the same code:
+    // the second will get nil because the first already consumed it.
+    const storedCode = await (this.redisService as any).eval(
+      `local v = redis.call('GET', KEYS[1])\nif v then redis.call('DEL', KEYS[1]) end\nreturn v`,
+      1,
+      key,
+    ) as string | null;
 
     if (!storedCode) {
       throw new UnauthorizedException(
@@ -248,9 +274,6 @@ export class AuthService {
       where: { id: userId },
       data: { isVerified: true },
     });
-
-    // Clean up Redis
-    await this.redisService.del(key);
 
     return { success: true, message: 'Email successfully verified.' };
   }

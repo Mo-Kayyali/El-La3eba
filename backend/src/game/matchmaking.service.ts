@@ -485,7 +485,9 @@ return selected
 
     const gameState = {
       players: [player1Id, player2Id],
+      winner: null,
       currentTurn: player1Id,
+      turnDeadlineAt: Date.now() + 10_000,
       playerNames: {
         [player1Id]: player1Username ?? String(player1Id),
         [player2Id]: player2Username ?? String(player2Id),
@@ -507,8 +509,8 @@ return selected
     const stateJson = JSON.stringify(gameState);
     const multi = this.redisClient.multi();
     multi.set(gameKey, stateJson);
-    multi.set(this.activeGameKey(player1Id), gameSessionId);
-    multi.set(this.activeGameKey(player2Id), gameSessionId);
+    this.setActiveGameSessionIdInMulti(multi, player1Id, gameSessionId);
+    this.setActiveGameSessionIdInMulti(multi, player2Id, gameSessionId);
     await multi.exec();
     return gameState;
   }
@@ -535,16 +537,23 @@ return selected
     userId: string,
     gameSessionId: string,
   ): void {
-    multi.set(this.activeGameKey(String(userId)), String(gameSessionId));
+    const key = this.activeGameKey(String(userId));
+    // 6-hour safety-net TTL — only fires if the server crashes mid-match;
+    // normal match endings always delete the key explicitly.
+    multi.set(key, String(gameSessionId));
+    multi.expire(key, 6 * 60 * 60);
   }
 
   async setActiveGameSessionIdForUser(
     userId: string,
     gameSessionId: string,
   ): Promise<void> {
+    // 6-hour safety-net TTL prevents permanent orphaned locks after a server crash.
     await this.redisClient.set(
       this.activeGameKey(String(userId)),
       String(gameSessionId),
+      'EX',
+      6 * 60 * 60,
     );
   }
 

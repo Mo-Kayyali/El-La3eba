@@ -8,10 +8,10 @@ export declare class UsersService {
     private penaltyKey;
     recordOfflinePenalty(userId: string, gameSessionId: string, mmrLost: number): Promise<{
         id: string;
-        createdAt: Date;
         userId: string;
         mmrLost: number;
         gameSessionId: string;
+        createdAt: Date;
         acknowledgedAt: Date | null;
     }>;
     getPendingOfflinePenalty(userId: string): Promise<{
@@ -20,24 +20,20 @@ export declare class UsersService {
         gameSessionId: string;
         createdAt: string;
     } | null>;
-    acknowledgeOfflinePenalty(userId: string): Promise<{
-        success: boolean;
-        cleared: number;
-    }>;
     getPublicProfileById(userId: string): Promise<{
-        id: string;
         username: string;
+        id: string;
         gamesPlayed: number;
         wins: number;
     }>;
     updateOwnProfile(userId: string, dto: UpdateProfileDto): Promise<{
-        id: string;
         email: string;
         username: string;
+        id: string;
+        createdAt: Date;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;
         wins: number;
-        createdAt: Date;
     }>;
 }

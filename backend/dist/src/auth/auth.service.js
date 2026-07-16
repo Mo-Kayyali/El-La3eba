@@ -212,6 +212,11 @@ let AuthService = class AuthService {
         };
     }
     async requestVerification(userId, email) {
+        const cooldownKey = `verify_email_cooldown:${userId}`;
+        const allowed = await this.redisService.set(cooldownKey, '1', 'EX', 60, 'NX');
+        if (allowed !== 'OK') {
+            throw new common_1.HttpException('Please wait 60 seconds before requesting another verification code.', common_1.HttpStatus.TOO_MANY_REQUESTS);
+        }
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const key = `verify_email:${userId}`;
         await this.redisService.set(key, code, 'EX', 900);
@@ -223,7 +228,7 @@ let AuthService = class AuthService {
     }
     async verifyEmail(userId, code) {
         const key = `verify_email:${userId}`;
-        const storedCode = await this.redisService.get(key);
+        const storedCode = await this.redisService.eval(`local v = redis.call('GET', KEYS[1])\nif v then redis.call('DEL', KEYS[1]) end\nreturn v`, 1, key);
         if (!storedCode) {
             throw new common_1.UnauthorizedException('Verification code expired or not found.');
         }
@@ -234,7 +239,6 @@ let AuthService = class AuthService {
             where: { id: userId },
             data: { isVerified: true },
         });
-        await this.redisService.del(key);
         return { success: true, message: 'Email successfully verified.' };
     }
 };

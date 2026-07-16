@@ -89,26 +89,31 @@ async function main() {
     const players = [
         {
             name: 'Vinícius Júnior',
+            aliases: ['Vini', 'Vini Jr'],
             clubs: ['Real Madrid', 'Flamengo'],
             activeYear: 2026,
         },
         {
             name: 'Jude Bellingham',
+            aliases: ['Bellingham'],
             clubs: ['Real Madrid', 'BVB', 'Birmingham City'],
             activeYear: 2026,
         },
         {
             name: 'Kylian Mbappé',
+            aliases: ['Mbappe'],
             clubs: ['Real Madrid', 'PSG', 'AS Monaco'],
             activeYear: 2026,
         },
         {
             name: 'Erling Haaland',
+            aliases: ['Haaland'],
             clubs: ['Manchester City', 'BVB', 'RB Salzburg', 'Molde'],
             activeYear: 2026,
         },
         {
             name: 'Kevin De Bruyne',
+            aliases: ['KDB', 'De Bruyne'],
             clubs: [
                 'Manchester City',
                 'VfL Wolfsburg',
@@ -120,11 +125,13 @@ async function main() {
         },
         {
             name: 'Lionel Messi',
+            aliases: ['Messi', 'Leo Messi'],
             clubs: ['Inter Miami', 'PSG', 'Barcelona'],
             activeYear: 2026,
         },
         {
             name: 'Cristiano Ronaldo',
+            aliases: ['Ronaldo', 'CR7'],
             clubs: [
                 'Al Nassr',
                 'Manchester United',
@@ -136,6 +143,7 @@ async function main() {
         },
         {
             name: 'Harry Kane',
+            aliases: ['Kane'],
             clubs: [
                 'Bayern Munich',
                 'Tottenham Hotspur',
@@ -148,6 +156,7 @@ async function main() {
         },
         {
             name: 'Mohamed Salah',
+            aliases: ['Salah', 'Mo Salah'],
             clubs: [
                 'Liverpool',
                 'AS Roma',
@@ -158,20 +167,23 @@ async function main() {
             ],
             activeYear: 2026,
         },
-        { name: 'Bukayo Saka', clubs: ['Arsenal'], activeYear: 2026 },
-        { name: 'Phil Foden', clubs: ['Manchester City'], activeYear: 2026 },
+        { name: 'Bukayo Saka', aliases: ['Saka'], clubs: ['Arsenal'], activeYear: 2026 },
+        { name: 'Phil Foden', aliases: ['Foden'], clubs: ['Manchester City'], activeYear: 2026 },
         {
             name: 'Rodri',
+            aliases: ['Rodrigo'],
             clubs: ['Manchester City', 'Atletico Madrid', 'Villarreal'],
             activeYear: 2026,
         },
         {
             name: 'Virgil van Dijk',
+            aliases: ['Van Dijk', 'VVD'],
             clubs: ['Liverpool', 'Southampton', 'Celtic', 'FC Groningen'],
             activeYear: 2026,
         },
         {
             name: 'Robert Lewandowski',
+            aliases: ['Lewandowski', 'Lewy'],
             clubs: [
                 'Barcelona',
                 'Bayern Munich',
@@ -183,16 +195,19 @@ async function main() {
         },
         {
             name: 'Antoine Griezmann',
+            aliases: ['Griezmann'],
             clubs: ['Atletico Madrid', 'Barcelona', 'Real Sociedad'],
             activeYear: 2026,
         },
         {
             name: 'Bernardo Silva',
+            aliases: ['Bernardo'],
             clubs: ['Manchester City', 'AS Monaco', 'Benfica'],
             activeYear: 2026,
         },
         {
             name: 'Luka Modric',
+            aliases: ['Modric'],
             clubs: [
                 'Real Madrid',
                 'Tottenham Hotspur',
@@ -204,46 +219,54 @@ async function main() {
         },
         {
             name: 'Toni Kroos',
+            aliases: ['Kroos'],
             clubs: ['Real Madrid', 'Bayern Munich', 'Bayer Leverkusen'],
             activeYear: 2024,
         },
         {
             name: 'Neymar Jr',
+            aliases: ['Neymar'],
             clubs: ['Al Hilal', 'PSG', 'Barcelona', 'Santos'],
             activeYear: 2026,
         },
         {
             name: 'Thibaut Courtois',
+            aliases: ['Courtois'],
             clubs: ['Real Madrid', 'Chelsea', 'Atletico Madrid', 'Genk'],
             activeYear: 2026,
         },
         {
             name: 'Alisson Becker',
+            aliases: ['Alisson'],
             clubs: ['Liverpool', 'AS Roma', 'Internacional'],
             activeYear: 2026,
         },
-        { name: 'Lamine Yamal', clubs: ['Barcelona'], activeYear: 2026 },
-        { name: 'Pedri', clubs: ['Barcelona', 'Las Palmas'], activeYear: 2026 },
-        { name: 'Gavi', clubs: ['Barcelona'], activeYear: 2026 },
+        { name: 'Lamine Yamal', aliases: ['Yamal'], clubs: ['Barcelona'], activeYear: 2026 },
+        { name: 'Pedri', aliases: [], clubs: ['Barcelona', 'Las Palmas'], activeYear: 2026 },
+        { name: 'Gavi', aliases: [], clubs: ['Barcelona'], activeYear: 2026 },
         {
             name: 'Cole Palmer',
+            aliases: ['Palmer'],
             clubs: ['Chelsea', 'Manchester City'],
             activeYear: 2026,
         },
-        { name: 'Florian Wirtz', clubs: ['Bayer Leverkusen'], activeYear: 2026 },
-        { name: 'Jamal Musiala', clubs: ['Bayern Munich'], activeYear: 2026 },
+        { name: 'Florian Wirtz', aliases: ['Wirtz'], clubs: ['Bayer Leverkusen'], activeYear: 2026 },
+        { name: 'Jamal Musiala', aliases: ['Musiala'], clubs: ['Bayern Munich'], activeYear: 2026 },
         {
             name: 'Martin Odegaard',
+            aliases: ['Odegaard'],
             clubs: ['Arsenal', 'Real Madrid', 'Real Sociedad'],
             activeYear: 2026,
         },
         {
             name: 'Son Heung-min',
+            aliases: ['Son', 'Sonny'],
             clubs: ['Tottenham Hotspur', 'Bayer Leverkusen', 'Hamburger SV'],
             activeYear: 2026,
         },
         {
             name: 'Bruno Fernandes',
+            aliases: ['Bruno'],
             clubs: ['Manchester United', 'Sporting CP', 'Sampdoria', 'Udinese'],
             activeYear: 2026,
         },

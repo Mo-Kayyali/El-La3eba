@@ -115,21 +115,6 @@ let UsersService = class UsersService {
         await this.redis.set(this.penaltyKey(userId), JSON.stringify(payload), 'EX', 60 * 60 * 24 * 7);
         return payload;
     }
-    async acknowledgeOfflinePenalty(userId) {
-        const acknowledgedAt = new Date();
-        const result = await this.prisma.offlinePenalty.updateMany({
-            where: {
-                userId,
-                acknowledgedAt: null,
-            },
-            data: { acknowledgedAt },
-        });
-        await this.redis.del(this.penaltyKey(userId)).catch(() => 0);
-        return {
-            success: true,
-            cleared: result.count,
-        };
-    }
     async getPublicProfileById(userId) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -158,6 +143,19 @@ let UsersService = class UsersService {
         if (dto.email !== undefined)
             data.email = dto.email;
         if (dto.password !== undefined) {
+            if (!dto.currentPassword) {
+                throw new common_1.BadRequestException('currentPassword is required when changing your password.');
+            }
+            const userRecord = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: { passwordHash: true },
+            });
+            if (!userRecord)
+                throw new common_1.NotFoundException('User not found');
+            const currentPasswordValid = await bcrypt.compare(dto.currentPassword, userRecord.passwordHash);
+            if (!currentPasswordValid) {
+                throw new common_1.ForbiddenException('Current password is incorrect.');
+            }
             const salt = await bcrypt.genSalt();
             data.passwordHash = await bcrypt.hash(dto.password, salt);
         }

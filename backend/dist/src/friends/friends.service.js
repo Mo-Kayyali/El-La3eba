@@ -208,6 +208,16 @@ let FriendsService = class FriendsService {
         const outgoing = outgoingRequests.map((friendship) => this.mapFriendship(friendship, currentUserId));
         return { friends, incomingRequests: incoming, outgoingRequests: outgoing };
     }
+    async getAcceptedFriendIds(currentUserId) {
+        const friendships = await this.prisma.friendship.findMany({
+            where: {
+                status: client_1.FriendshipStatus.ACCEPTED,
+                OR: [{ userId: currentUserId }, { friendId: currentUserId }],
+            },
+            select: { userId: true, friendId: true },
+        });
+        return friendships.map((f) => f.userId === currentUserId ? f.friendId : f.userId);
+    }
     async getFriendPresenceSnapshot(currentUserId) {
         const list = await this.getFriendsList(currentUserId);
         return list.friends.map((friend) => ({
