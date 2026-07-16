@@ -10,6 +10,7 @@ export declare class AdminQuestionsController {
         answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
         isActive: boolean;
@@ -33,6 +34,7 @@ export declare class AdminQuestionsController {
         answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
         isActive: boolean;
@@ -60,8 +62,8 @@ export declare class AdminQuestionsController {
             };
         } & {
             id: string;
-            questionId: string;
             playerId: string;
+            questionId: string;
             rank: number | null;
             slotLabel: string | null;
         })[];
@@ -70,6 +72,7 @@ export declare class AdminQuestionsController {
         answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
         isActive: boolean;
@@ -82,6 +85,7 @@ export declare class AdminQuestionsController {
         answerType: import(".prisma/client").$Enums.AnswerType;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
         isActive: boolean;

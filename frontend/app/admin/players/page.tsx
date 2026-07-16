@@ -76,7 +76,10 @@ function AdminPlayersContent() {
   const [primaryPosition, setPrimaryPosition] = useState<string>("");
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [selectedClubId, setSelectedClubId] = useState<string>("");
+  const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterClubId, setFilterClubId] = useState<string>("");
+  const [filterRetired, setFilterRetired] = useState<string>("");
+  const [filterNationality, setFilterNationality] = useState<string>("");
 
   const firstNameRef = useRef<HTMLInputElement>(null);
   const lastNameRef = useRef<HTMLInputElement>(null);
@@ -94,13 +97,11 @@ function AdminPlayersContent() {
 
   const fetchData = async () => {
     try {
-      const [playersRes, clubsRes, countriesRes, competitionsRes] = await Promise.all([
-        api.get<Player[]>("/admin/players"),
+      const [clubsRes, countriesRes, competitionsRes] = await Promise.all([
         api.get<Club[]>("/admin/clubs"),
         api.get<Country[]>("/admin/countries"),
         api.get<Competition[]>("/admin/competitions"),
       ]);
-      setPlayers(playersRes.data);
       setClubs(clubsRes.data);
       setCountries(countriesRes.data);
       setCompetitions(competitionsRes.data);
@@ -108,6 +109,25 @@ function AdminPlayersContent() {
       setError(extractApiErrorMessage(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!bootstrapped || !user || user.role !== "ADMIN") return;
+    fetchPlayers();
+  }, [bootstrapped, user, filterCompId, filterClubId, filterRetired, filterNationality]);
+
+  const fetchPlayers = async () => {
+    try {
+      const params: any = {};
+      if (filterCompId) params.competitionId = filterCompId;
+      if (filterClubId) params.clubId = filterClubId;
+      if (filterRetired) params.isRetired = filterRetired;
+      if (filterNationality) params.nationality = filterNationality;
+      const { data } = await api.get<Player[]>("/admin/players", { params });
+      setPlayers(data);
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
     }
   };
 
@@ -217,7 +237,7 @@ function AdminPlayersContent() {
         await api.post("/admin/players", payload);
       }
       setIsEditing(null);
-      fetchData();
+      fetchPlayers();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -228,7 +248,7 @@ function AdminPlayersContent() {
     setError("");
     try {
       await api.delete(`/admin/players/${id}`);
-      fetchData();
+      fetchPlayers();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -624,20 +644,65 @@ function AdminPlayersContent() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center justify-end">
-        <div className="w-64">
-          <select
-            value={filterClubId}
-            onChange={(e) => setFilterClubId(e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
-          >
-            <option value="">All Clubs</option>
-            {clubs.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="w-48">
+            <select
+              value={filterCompId}
+              onChange={(e) => {
+                setFilterCompId(e.target.value);
+                setFilterClubId(""); // Reset club when league changes
+              }}
+              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
+            >
+              <option value="">All Leagues</option>
+              {competitions.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-48">
+            <select
+              value={filterClubId}
+              onChange={(e) => setFilterClubId(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
+            >
+              <option value="">All Clubs</option>
+              {clubs
+                .filter(c => !filterCompId || c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId))
+                .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-32">
+            <select
+              value={filterRetired}
+              onChange={(e) => setFilterRetired(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
+            >
+              <option value="">All Statuses</option>
+              <option value="false">Active Only</option>
+              <option value="true">Retired Only</option>
+            </select>
+          </div>
+          <div className="w-48">
+            <select
+              value={filterNationality}
+              onChange={(e) => setFilterNationality(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-blue-500/40"
+            >
+              <option value="">All Nationalities</option>
+              {countries.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({c.id})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="text-sm text-slate-400 shrink-0">
+          <span className="font-bold text-white">{players.length}</span> players found
         </div>
       </div>
 
@@ -654,7 +719,7 @@ function AdminPlayersContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
-              {players.filter(p => !filterClubId || p.currentClubId === filterClubId).map((player) => (
+              {players.map((player) => (
                 <tr key={player.id} className="transition hover:bg-white/[0.02]">
                   <td className="px-5 py-4">
                     <div className="font-medium text-white">{player.name}</div>
@@ -685,7 +750,7 @@ function AdminPlayersContent() {
                   </td>
                 </tr>
               ))}
-              {players.filter(p => !filterClubId || p.currentClubId === filterClubId).length === 0 && (
+              {players.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-slate-500">
                     No players found.

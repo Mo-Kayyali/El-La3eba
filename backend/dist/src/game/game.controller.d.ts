@@ -27,8 +27,8 @@ export declare class GameController {
         status: string;
         suggestion: {
             id: string;
-            questionId: string;
             playerId: string;
+            questionId: string;
             createdAt: Date;
             guessText: string;
             suggestedBy: string;

@@ -16,8 +16,8 @@ export declare class GameService {
         status: string;
         suggestion: {
             id: string;
-            questionId: string;
             playerId: string;
+            questionId: string;
             createdAt: Date;
             guessText: string;
             suggestedBy: string;

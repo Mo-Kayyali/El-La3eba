@@ -1,6 +1,6 @@
 export const POSITION_CATEGORY_MAP: Record<string, string[]> = {
-  Goalkeeper: ['GK'],
-  Defender: ['RB', 'CB', 'LB'],
-  Midfielder: ['CDM', 'CM', 'CAM', 'RM', 'LM'],
-  Attacker: ['RW', 'LW', 'CF', 'ST'],
+  GOALKEEPER: ['GK'],
+  DEFENDER: ['RB', 'CB', 'LB'],
+  MIDFIELDER: ['CDM', 'CM', 'CAM', 'RM', 'LM'],
+  ATTACKER: ['RW', 'LW', 'CF', 'ST'],
 };

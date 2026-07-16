@@ -31,8 +31,12 @@ type Suggestion = {
   };
 };
 
-export default function AdminSuggestionsPage() {
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function AdminSuggestionsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, bootstrapped } = useAuthStore();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +46,16 @@ export default function AdminSuggestionsPage() {
   const [reviewNote, setReviewNote] = useState("");
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">("PENDING");
+  const [showSuccessOptions, setShowSuccessOptions] = useState(false);
+  
+  const initialTab = (searchParams.get("tab") as any) || "PENDING";
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">(initialTab);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", statusFilter);
+    router.replace(`?${params.toString()}`);
+  }, [statusFilter, router, searchParams]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -77,7 +90,12 @@ export default function AdminSuggestionsPage() {
       
       // Remove from list
       setSuggestions((prev) => prev.filter((s) => s.id !== activeSuggestion.id));
-      closeModal();
+      
+      if (actionType === "approve") {
+        setShowSuccessOptions(true);
+      } else {
+        closeModal();
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || `Failed to ${actionType} suggestion`);
     } finally {
@@ -95,6 +113,7 @@ export default function AdminSuggestionsPage() {
     setActiveSuggestion(null);
     setActionType(null);
     setReviewNote("");
+    setShowSuccessOptions(false);
   };
 
   if (!bootstrapped || !user || user.role !== "ADMIN") return null;
@@ -229,51 +248,97 @@ export default function AdminSuggestionsPage() {
       {activeSuggestion && actionType && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f172a] p-8 shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-2">
-              {actionType === "approve" ? "Approve Suggestion" : "Reject Suggestion"}
-            </h3>
-            <p className="text-sm text-slate-400 mb-6">
-              {actionType === "approve"
-                ? "This will add the answer to the question and mark it as correct in the future."
-                : "This will dismiss the suggestion and keep the current logic."}
-            </p>
+            {showSuccessOptions ? (
+              <>
+                <div className="mb-6 flex justify-center">
+                  <div className="rounded-full bg-emerald-500/20 p-4 text-emerald-400">
+                    <Check className="h-8 w-8" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2 text-center">
+                  Suggestion Approved!
+                </h3>
+                <p className="text-sm text-slate-400 mb-8 text-center">
+                  Would you like to edit the player or question data now?
+                </p>
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href={`/admin/players?edit=${activeSuggestion.player.id}`}
+                    className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-500 transition"
+                  >
+                    Edit Player ({activeSuggestion.player.name})
+                  </Link>
+                  <Link
+                    href={`/admin/questions?edit=${activeSuggestion.question.id}`}
+                    className="rounded-xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500 transition"
+                  >
+                    Edit Question
+                  </Link>
+                  <button
+                    onClick={closeModal}
+                    className="mt-2 rounded-xl px-4 py-3 text-center text-sm font-semibold text-slate-400 hover:bg-white/5 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {actionType === "approve" ? "Approve Suggestion" : "Reject Suggestion"}
+                </h3>
+                <p className="text-sm text-slate-400 mb-6">
+                  {actionType === "approve"
+                    ? "This will add the answer to the question and mark it as correct in the future."
+                    : "This will dismiss the suggestion and keep the current logic."}
+                </p>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Admin Note (Optional)
-                </label>
-                <textarea
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value)}
-                  placeholder="Reasoning for this decision..."
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition resize-none h-24"
-                />
-              </div>
-            </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Admin Note (Optional)
+                    </label>
+                    <textarea
+                      value={reviewNote}
+                      onChange={(e) => setReviewNote(e.target.value)}
+                      placeholder="Reasoning for this decision..."
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition resize-none h-24"
+                    />
+                  </div>
+                </div>
 
-            <div className="mt-8 flex gap-3 justify-end">
-              <button
-                onClick={closeModal}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAction}
-                disabled={isSubmitting}
-                className={`rounded-xl px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  actionType === "approve"
-                    ? "bg-emerald-500 shadow-emerald-500/20 hover:bg-emerald-400"
-                    : "bg-red-500 shadow-red-500/20 hover:bg-red-400"
-                }`}
-              >
-                {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : "Confirm Rejection"}
-              </button>
-            </div>
+                <div className="mt-8 flex gap-3 justify-end">
+                  <button
+                    onClick={closeModal}
+                    className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAction}
+                    disabled={isSubmitting}
+                    className={`rounded-xl px-6 py-2.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                      actionType === "approve"
+                        ? "bg-emerald-500 shadow-emerald-500/20 hover:bg-emerald-400"
+                        : "bg-red-500 shadow-red-500/20 hover:bg-red-400"
+                    }`}
+                  >
+                    {isSubmitting ? "Processing..." : actionType === "approve" ? "Confirm Approval" : "Confirm Rejection"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminSuggestionsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-white">Loading...</div>}>
+      <AdminSuggestionsContent />
+    </Suspense>
   );
 }

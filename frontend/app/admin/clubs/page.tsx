@@ -20,6 +20,8 @@ type Club = {
 type Competition = {
   id: string;
   name: string;
+  type?: string;
+  countryCode?: string | null;
 };
 
 type Country = {
@@ -38,6 +40,7 @@ export default function AdminClubsPage() {
   const [isEditing, setIsEditing] = useState<Partial<Club> & { competitionIds?: string[] } | null>(null);
   const [selectedComps, setSelectedComps] = useState<string[]>([]);
   const [filterCompId, setFilterCompId] = useState<string>("");
+  const [filterCountryCode, setFilterCountryCode] = useState<string>("");
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -121,8 +124,32 @@ export default function AdminClubsPage() {
   };
 
   const filteredClubs = clubs.filter(c => {
+    if (filterCountryCode && c.countryCode !== filterCountryCode) return false;
     if (!filterCompId) return true;
     return c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId);
+  });
+
+  const groupedCompetitions = competitions.reduce((acc, comp) => {
+    let groupName = "Other";
+    if (comp.type === "CONTINENTAL_CLUB") groupName = "Continental";
+    else if (comp.type === "INTERNATIONAL") groupName = "International";
+    else if (comp.countryCode) {
+      const cName = countries.find(c => c.id === comp.countryCode)?.name || comp.countryCode;
+      groupName = cName;
+    } else {
+      groupName = "Domestic";
+    }
+    if (!acc[groupName]) acc[groupName] = [];
+    acc[groupName].push(comp);
+    return acc;
+  }, {} as Record<string, Competition[]>);
+
+  const sortedGroups = Object.keys(groupedCompetitions).sort((a, b) => {
+    if (a === "Continental") return -1;
+    if (a === "International") return -1;
+    if (b === "Continental") return 1;
+    if (b === "International") return 1;
+    return a.localeCompare(b);
   });
 
   if (!bootstrapped || loading) return <div className="p-8">Loading...</div>;
@@ -148,20 +175,43 @@ export default function AdminClubsPage() {
         </button>
       </div>
 
-      <div className="mb-6 flex items-center justify-end">
-        <div className="w-64">
-          <select
-            value={filterCompId}
-            onChange={(e) => setFilterCompId(e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-emerald-500/40"
-          >
-            <option value="">All Competitions</option>
-            {competitions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="w-48">
+            <select
+              value={filterCountryCode}
+              onChange={(e) => setFilterCountryCode(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-emerald-500/40"
+            >
+              <option value="">All Countries</option>
+              {countries.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.id})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="w-64">
+            <select
+              value={filterCompId}
+              onChange={(e) => setFilterCompId(e.target.value)}
+              className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-slate-300 outline-none transition focus:border-emerald-500/40"
+            >
+              <option value="">All Competitions</option>
+              {sortedGroups.map((group) => (
+                <optgroup key={group} label={group}>
+                  {groupedCompetitions[group].map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="text-sm text-slate-400 shrink-0">
+          <span className="font-bold text-white">{filteredClubs.length}</span> clubs found
         </div>
       </div>
 
@@ -222,10 +272,14 @@ export default function AdminClubsPage() {
                   className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                 >
                   <option value="">-- None --</option>
-                  {competitions.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
+                  {sortedGroups.map((group) => (
+                    <optgroup key={group} label={group}>
+                      {groupedCompetitions[group].map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -243,9 +297,19 @@ export default function AdminClubsPage() {
                     defaultValue=""
                   >
                     <option value="" disabled>Add a competition...</option>
-                    {competitions.filter(c => !selectedComps.includes(c.id)).map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {sortedGroups.map((group) => {
+                      const available = groupedCompetitions[group].filter((c) => !selectedComps.includes(c.id));
+                      if (available.length === 0) return null;
+                      return (
+                        <optgroup key={group} label={group}>
+                          {available.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
                   </select>
                 </div>
                 {selectedComps.length > 0 && (

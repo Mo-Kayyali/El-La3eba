@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { capitalizeWords } from '../utils/string.util';
-import { GameMode, AnswerType, FilterType, LogicOperator } from '@prisma/client';
+import { GameMode, AnswerType, FilterType, LogicOperator, QuestionScope } from '@prisma/client';
 import { IsString, IsOptional, IsEnum, IsUUID, IsInt, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -35,6 +35,9 @@ export class CreateQuestionDto {
 
   @IsEnum(GameMode)
   gameMode: GameMode;
+
+  @IsEnum(QuestionScope)
+  scope: QuestionScope;
 
   @IsOptional()
   @IsEnum(AnswerType)
@@ -131,7 +134,7 @@ export class AdminQuestionsService {
       if (!found) throw new BadRequestException('photoPlayerId reference is invalid');
     }
 
-    return { gameMode, answerType, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
+    return { gameMode, answerType, scope: (dto as any).scope, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
   }
 
   async create(createDto: CreateQuestionDto) {
@@ -144,6 +147,7 @@ export class AdminQuestionsService {
           text: createDto.text,
           gameMode: validated.gameMode,
           answerType: validated.answerType!,
+          scope: validated.scope,
           logicOperator: validated.logicOperator,
           photoPlayerId: validated.photoPlayerId || null,
           playerStatusFilter: createDto.playerStatusFilter || 'ANY',
@@ -217,6 +221,7 @@ export class AdminQuestionsService {
           text: updateDto.text,
           gameMode: validated.gameMode,
           answerType: validated.answerType!,
+          scope: validated.scope,
           logicOperator: validated.logicOperator,
           photoPlayerId: validated.photoPlayerId || null,
           playerStatusFilter: updateDto.playerStatusFilter || 'ANY',

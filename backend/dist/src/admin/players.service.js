@@ -264,8 +264,27 @@ let AdminPlayersService = class AdminPlayersService {
             orderBy: { name: 'asc' }
         });
     }
-    async findAll() {
+    async findAll(filters = {}) {
+        const where = {};
+        if (filters.clubId) {
+            where.currentClubId = filters.clubId;
+        }
+        else if (filters.competitionId) {
+            where.currentClub = {
+                OR: [
+                    { currentCompetitionId: filters.competitionId },
+                    { clubCompetitions: { some: { competitionId: filters.competitionId } } }
+                ]
+            };
+        }
+        if (filters.isRetired !== undefined && filters.isRetired !== '') {
+            where.isRetired = filters.isRetired === 'true';
+        }
+        if (filters.nationality) {
+            where.nationality = filters.nationality;
+        }
         return this.prisma.player.findMany({
+            where,
             orderBy: { name: 'asc' },
             include: {
                 currentClub: { select: { id: true, name: true, logoUrl: true } }

@@ -43,6 +43,7 @@ type Question = {
   answers?: QuestionAnswer[];
   isActive?: boolean;
   playerStatusFilter?: "ANY" | "CURRENT_ONLY" | "RETIRED_ONLY";
+  scope?: "NATIONAL" | "INTERNATIONAL" | "BOTH";
 };
 
 function PlayerSearch({ 
@@ -165,6 +166,7 @@ function AdminQuestionsContent() {
 
   const [text, setText] = useState("");
   const [gameMode, setGameMode] = useState<"STRIKES" | "TOP_10" | "LINEUP" | "PHOTO_GUESS">("STRIKES");
+  const [scope, setScope] = useState<"NATIONAL" | "INTERNATIONAL" | "BOTH">("BOTH");
   const [answerType, setAnswerType] = useState<"FILTER" | "LIST">("FILTER");
   const [logicOperator, setLogicOperator] = useState<"AND" | "OR">("AND");
   const [clauses, setClauses] = useState<QuestionFilterClause[]>([{ filterType: "NATIONALITY", filterValue: "" }]);
@@ -238,6 +240,7 @@ function AdminQuestionsContent() {
     setEditingId(q.id);
     setText(q.text);
     setGameMode(q.gameMode);
+    setScope(q.scope || "BOTH");
     setAnswerType(q.answerType);
     setLogicOperator(q.logicOperator || "AND");
     
@@ -276,6 +279,7 @@ function AdminQuestionsContent() {
     setEditingId(null);
     setText("");
     setGameMode("STRIKES");
+    setScope("BOTH");
     setAnswerType("FILTER");
     setLogicOperator("AND");
     setClauses([{ filterType: "NATIONALITY", filterValue: "" }]);
@@ -298,6 +302,7 @@ function AdminQuestionsContent() {
     const payload: any = {
       text,
       gameMode,
+      scope,
       isActive,
       playerStatusFilter,
     };
@@ -520,6 +525,21 @@ function AdminQuestionsContent() {
                     <option value="TOP_10">TOP_10</option>
                     <option value="LINEUP">LINEUP</option>
                     <option value="PHOTO_GUESS">PHOTO_GUESS</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Question Scope
+                  </label>
+                  <select
+                    value={scope}
+                    onChange={(e) => setScope(e.target.value as any)}
+                    className="block w-full rounded-xl border border-white/10 bg-slate-800 p-3 text-white outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  >
+                    <option value="BOTH">Both (National & International)</option>
+                    <option value="NATIONAL">National (Egypt Only)</option>
+                    <option value="INTERNATIONAL">International Only</option>
                   </select>
                 </div>
 

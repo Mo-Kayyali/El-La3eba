@@ -9,8 +9,8 @@ export declare class AdminClubsController {
         }[];
         id: string;
         name: string;
-        countryCode: string;
         aliases: string[];
+        countryCode: string;
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
@@ -24,8 +24,8 @@ export declare class AdminClubsController {
     } & {
         id: string;
         name: string;
-        countryCode: string;
         aliases: string[];
+        countryCode: string;
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
@@ -37,8 +37,8 @@ export declare class AdminClubsController {
         }[];
         id: string;
         name: string;
-        countryCode: string;
         aliases: string[];
+        countryCode: string;
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
@@ -50,8 +50,8 @@ export declare class AdminClubsController {
         }[];
         id: string;
         name: string;
-        countryCode: string;
         aliases: string[];
+        countryCode: string;
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
@@ -59,8 +59,8 @@ export declare class AdminClubsController {
     remove(id: string): Promise<{
         id: string;
         name: string;
-        countryCode: string;
         aliases: string[];
+        countryCode: string;
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;

@@ -3,22 +3,9 @@ export declare class SuggestionsController {
     private readonly suggestionsService;
     constructor(suggestionsService: SuggestionsService);
     getAllSuggestions(status?: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<({
-        question: {
-            id: string;
-            answerType: import(".prisma/client").$Enums.AnswerType;
-            text: string;
-            gameMode: import(".prisma/client").$Enums.GameMode;
-            logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
-            photoPlayerId: string | null;
-            isActive: boolean;
-            playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
-            createdAt: Date;
-            updatedAt: Date;
-        };
         player: {
             id: string;
             name: string;
-            clubs: string[];
             aliases: string[];
             competitions: string[];
             firstName: string;
@@ -32,6 +19,20 @@ export declare class SuggestionsController {
             isRetired: boolean;
             currentClubId: string | null;
             imageUrl: string | null;
+            clubs: string[];
+        };
+        question: {
+            id: string;
+            answerType: import(".prisma/client").$Enums.AnswerType;
+            text: string;
+            gameMode: import(".prisma/client").$Enums.GameMode;
+            scope: import(".prisma/client").$Enums.QuestionScope;
+            logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
+            photoPlayerId: string | null;
+            isActive: boolean;
+            playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
+            createdAt: Date;
+            updatedAt: Date;
         };
         suggester: {
             id: string;
@@ -40,8 +41,8 @@ export declare class SuggestionsController {
         };
     } & {
         id: string;
-        questionId: string;
         playerId: string;
+        questionId: string;
         createdAt: Date;
         guessText: string;
         suggestedBy: string;
@@ -58,8 +59,8 @@ export declare class SuggestionsController {
         createdAnswer: boolean;
         suggestion: {
             id: string;
-            questionId: string;
             playerId: string;
+            questionId: string;
             createdAt: Date;
             guessText: string;
             suggestedBy: string;
@@ -76,8 +77,8 @@ export declare class SuggestionsController {
         message: string;
         suggestion: {
             id: string;
-            questionId: string;
             playerId: string;
+            questionId: string;
             createdAt: Date;
             guessText: string;
             suggestedBy: string;

@@ -160,6 +160,18 @@ let AdminClubsService = class AdminClubsService {
                     competitionId: compId
                 }))
             });
+        }
+        if (clubData.currentCompetitionId) {
+            const exists = await this.prisma.clubCompetition.findFirst({
+                where: { clubId: club.id, competitionId: clubData.currentCompetitionId }
+            });
+            if (!exists) {
+                await this.prisma.clubCompetition.create({
+                    data: { clubId: club.id, competitionId: clubData.currentCompetitionId }
+                });
+            }
+        }
+        if ((competitionIds && competitionIds.length > 0) || clubData.currentCompetitionId) {
             await this.clubDenormService.regenerateForClub(club.id);
         }
         return this.findOne(club.id);
@@ -167,7 +179,7 @@ let AdminClubsService = class AdminClubsService {
     async update(id, dto) {
         if (dto.name)
             dto.name = (0, string_util_1.capitalizeWords)(dto.name);
-        await this.findOne(id);
+        const existingClub = await this.findOne(id);
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
         await this.validateCompetitions(dto.competitionIds);
         const { competitionIds, ...clubData } = dto;
@@ -186,8 +198,19 @@ let AdminClubsService = class AdminClubsService {
                     });
                 }
             }
+            const finalCurrentCompId = clubData.currentCompetitionId !== undefined ? clubData.currentCompetitionId : existingClub.currentCompetitionId;
+            if (finalCurrentCompId) {
+                const exists = await tx.clubCompetition.findFirst({
+                    where: { clubId: id, competitionId: finalCurrentCompId }
+                });
+                if (!exists) {
+                    await tx.clubCompetition.create({
+                        data: { clubId: id, competitionId: finalCurrentCompId }
+                    });
+                }
+            }
         });
-        if (competitionIds !== undefined) {
+        if (competitionIds !== undefined || clubData.currentCompetitionId !== undefined) {
             await this.clubDenormService.regenerateForClub(id);
         }
         return this.findOne(id);

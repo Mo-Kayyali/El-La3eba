@@ -73,6 +73,12 @@ enum LogicOperator {
   OR
 }
 
+enum QuestionScope {
+  NATIONAL
+  INTERNATIONAL
+  BOTH
+}
+
 enum AnswerType {
   FILTER
   LIST
@@ -282,6 +288,7 @@ model Question {
   text          String
   gameMode      GameMode
   answerType    AnswerType
+  scope         QuestionScope @default(BOTH)
   logicOperator      LogicOperator? // applies when answerType = FILTER and there are >1 clauses
   photoPlayerId      String? // populated when gameMode = PHOTO_GUESS
   isActive           Boolean            @default(true)

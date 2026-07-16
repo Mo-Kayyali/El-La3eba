@@ -57,6 +57,7 @@ __decorate([
 class CreateQuestionDto {
     text;
     gameMode;
+    scope;
     answerType;
     logicOperator;
     clauses;
@@ -74,6 +75,10 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.GameMode),
     __metadata("design:type", String)
 ], CreateQuestionDto.prototype, "gameMode", void 0);
+__decorate([
+    (0, class_validator_1.IsEnum)(client_1.QuestionScope),
+    __metadata("design:type", String)
+], CreateQuestionDto.prototype, "scope", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(client_1.AnswerType),
@@ -179,7 +184,7 @@ let AdminQuestionsService = class AdminQuestionsService {
             if (!found)
                 throw new common_1.BadRequestException('photoPlayerId reference is invalid');
         }
-        return { gameMode, answerType, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
+        return { gameMode, answerType, scope: dto.scope, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
     }
     async create(createDto) {
         createDto.text = (0, string_util_1.capitalizeWords)(createDto.text);
@@ -190,6 +195,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                     text: createDto.text,
                     gameMode: validated.gameMode,
                     answerType: validated.answerType,
+                    scope: validated.scope,
                     logicOperator: validated.logicOperator,
                     photoPlayerId: validated.photoPlayerId || null,
                     playerStatusFilter: createDto.playerStatusFilter || 'ANY',
@@ -258,6 +264,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                     text: updateDto.text,
                     gameMode: validated.gameMode,
                     answerType: validated.answerType,
+                    scope: validated.scope,
                     logicOperator: validated.logicOperator,
                     photoPlayerId: validated.photoPlayerId || null,
                     playerStatusFilter: updateDto.playerStatusFilter || 'ANY',
