@@ -38,6 +38,7 @@ __decorate([
 class QuestionFilterClauseDto {
     filterType;
     filterValue;
+    currentClubOnly;
 }
 exports.QuestionFilterClauseDto = QuestionFilterClauseDto;
 __decorate([
@@ -48,6 +49,10 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], QuestionFilterClauseDto.prototype, "filterValue", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], QuestionFilterClauseDto.prototype, "currentClubOnly", void 0);
 class CreateQuestionDto {
     text;
     gameMode;
@@ -56,6 +61,8 @@ class CreateQuestionDto {
     clauses;
     photoPlayerId;
     answers;
+    playerStatusFilter;
+    isActive;
 }
 exports.CreateQuestionDto = CreateQuestionDto;
 __decorate([
@@ -95,6 +102,15 @@ __decorate([
     (0, class_transformer_1.Type)(() => QuestionAnswerDto),
     __metadata("design:type", Array)
 ], CreateQuestionDto.prototype, "answers", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['ANY', 'CURRENT_ONLY', 'RETIRED_ONLY']),
+    __metadata("design:type", Object)
+], CreateQuestionDto.prototype, "playerStatusFilter", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], CreateQuestionDto.prototype, "isActive", void 0);
 class PatchQuestionDto extends CreateQuestionDto {
 }
 exports.PatchQuestionDto = PatchQuestionDto;
@@ -174,6 +190,8 @@ let AdminQuestionsService = class AdminQuestionsService {
                     answerType: validated.answerType,
                     logicOperator: validated.logicOperator,
                     photoPlayerId: validated.photoPlayerId || null,
+                    playerStatusFilter: createDto.playerStatusFilter || 'ANY',
+                    isActive: createDto.isActive ?? true,
                 }
             });
             if (validated.clauses.length > 0) {
@@ -182,6 +200,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                         questionId: question.id,
                         filterType: c.filterType,
                         filterValue: c.filterValue,
+                        currentClubOnly: c.currentClubOnly ?? false,
                     }))
                 });
             }
@@ -198,8 +217,12 @@ let AdminQuestionsService = class AdminQuestionsService {
             return question;
         });
     }
-    findAll(gameMode) {
-        const where = gameMode ? { gameMode } : {};
+    findAll(gameMode, isActive) {
+        const where = {};
+        if (gameMode)
+            where.gameMode = gameMode;
+        if (isActive !== undefined)
+            where.isActive = isActive;
         return this.prisma.question.findMany({
             where,
             include: {
@@ -233,6 +256,8 @@ let AdminQuestionsService = class AdminQuestionsService {
                     answerType: validated.answerType,
                     logicOperator: validated.logicOperator,
                     photoPlayerId: validated.photoPlayerId || null,
+                    playerStatusFilter: updateDto.playerStatusFilter || 'ANY',
+                    isActive: updateDto.isActive ?? true,
                 }
             });
             await tx.questionAnswer.deleteMany({
@@ -247,6 +272,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                         questionId: id,
                         filterType: c.filterType,
                         filterValue: c.filterValue,
+                        currentClubOnly: c.currentClubOnly ?? false,
                     }))
                 });
             }

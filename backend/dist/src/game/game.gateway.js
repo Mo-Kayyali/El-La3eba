@@ -1030,16 +1030,31 @@ let GameGateway = GameGateway_1 = class GameGateway {
             const key = `game:${gameSessionId}`;
             this.clearTurnTimer(gameSessionId);
             this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
-            const matchedPlayer = await this.gameService.guessPlayer(guessName);
-            this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
+            const matchedPlayers = await this.gameService.guessPlayer(guessName);
+            this.logger.log(`Fuzzy search complete. Matches found: ${matchedPlayers.length}`);
+            let matchedPlayer = null;
             let initialIsCorrect = false;
-            if (matchedPlayer) {
+            if (matchedPlayers.length > 0) {
                 const currentStateStr = await this.redisClient.get(key);
                 if (currentStateStr) {
                     try {
                         const currentState = JSON.parse(currentStateStr);
                         if (currentState.currentQuestion) {
-                            initialIsCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, matchedPlayer);
+                            for (const p of matchedPlayers) {
+                                const alreadyGuessed = currentState.guessedPlayers?.some((g) => (typeof g === 'string' ? g : g?.name) === p.name);
+                                if (alreadyGuessed)
+                                    continue;
+                                const isCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, p);
+                                if (isCorrect) {
+                                    matchedPlayer = p;
+                                    initialIsCorrect = true;
+                                    break;
+                                }
+                            }
+                            if (!matchedPlayer) {
+                                matchedPlayer = matchedPlayers[0];
+                                initialIsCorrect = false;
+                            }
                         }
                     }
                     catch { }

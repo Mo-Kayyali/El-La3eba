@@ -23,6 +23,9 @@ export class QuestionFilterClauseDto {
 
   @IsString()
   filterValue: string;
+
+  @IsOptional()
+  currentClubOnly?: boolean;
 }
 
 export class CreateQuestionDto {
@@ -55,6 +58,13 @@ export class CreateQuestionDto {
   @ValidateNested({ each: true })
   @Type(() => QuestionAnswerDto)
   answers?: QuestionAnswerDto[];
+
+  @IsOptional()
+  @IsEnum(['ANY', 'CURRENT_ONLY', 'RETIRED_ONLY'])
+  playerStatusFilter?: any;
+
+  @IsOptional()
+  isActive?: boolean;
 }
 
 export class PatchQuestionDto extends CreateQuestionDto {}
@@ -134,6 +144,8 @@ export class AdminQuestionsService {
           answerType: validated.answerType!,
           logicOperator: validated.logicOperator,
           photoPlayerId: validated.photoPlayerId || null,
+          playerStatusFilter: createDto.playerStatusFilter || 'ANY',
+          isActive: createDto.isActive ?? true,
         }
       });
 
@@ -143,6 +155,7 @@ export class AdminQuestionsService {
             questionId: question.id,
             filterType: c.filterType,
             filterValue: c.filterValue,
+            currentClubOnly: c.currentClubOnly ?? false,
           }))
         });
       }
@@ -162,8 +175,11 @@ export class AdminQuestionsService {
     });
   }
 
-  findAll(gameMode?: GameMode) {
-    const where = gameMode ? { gameMode } : {};
+  findAll(gameMode?: GameMode, isActive?: boolean) {
+    const where: any = {};
+    if (gameMode) where.gameMode = gameMode;
+    if (isActive !== undefined) where.isActive = isActive;
+    
     return this.prisma.question.findMany({
       where,
       include: {
@@ -200,6 +216,8 @@ export class AdminQuestionsService {
           answerType: validated.answerType!,
           logicOperator: validated.logicOperator,
           photoPlayerId: validated.photoPlayerId || null,
+          playerStatusFilter: updateDto.playerStatusFilter || 'ANY',
+          isActive: updateDto.isActive ?? true,
         }
       });
 
@@ -216,6 +234,7 @@ export class AdminQuestionsService {
             questionId: id,
             filterType: c.filterType,
             filterValue: c.filterValue,
+            currentClubOnly: c.currentClubOnly ?? false,
           }))
         });
       }

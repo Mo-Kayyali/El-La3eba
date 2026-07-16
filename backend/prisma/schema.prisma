@@ -82,6 +82,12 @@ enum SuggestionStatus {
   REJECTED
 }
 
+enum PlayerStatusFilter {
+  ANY
+  CURRENT_ONLY
+  RETIRED_ONLY
+}
+
 // ─── Core domain models ───────────────────────────────────────────────────────
 
 model User {
@@ -265,8 +271,10 @@ model Question {
   text          String
   gameMode      GameMode
   answerType    AnswerType
-  logicOperator LogicOperator? // applies when answerType = FILTER and there are >1 clauses
-  photoPlayerId String? // populated when gameMode = PHOTO_GUESS
+  logicOperator      LogicOperator? // applies when answerType = FILTER and there are >1 clauses
+  photoPlayerId      String? // populated when gameMode = PHOTO_GUESS
+  isActive           Boolean            @default(true)
+  playerStatusFilter PlayerStatusFilter @default(ANY)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -282,9 +290,10 @@ model Question {
 
 model QuestionFilterClause {
   id          String     @id @default(uuid())
-  questionId  String
-  filterType  FilterType
-  filterValue String
+  questionId      String
+  filterType      FilterType
+  filterValue     String
+  currentClubOnly Boolean    @default(false)
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

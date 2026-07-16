@@ -1495,17 +1495,38 @@ export class GameGateway
 
       // 1. Database check (outside the retry loop)
       this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
-      const matchedPlayer = await this.gameService.guessPlayer(guessName);
-      this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
+      const matchedPlayers = await this.gameService.guessPlayer(guessName);
+      this.logger.log(`Fuzzy search complete. Matches found: ${matchedPlayers.length}`);
 
+      let matchedPlayer: any = null;
       let initialIsCorrect = false;
-      if (matchedPlayer) {
+
+      if (matchedPlayers.length > 0) {
         const currentStateStr = await this.redisClient.get(key);
         if (currentStateStr) {
           try {
             const currentState = JSON.parse(currentStateStr);
             if (currentState.currentQuestion) {
-              initialIsCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, matchedPlayer);
+              for (const p of matchedPlayers) {
+                // Check if already guessed
+                const alreadyGuessed = currentState.guessedPlayers?.some(
+                  (g: any) => (typeof g === 'string' ? g : g?.name) === p.name
+                );
+                if (alreadyGuessed) continue; // Skip already taken candidates
+
+                const isCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, p);
+                if (isCorrect) {
+                  matchedPlayer = p;
+                  initialIsCorrect = true;
+                  break;
+                }
+              }
+              // If no candidate is both un-guessed and correct, fallback to the top match
+              // so the logic below registers it as either a wrong guess or an already-taken strike.
+              if (!matchedPlayer) {
+                matchedPlayer = matchedPlayers[0];
+                initialIsCorrect = false;
+              }
             }
           } catch {}
         }

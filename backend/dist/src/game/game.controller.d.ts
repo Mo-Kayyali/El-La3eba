@@ -27,9 +27,9 @@ export declare class GameController {
         status: string;
         suggestion: {
             id: string;
-            createdAt: Date;
             questionId: string;
             playerId: string;
+            createdAt: Date;
             guessText: string;
             suggestedBy: string;
             status: import(".prisma/client").$Enums.SuggestionStatus;

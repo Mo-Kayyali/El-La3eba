@@ -34,7 +34,7 @@ exports.GameModule = GameModule = __decorate([
         ],
         controllers: [game_controller_1.GameController],
         providers: [game_gateway_1.GameGateway, matchmaking_service_1.MatchmakingService, game_service_1.GameService, leaderboard_service_1.LeaderboardService, player_denorm_service_1.PlayerDenormService, club_denorm_service_1.ClubDenormService],
-        exports: [game_gateway_1.GameGateway, player_denorm_service_1.PlayerDenormService, club_denorm_service_1.ClubDenormService],
+        exports: [game_gateway_1.GameGateway, player_denorm_service_1.PlayerDenormService, club_denorm_service_1.ClubDenormService, game_service_1.GameService],
     })
 ], GameModule);
 //# sourceMappingURL=game.module.js.map

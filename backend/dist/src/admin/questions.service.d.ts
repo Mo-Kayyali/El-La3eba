@@ -8,6 +8,7 @@ export declare class QuestionAnswerDto {
 export declare class QuestionFilterClauseDto {
     filterType: FilterType;
     filterValue: string;
+    currentClubOnly?: boolean;
 }
 export declare class CreateQuestionDto {
     text: string;
@@ -17,6 +18,8 @@ export declare class CreateQuestionDto {
     clauses?: QuestionFilterClauseDto[];
     photoPlayerId?: string;
     answers?: QuestionAnswerDto[];
+    playerStatusFilter?: any;
+    isActive?: boolean;
 }
 export declare class PatchQuestionDto extends CreateQuestionDto {
 }
@@ -38,10 +41,12 @@ export declare class AdminQuestionsService {
         gameMode: import(".prisma/client").$Enums.GameMode;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        isActive: boolean;
+        playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
     }>;
-    findAll(gameMode?: GameMode): import(".prisma/client").Prisma.PrismaPromise<({
+    findAll(gameMode?: GameMode, isActive?: boolean): import(".prisma/client").Prisma.PrismaPromise<({
         _count: {
             answers: number;
         };
@@ -50,6 +55,7 @@ export declare class AdminQuestionsService {
             questionId: string;
             filterType: import(".prisma/client").$Enums.FilterType;
             filterValue: string;
+            currentClubOnly: boolean;
         }[];
     } & {
         id: string;
@@ -58,6 +64,8 @@ export declare class AdminQuestionsService {
         gameMode: import(".prisma/client").$Enums.GameMode;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        isActive: boolean;
+        playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
     })[]>;
@@ -71,6 +79,7 @@ export declare class AdminQuestionsService {
             questionId: string;
             filterType: import(".prisma/client").$Enums.FilterType;
             filterValue: string;
+            currentClubOnly: boolean;
         }[];
         answers: ({
             player: {
@@ -92,6 +101,8 @@ export declare class AdminQuestionsService {
         gameMode: import(".prisma/client").$Enums.GameMode;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        isActive: boolean;
+        playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
@@ -102,6 +113,8 @@ export declare class AdminQuestionsService {
         gameMode: import(".prisma/client").$Enums.GameMode;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        isActive: boolean;
+        playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
     }>;

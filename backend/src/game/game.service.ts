@@ -11,10 +11,10 @@ import { GameMode, AnswerType, FilterType, Position, Question } from '@prisma/cl
 export class GameService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async guessPlayer(guessName: string): Promise<any> {
+  async guessPlayer(guessName: string): Promise<any[]> {
     const normalizedGuess = guessName.trim();
     const guessLen = normalizedGuess.length;
-    if (guessLen < 3) return null;
+    if (guessLen < 3) return [];
 
     let allowedTypos = 0;
     if (guessLen >= 8) allowedTypos = 2;
@@ -29,6 +29,7 @@ export class GameService {
         player_metrics AS (
           SELECT 
             p.*,
+            c.name as "currentClubName",
             g.val,
             -- Best edit distance to the FULL name or any FULL alias within length tolerance
             (
@@ -41,7 +42,9 @@ export class GameService {
               word_similarity(g.val, lower(unaccent_immutable(p.name))),
               word_similarity(g.val, lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
             ) as w_sim
-          FROM "Player" p, guess g
+          FROM "Player" p
+          LEFT JOIN "Club" c ON p."currentClubId" = c.id
+          CROSS JOIN guess g
           WHERE
             -- Generous prefilter to narrow candidates via GIN index (if configured) or fast discard
             (
@@ -56,11 +59,11 @@ export class GameService {
         ORDER BY 
           w_sim DESC,
           best_dist ASC
-        LIMIT 1;
+        LIMIT 5;
       `
     ]);
 
-    return matches.length > 0 ? matches[0] : null;
+    return matches;
   }
 
   async getRandomQuestion(gameMode: GameMode = 'STRIKES', excludeIds: string[] = []): Promise<Question | null> {
@@ -68,7 +71,7 @@ export class GameService {
 
     if (effectiveExclude.length > 0) {
       const countWithExclusion = await this.prisma.question.count({
-        where: { gameMode, id: { notIn: effectiveExclude } },
+        where: { gameMode, isActive: true, id: { notIn: effectiveExclude } },
       });
       
       if (countWithExclusion === 0) {
@@ -78,17 +81,17 @@ export class GameService {
     }
 
     const availableCount = await this.prisma.question.count({
-      where: { gameMode, id: { notIn: effectiveExclude } },
+      where: { gameMode, isActive: true, id: { notIn: effectiveExclude } },
     });
 
     if (availableCount === 0) {
       // Fallback if there are literally no questions at all (or only 1 question that is excluded)
-      return this.prisma.question.findFirst({ where: { gameMode }, include: { clauses: true } });
+      return this.prisma.question.findFirst({ where: { gameMode, isActive: true }, include: { clauses: true } });
     }
 
     const skip = Math.floor(Math.random() * availableCount);
     const questions = await this.prisma.question.findMany({
-      where: { gameMode, id: { notIn: effectiveExclude } },
+      where: { gameMode, isActive: true, id: { notIn: effectiveExclude } },
       skip,
       take: 1,
       include: { clauses: true },
@@ -97,8 +100,11 @@ export class GameService {
     return questions[0] || null;
   }
 
-  async validateAnswer(question: Question, player: any): Promise<boolean> {
+  async validateAnswer(question: Question & { playerStatusFilter?: string }, player: any): Promise<boolean> {
     if (!question || !player) return false;
+
+    if (question.playerStatusFilter === 'CURRENT_ONLY' && player.isRetired) return false;
+    if (question.playerStatusFilter === 'RETIRED_ONLY' && !player.isRetired) return false;
 
     if (question.answerType === 'FILTER') {
       const clauses = (question as any).clauses || [];
@@ -108,6 +114,9 @@ export class GameService {
         if (clause.filterType === 'COMPETITION') {
           return player.competitions?.includes(clause.filterValue) ?? false;
         } else if (clause.filterType === 'CLUB') {
+          if (clause.currentClubOnly) {
+            return player.currentClubName === clause.filterValue;
+          }
           return player.clubs?.includes(clause.filterValue) ?? false;
         } else if (clause.filterType === 'NATIONALITY') {
           return player.nationality === clause.filterValue;

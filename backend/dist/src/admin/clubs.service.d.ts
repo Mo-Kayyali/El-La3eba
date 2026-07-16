@@ -26,8 +26,8 @@ export declare class AdminClubsService {
         id: string;
         name: string;
         countryCode: string;
-        currentCompetitionId: string | null;
         aliases: string[];
+        currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
     }[]>;
@@ -39,8 +39,8 @@ export declare class AdminClubsService {
         id: string;
         name: string;
         countryCode: string;
-        currentCompetitionId: string | null;
         aliases: string[];
+        currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
     }>;
@@ -52,8 +52,8 @@ export declare class AdminClubsService {
         id: string;
         name: string;
         countryCode: string;
-        currentCompetitionId: string | null;
         aliases: string[];
+        currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
     }>;
@@ -65,8 +65,8 @@ export declare class AdminClubsService {
         id: string;
         name: string;
         countryCode: string;
-        currentCompetitionId: string | null;
         aliases: string[];
+        currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
     }>;
@@ -74,8 +74,8 @@ export declare class AdminClubsService {
         id: string;
         name: string;
         countryCode: string;
-        currentCompetitionId: string | null;
         aliases: string[];
+        currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
     }>;

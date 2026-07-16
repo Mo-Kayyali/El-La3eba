@@ -3,24 +3,6 @@ export declare class SuggestionsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     getPendingSuggestions(): Promise<({
-        player: {
-            id: string;
-            name: string;
-            clubs: string[];
-            nationality: string;
-            firstName: string;
-            lastName: string;
-            isRetired: boolean;
-            currentClubId: string | null;
-            aliases: string[];
-            competitions: string[];
-            dateOfBirth: Date | null;
-            heightCm: number | null;
-            preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
-            positions: import(".prisma/client").$Enums.Position[];
-            primaryPosition: import(".prisma/client").$Enums.Position | null;
-            imageUrl: string | null;
-        };
         question: {
             id: string;
             answerType: import(".prisma/client").$Enums.AnswerType;
@@ -28,8 +10,28 @@ export declare class SuggestionsService {
             gameMode: import(".prisma/client").$Enums.GameMode;
             logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
             photoPlayerId: string | null;
+            isActive: boolean;
+            playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
             createdAt: Date;
             updatedAt: Date;
+        };
+        player: {
+            id: string;
+            name: string;
+            clubs: string[];
+            aliases: string[];
+            competitions: string[];
+            firstName: string;
+            lastName: string;
+            nationality: string;
+            dateOfBirth: Date | null;
+            heightCm: number | null;
+            preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+            positions: import(".prisma/client").$Enums.Position[];
+            primaryPosition: import(".prisma/client").$Enums.Position | null;
+            isRetired: boolean;
+            currentClubId: string | null;
+            imageUrl: string | null;
         };
         suggester: {
             id: string;
@@ -38,9 +40,9 @@ export declare class SuggestionsService {
         };
     } & {
         id: string;
-        createdAt: Date;
         questionId: string;
         playerId: string;
+        createdAt: Date;
         guessText: string;
         suggestedBy: string;
         status: import(".prisma/client").$Enums.SuggestionStatus;
@@ -54,9 +56,9 @@ export declare class SuggestionsService {
         createdAnswer: boolean;
         suggestion: {
             id: string;
-            createdAt: Date;
             questionId: string;
             playerId: string;
+            createdAt: Date;
             guessText: string;
             suggestedBy: string;
             status: import(".prisma/client").$Enums.SuggestionStatus;
@@ -70,9 +72,9 @@ export declare class SuggestionsService {
         message: string;
         suggestion: {
             id: string;
-            createdAt: Date;
             questionId: string;
             playerId: string;
+            createdAt: Date;
             guessText: string;
             suggestedBy: string;
             status: import(".prisma/client").$Enums.SuggestionStatus;

@@ -27,6 +27,7 @@ type QuestionAnswer = {
 type QuestionFilterClause = {
   filterType: string;
   filterValue: string;
+  currentClubOnly?: boolean;
 };
 
 type Question = {
@@ -40,6 +41,8 @@ type Question = {
   photoPlayer?: { name: string } | null;
   _count?: { answers: number };
   answers?: QuestionAnswer[];
+  isActive?: boolean;
+  playerStatusFilter?: "ANY" | "CURRENT_ONLY" | "RETIRED_ONLY";
 };
 
 function PlayerSearch({ 
@@ -164,9 +167,20 @@ export default function AdminQuestionsPage() {
   const [photoPlayerId, setPhotoPlayerId] = useState("");
   const [photoPlayerName, setPhotoPlayerName] = useState("");
   const [answers, setAnswers] = useState<QuestionAnswer[]>([]);
+  const [isActive, setIsActive] = useState(true);
+  const [playerStatusFilter, setPlayerStatusFilter] = useState<"ANY" | "CURRENT_ONLY" | "RETIRED_ONLY">("ANY");
 
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // List filters
+  const [filterGameMode, setFilterGameMode] = useState<"ALL" | "STRIKES" | "TOP_10" | "LINEUP" | "PHOTO_GUESS">("ALL");
+  const [filterIsActive, setFilterIsActive] = useState<"ALL" | "true" | "false">("ALL");
+
+  // Test guess state
+  const [testGuessName, setTestGuessName] = useState("");
+  const [testGuessResult, setTestGuessResult] = useState<any>(null);
+  const [isTestingGuess, setIsTestingGuess] = useState(false);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -175,7 +189,7 @@ export default function AdminQuestionsPage() {
       return;
     }
     fetchQuestions();
-  }, [bootstrapped, user, router]);
+  }, [bootstrapped, user, router, filterGameMode, filterIsActive]);
 
   useEffect(() => {
     // Auto-set answer type rules based on game mode
@@ -186,8 +200,12 @@ export default function AdminQuestionsPage() {
 
   const fetchQuestions = async () => {
     try {
+      const params = new URLSearchParams();
+      if (filterGameMode !== "ALL") params.append("gameMode", filterGameMode);
+      if (filterIsActive !== "ALL") params.append("isActive", filterIsActive);
+
       const [res, clubsRes, compsRes, countriesRes] = await Promise.all([
-        api.get<Question[]>("/admin/questions"),
+        api.get<Question[]>(`/admin/questions?${params.toString()}`),
         api.get<any[]>("/admin/clubs"),
         api.get<any[]>("/admin/competitions"),
         api.get<any[]>("/admin/countries"),
@@ -222,6 +240,8 @@ export default function AdminQuestionsPage() {
       }
       setPhotoPlayerId(fullQ.photoPlayerId || "");
       setPhotoPlayerName(fullQ.photoPlayer?.name || "");
+      setIsActive(fullQ.isActive ?? true);
+      setPlayerStatusFilter(fullQ.playerStatusFilter || "ANY");
       setShowForm(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
@@ -249,6 +269,10 @@ export default function AdminQuestionsPage() {
     setPhotoPlayerId("");
     setPhotoPlayerName("");
     setAnswers([]);
+    setIsActive(true);
+    setPlayerStatusFilter("ANY");
+    setTestGuessName("");
+    setTestGuessResult(null);
     setShowForm(false);
     setFormError("");
   };
@@ -261,6 +285,8 @@ export default function AdminQuestionsPage() {
     const payload: any = {
       text,
       gameMode,
+      isActive,
+      playerStatusFilter,
     };
 
     if (gameMode === "PHOTO_GUESS") {
@@ -280,7 +306,11 @@ export default function AdminQuestionsPage() {
           setIsSubmitting(false);
           return;
         }
-        payload.clauses = cleanClauses;
+        payload.clauses = cleanClauses.map(c => ({
+          filterType: c.filterType,
+          filterValue: c.filterValue,
+          currentClubOnly: c.currentClubOnly
+        }));
         if (cleanClauses.length > 1) {
           payload.logicOperator = logicOperator;
         }
@@ -372,6 +402,21 @@ export default function AdminQuestionsPage() {
     });
   };
 
+  const handleTestGuess = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    setIsTestingGuess(true);
+    setTestGuessResult(null);
+    try {
+      const res = await api.post(`/admin/questions/${editingId}/test-guess`, { guessName: testGuessName });
+      setTestGuessResult(res.data);
+    } catch (e) {
+      alert("Test guess failed: " + extractApiErrorMessage(e));
+    } finally {
+      setIsTestingGuess(false);
+    }
+  };
+
   if (!bootstrapped || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
@@ -448,7 +493,7 @@ export default function AdminQuestionsPage() {
                 />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-300">
                     Game Mode
@@ -480,6 +525,33 @@ export default function AdminQuestionsPage() {
                     </select>
                   </div>
                 )}
+                
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Player Status Filter
+                  </label>
+                  <select
+                    value={playerStatusFilter}
+                    onChange={(e) => setPlayerStatusFilter(e.target.value as any)}
+                    className="block w-full rounded-xl border border-white/10 bg-slate-800 p-3 text-white outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  >
+                    <option value="ANY">Any (Active & Retired)</option>
+                    <option value="CURRENT_ONLY">Active Only</option>
+                    <option value="RETIRED_ONLY">Retired Only</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center pt-8">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                      className="h-5 w-5 rounded border-white/10 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900"
+                    />
+                    <span className="text-sm font-medium text-slate-300">Question is Active</span>
+                  </label>
+                </div>
               </div>
 
               {/* STRIKES + FILTER */}
@@ -547,18 +619,33 @@ export default function AdminQuestionsPage() {
                           </select>
                         )}
                         {clause.filterType === "CLUB" && (
-                          <select
-                            value={clause.filterValue}
-                            onChange={(e) => {
-                              const newClauses = [...clauses];
-                              newClauses[idx].filterValue = e.target.value;
-                              setClauses(newClauses);
-                            }}
-                            className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
-                          >
-                            <option value="">Select Club...</option>
-                            {clubs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
+                          <div className="flex w-full items-center gap-2">
+                            <select
+                              value={clause.filterValue}
+                              onChange={(e) => {
+                                const newClauses = [...clauses];
+                                newClauses[idx].filterValue = e.target.value;
+                                setClauses(newClauses);
+                              }}
+                              className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
+                            >
+                              <option value="">Select Club...</option>
+                              {clubs.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            </select>
+                            <label className="flex items-center gap-2 shrink-0 cursor-pointer whitespace-nowrap text-sm text-slate-300">
+                              <input
+                                type="checkbox"
+                                checked={clause.currentClubOnly || false}
+                                onChange={(e) => {
+                                  const newClauses = [...clauses];
+                                  newClauses[idx].currentClubOnly = e.target.checked;
+                                  setClauses(newClauses);
+                                }}
+                                className="h-4 w-4 rounded border-white/10 bg-slate-800 text-blue-500 focus:ring-blue-500"
+                              />
+                              Current Only
+                            </label>
+                          </div>
                         )}
                         {clause.filterType === "COMPETITION" && (
                           <select
@@ -571,7 +658,7 @@ export default function AdminQuestionsPage() {
                             className="w-full block rounded-xl border border-white/10 bg-slate-800 p-2.5 text-sm text-white outline-none focus:border-blue-500"
                           >
                             <option value="">Select Competition...</option>
-                            {competitions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            {competitions.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                           </select>
                         )}
                         {clause.filterType === "POSITION" && (
@@ -739,10 +826,79 @@ export default function AdminQuestionsPage() {
                 </button>
               </div>
             </form>
+
+            {/* Test Guess Panel */}
+            {editingId && (
+              <div className="mt-8 border-t border-white/10 pt-8">
+                <h3 className="text-xl font-semibold mb-4">Test this Question</h3>
+                <form onSubmit={handleTestGuess} className="flex gap-4 items-center">
+                  <input
+                    type="text"
+                    value={testGuessName}
+                    onChange={(e) => setTestGuessName(e.target.value)}
+                    placeholder="Enter a player's name to test..."
+                    className="flex-1 block rounded-xl border border-white/10 bg-slate-800 p-3 text-white outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isTestingGuess || !testGuessName.trim()}
+                    className="rounded-xl bg-slate-700 px-6 py-3 font-medium text-white transition hover:bg-slate-600 disabled:opacity-50"
+                  >
+                    {isTestingGuess ? "Testing..." : "Test Guess"}
+                  </button>
+                </form>
+
+                {testGuessResult && (
+                  <div className={`mt-6 p-4 rounded-xl border ${testGuessResult.isCorrect ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`text-xl font-bold ${testGuessResult.isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {testGuessResult.isCorrect ? "✅ Correct!" : "❌ Incorrect"}
+                      </div>
+                      <div className="text-sm text-slate-300">
+                        {testGuessResult.matchedPlayer ? (
+                          <span>Matched Player: <span className="font-semibold text-white">{testGuessResult.matchedPlayer.name}</span> ({testGuessResult.matchedPlayer.nationality})</span>
+                        ) : (
+                          <span>No player matched that name.</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* List Panel */}
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
+            <select
+              value={filterGameMode}
+              onChange={(e) => setFilterGameMode(e.target.value as any)}
+              className="rounded-xl border border-white/10 bg-slate-900/50 p-2 text-sm text-slate-300 outline-none focus:border-violet-500"
+            >
+              <option value="ALL">All Modes</option>
+              <option value="STRIKES">STRIKES</option>
+              <option value="TOP_10">TOP_10</option>
+              <option value="LINEUP">LINEUP</option>
+              <option value="PHOTO_GUESS">PHOTO_GUESS</option>
+            </select>
+            
+            <select
+              value={filterIsActive}
+              onChange={(e) => setFilterIsActive(e.target.value as any)}
+              className="rounded-xl border border-white/10 bg-slate-900/50 p-2 text-sm text-slate-300 outline-none focus:border-violet-500"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="true">Active Only</option>
+              <option value="false">Inactive Only</option>
+            </select>
+          </div>
+          <div className="text-sm text-slate-400">
+            {questions.length} question{questions.length === 1 ? '' : 's'} found
+          </div>
+        </div>
+
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-md">
           {questions.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
@@ -769,9 +925,16 @@ export default function AdminQuestionsPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className="inline-flex w-fit rounded-full bg-violet-500/20 px-2 py-1 text-xs font-medium text-violet-300">
-                            {q.gameMode}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex w-fit rounded-full bg-violet-500/20 px-2 py-1 text-xs font-medium text-violet-300">
+                              {q.gameMode}
+                            </span>
+                            {!q.isActive && (
+                              <span className="inline-flex w-fit rounded-full bg-slate-500/20 px-2 py-1 text-xs font-medium text-slate-300">
+                                Inactive
+                              </span>
+                            )}
+                          </div>
                           {q.gameMode === "STRIKES" && (
                             <span className="text-xs text-slate-400">
                               {q.answerType}
