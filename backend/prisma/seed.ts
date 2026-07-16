@@ -33,6 +33,13 @@ const testUsers = [
     password: 'user123',
     mmr: 1600,
   },
+  {
+    email: 'admin@gmail.com',
+    username: 'admin',
+    password: 'admin123',
+    mmr: 1000,
+    role: 'ADMIN',
+  },
 ];
 
 async function main() {
@@ -46,11 +53,13 @@ async function main() {
         username: u.username,
         passwordHash,
         mmr: u.mmr,
+        role: u.role as any || 'PLAYER',
       },
       update: {
         username: u.username,
         passwordHash,
         mmr: u.mmr,
+        role: u.role as any || 'PLAYER',
       },
     });
     console.log(`  User OK: ${u.username} <${u.email}> MMR ${u.mmr}`);

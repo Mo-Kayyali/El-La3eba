@@ -15,6 +15,7 @@ const game_module_1 = require("./game/game.module");
 const schedule_1 = require("@nestjs/schedule");
 const users_module_1 = require("./users/users.module");
 const friends_module_1 = require("./friends/friends.module");
+const admin_module_1 = require("./admin/admin.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,6 +28,7 @@ exports.AppModule = AppModule = __decorate([
             game_module_1.GameModule,
             users_module_1.UsersModule,
             friends_module_1.FriendsModule,
+            admin_module_1.AdminModule,
             schedule_1.ScheduleModule.forRoot(),
         ],
         controllers: [],

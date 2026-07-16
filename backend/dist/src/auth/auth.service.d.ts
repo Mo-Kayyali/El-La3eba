@@ -50,6 +50,7 @@ export declare class AuthService {
         wins: number;
         offlineDisconnectCount: number;
         lastDisconnectAt: Date | null;
+        role: import(".prisma/client").$Enums.Role;
     }>;
     acknowledgeOfflinePenalty(userId: string): Promise<{
         success: boolean;

@@ -47,6 +47,7 @@ export declare class AuthController {
         wins: number;
         offlineDisconnectCount: number;
         lastDisconnectAt: Date | null;
+        role: import(".prisma/client").$Enums.Role;
     }>;
     requestVerification(req: any): Promise<{
         success: boolean;

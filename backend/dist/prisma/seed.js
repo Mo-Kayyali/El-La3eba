@@ -65,6 +65,13 @@ const testUsers = [
         password: 'user123',
         mmr: 1600,
     },
+    {
+        email: 'admin@gmail.com',
+        username: 'admin',
+        password: 'admin123',
+        mmr: 1000,
+        role: 'ADMIN',
+    },
 ];
 async function main() {
     console.log('Seeding test users (bcrypt, same flow as AuthService)...');
@@ -77,11 +84,13 @@ async function main() {
                 username: u.username,
                 passwordHash,
                 mmr: u.mmr,
+                role: u.role || 'PLAYER',
             },
             update: {
                 username: u.username,
                 passwordHash,
                 mmr: u.mmr,
+                role: u.role || 'PLAYER',
             },
         });
         console.log(`  User OK: ${u.username} <${u.email}> MMR ${u.mmr}`);
