@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { capitalizeWords } from '../utils/string.util';
 import { GameMode, AnswerType, FilterType, LogicOperator } from '@prisma/client';
 import { IsString, IsOptional, IsEnum, IsUUID, IsInt, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -134,6 +135,7 @@ export class AdminQuestionsService {
   }
 
   async create(createDto: CreateQuestionDto) {
+    createDto.text = capitalizeWords(createDto.text);
     const validated = await this.validateShape(createDto);
 
     return this.prisma.$transaction(async (tx) => {
@@ -205,6 +207,7 @@ export class AdminQuestionsService {
   }
 
   async update(id: string, updateDto: PatchQuestionDto) {
+    if (updateDto.text) updateDto.text = capitalizeWords(updateDto.text);
     const validated = await this.validateShape(updateDto);
 
     return this.prisma.$transaction(async (tx) => {

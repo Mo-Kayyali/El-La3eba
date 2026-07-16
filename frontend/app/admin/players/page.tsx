@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
@@ -11,6 +11,14 @@ type Club = {
   id: string;
   name: string;
   countryCode: string;
+  currentCompetitionId?: string | null;
+  clubCompetitions?: { competitionId: string }[];
+};
+
+type Competition = {
+  id: string;
+  name: string;
+  countryCode: string | null;
 };
 
 type Country = {
@@ -54,6 +62,7 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [clubs, setClubs] = useState<Club[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -61,6 +70,13 @@ export default function AdminPlayersPage() {
   const [clubHistory, setClubHistory] = useState<PlayerClubHistory[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [primaryPosition, setPrimaryPosition] = useState<string>("");
+  const [selectedCompId, setSelectedCompId] = useState<string>("");
+  const [selectedClubId, setSelectedClubId] = useState<string>("");
+
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const aliasesRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -73,14 +89,16 @@ export default function AdminPlayersPage() {
 
   const fetchData = async () => {
     try {
-      const [playersRes, clubsRes, countriesRes] = await Promise.all([
+      const [playersRes, clubsRes, countriesRes, competitionsRes] = await Promise.all([
         api.get<Player[]>("/admin/players"),
         api.get<Club[]>("/admin/clubs"),
         api.get<Country[]>("/admin/countries"),
+        api.get<Competition[]>("/admin/competitions"),
       ]);
       setPlayers(playersRes.data);
       setClubs(clubsRes.data);
       setCountries(countriesRes.data);
+      setCompetitions(competitionsRes.data);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -94,6 +112,14 @@ export default function AdminPlayersPage() {
       setIsEditing(data);
       setSelectedPositions(data.positions || []);
       setPrimaryPosition(data.primaryPosition || "");
+      setSelectedClubId(data.currentClubId || "");
+      if (data.currentClubId) {
+        // Find club in current list (even if clubs isn't updated, handleEdit uses current state scope)
+        const club = clubs.find(c => c.id === data.currentClubId);
+        setSelectedCompId(club?.currentCompetitionId || "");
+      } else {
+        setSelectedCompId("");
+      }
       setClubHistory(
         (data.playerClubs || []).map(pc => ({
           clubId: pc.club.id,
@@ -111,6 +137,8 @@ export default function AdminPlayersPage() {
     setIsEditing({ isRetired: false });
     setSelectedPositions([]);
     setPrimaryPosition("");
+    setSelectedClubId("");
+    setSelectedCompId("");
     setClubHistory([]);
   };
 
@@ -118,13 +146,40 @@ export default function AdminPlayersPage() {
     e.preventDefault();
     setError("");
     const formData = new FormData(e.currentTarget);
+    let firstName = (formData.get("firstName") as string).trim();
+    let lastName = (formData.get("lastName") as string).trim();
+    let name = (formData.get("name") as string).trim();
+
+    // 1. NAME AUTO-FILL
+    if (firstName && lastName && !name) {
+      name = `${firstName} ${lastName}`;
+    } else if (name && !firstName && !lastName) {
+      const parts = name.split(/\s+/);
+      firstName = parts[0] || "";
+      if (parts.length > 1) {
+        lastName = parts[parts.length - 1];
+      }
+    }
+
+    // 2. ALIAS AUTO-POPULATION
     const aliasesRaw = formData.get("aliases") as string;
+    let aliases = aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
+    const lowerAliases = aliases.map(a => a.toLowerCase());
+    
+    if (firstName && !lowerAliases.includes(firstName.toLowerCase())) {
+      aliases.push(firstName);
+      lowerAliases.push(firstName.toLowerCase());
+    }
+    if (lastName && !lowerAliases.includes(lastName.toLowerCase())) {
+      aliases.push(lastName);
+      lowerAliases.push(lastName.toLowerCase());
+    }
     
     const payload = {
-      firstName: formData.get("firstName") as string,
-      lastName: formData.get("lastName") as string,
-      name: formData.get("name") as string,
-      aliases: aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : undefined,
+      firstName,
+      lastName,
+      name,
+      aliases: aliases.length > 0 ? aliases : undefined,
       nationality: formData.get("nationality") as string,
       currentClubId: (formData.get("currentClubId") as string) || null,
       primaryPosition: primaryPosition || null,
@@ -166,12 +221,76 @@ export default function AdminPlayersPage() {
   };
 
   const togglePosition = (pos: string) => {
-    if (selectedPositions.includes(pos) && primaryPosition === pos) {
-      setPrimaryPosition("");
+    let newPositions: string[];
+    const isAdding = !selectedPositions.includes(pos);
+    
+    if (isAdding) {
+      newPositions = [...selectedPositions, pos];
+      // 3. AUTO-PRIMARY-POSITION
+      if (newPositions.length === 1) {
+        setPrimaryPosition(pos);
+      } else if (newPositions.length > 1 && !primaryPosition) {
+        setPrimaryPosition(newPositions[0]);
+      }
+    } else {
+      newPositions = selectedPositions.filter(p => p !== pos);
+      if (primaryPosition === pos) {
+        setPrimaryPosition("");
+      }
     }
-    setSelectedPositions(prev =>
-      prev.includes(pos) ? prev.filter(p => p !== pos) : [...prev, pos]
-    );
+    setSelectedPositions(newPositions);
+  };
+
+  const handleClubChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const clubId = e.target.value;
+    setSelectedClubId(clubId);
+    if (clubId && !selectedCompId) {
+      const club = clubs.find(c => c.id === clubId);
+      if (club && club.currentCompetitionId) {
+        setSelectedCompId(club.currentCompetitionId);
+      }
+    }
+  };
+
+  const handleNameBlur = () => {
+    if (!firstNameRef.current || !lastNameRef.current || !nameRef.current || !aliasesRef.current) return;
+    
+    let first = firstNameRef.current.value.trim();
+    let last = lastNameRef.current.value.trim();
+    let full = nameRef.current.value.trim();
+
+    if (first && last && !full) {
+      full = `${first} ${last}`;
+      nameRef.current.value = full;
+    } else if (full && !first && !last) {
+      const parts = full.split(/\s+/);
+      first = parts[0] || "";
+      if (parts.length > 1) {
+        last = parts[parts.length - 1];
+      }
+      firstNameRef.current.value = first;
+      lastNameRef.current.value = last;
+    }
+
+    const aliasesRaw = aliasesRef.current.value;
+    let aliases = aliasesRaw ? aliasesRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
+    const lowerAliases = aliases.map(a => a.toLowerCase());
+    
+    let aliasesChanged = false;
+    if (first && !lowerAliases.includes(first.toLowerCase())) {
+      aliases.push(first);
+      lowerAliases.push(first.toLowerCase());
+      aliasesChanged = true;
+    }
+    if (last && !lowerAliases.includes(last.toLowerCase())) {
+      aliases.push(last);
+      lowerAliases.push(last.toLowerCase());
+      aliasesChanged = true;
+    }
+
+    if (aliasesChanged) {
+      aliasesRef.current.value = aliases.join(", ");
+    }
   };
 
   const addClubHistory = () => {
@@ -230,8 +349,9 @@ export default function AdminPlayersPage() {
                   <label className="text-xs font-semibold text-slate-300">First Name</label>
                   <input
                     name="firstName"
+                    ref={firstNameRef}
+                    onBlur={handleNameBlur}
                     defaultValue={isEditing.firstName || ""}
-                    required
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
@@ -239,8 +359,9 @@ export default function AdminPlayersPage() {
                   <label className="text-xs font-semibold text-slate-300">Last Name</label>
                   <input
                     name="lastName"
+                    ref={lastNameRef}
+                    onBlur={handleNameBlur}
                     defaultValue={isEditing.lastName || ""}
-                    required
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
@@ -248,8 +369,9 @@ export default function AdminPlayersPage() {
                   <label className="text-xs font-semibold text-slate-300">Display Name</label>
                   <input
                     name="name"
+                    ref={nameRef}
+                    onBlur={handleNameBlur}
                     defaultValue={isEditing.name || ""}
-                    required
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
                 </div>
@@ -257,6 +379,8 @@ export default function AdminPlayersPage() {
                   <label className="text-xs font-semibold text-slate-300">Aliases (comma separated)</label>
                   <input
                     name="aliases"
+                    ref={aliasesRef}
+                    onBlur={handleNameBlur}
                     defaultValue={isEditing.aliases?.join(", ") || ""}
                     placeholder="Leave blank to default to [firstName, lastName]"
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
@@ -278,14 +402,32 @@ export default function AdminPlayersPage() {
                   </datalist>
                 </div>
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Competition Filter</label>
+                  <select
+                    value={selectedCompId}
+                    onChange={e => setSelectedCompId(e.target.value)}
+                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    <option value="" className="bg-slate-900">All Clubs</option>
+                    {competitions.map(c => (
+                      <option key={c.id} value={c.id} className="bg-slate-900">
+                        {c.name} {c.countryCode ? `(${c.countryCode})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Current Club</label>
                   <select
                     name="currentClubId"
-                    defaultValue={isEditing.currentClubId || ""}
+                    value={selectedClubId}
+                    onChange={handleClubChange}
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   >
                     <option value="" className="bg-slate-900">None / Free Agent</option>
-                    {clubs.map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}
+                    {clubs
+                      .filter(c => !selectedCompId || c.currentCompetitionId === selectedCompId || c.clubCompetitions?.some(cc => cc.competitionId === selectedCompId))
+                      .map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}
                   </select>
                 </div>
 

@@ -15,7 +15,13 @@ export declare class AdminClubsController {
         competitions: string[];
         logoUrl: string | null;
     }>;
-    findAll(): Promise<{
+    findAll(): Promise<({
+        clubCompetitions: {
+            id: string;
+            clubId: string;
+            competitionId: string;
+        }[];
+    } & {
         id: string;
         name: string;
         countryCode: string;
@@ -23,7 +29,7 @@ export declare class AdminClubsController {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
-    }[]>;
+    })[]>;
     findOne(id: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {

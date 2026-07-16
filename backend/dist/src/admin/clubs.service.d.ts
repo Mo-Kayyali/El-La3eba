@@ -22,7 +22,13 @@ export declare class AdminClubsService {
     constructor(prisma: PrismaService, clubDenormService: ClubDenormService);
     private validateFks;
     private validateCompetitions;
-    findAll(): Promise<{
+    findAll(): Promise<({
+        clubCompetitions: {
+            id: string;
+            clubId: string;
+            competitionId: string;
+        }[];
+    } & {
         id: string;
         name: string;
         countryCode: string;
@@ -30,7 +36,7 @@ export declare class AdminClubsService {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
-    }[]>;
+    })[]>;
     findOne(id: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {

@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminClubsService = exports.UpdateClubDto = exports.CreateClubDto = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const string_util_1 = require("../utils/string.util");
 const class_validator_1 = require("class-validator");
 class CreateClubDto {
     name;
@@ -126,6 +127,7 @@ let AdminClubsService = class AdminClubsService {
     async findAll() {
         return this.prisma.club.findMany({
             orderBy: { name: 'asc' },
+            include: { clubCompetitions: true }
         });
     }
     async findOne(id) {
@@ -145,6 +147,8 @@ let AdminClubsService = class AdminClubsService {
         };
     }
     async create(dto) {
+        if (dto.name)
+            dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
         await this.validateCompetitions(dto.competitionIds);
         const { competitionIds, ...clubData } = dto;
@@ -161,6 +165,8 @@ let AdminClubsService = class AdminClubsService {
         return this.findOne(club.id);
     }
     async update(id, dto) {
+        if (dto.name)
+            dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         await this.findOne(id);
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
         await this.validateCompetitions(dto.competitionIds);

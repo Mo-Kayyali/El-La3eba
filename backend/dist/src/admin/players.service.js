@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminPlayersService = exports.PatchPlayerDto = exports.UpdatePlayerDto = exports.CreatePlayerDto = exports.ClubHistoryDto = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const string_util_1 = require("../utils/string.util");
 const player_denorm_service_1 = require("../game/player-denorm.service");
 const client_1 = require("@prisma/client");
 const class_validator_1 = require("class-validator");
@@ -287,6 +288,12 @@ let AdminPlayersService = class AdminPlayersService {
         return player;
     }
     async create(dto) {
+        if (dto.firstName)
+            dto.firstName = (0, string_util_1.capitalizeWords)(dto.firstName);
+        if (dto.lastName)
+            dto.lastName = (0, string_util_1.capitalizeWords)(dto.lastName);
+        if (dto.name)
+            dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         await this.validateFks(dto.nationality, dto.currentClubId);
         let aliases = dto.aliases;
         if (!aliases || aliases.length === 0) {
@@ -312,6 +319,12 @@ let AdminPlayersService = class AdminPlayersService {
         return player;
     }
     async update(id, dto) {
+        if (dto.firstName)
+            dto.firstName = (0, string_util_1.capitalizeWords)(dto.firstName);
+        if (dto.lastName)
+            dto.lastName = (0, string_util_1.capitalizeWords)(dto.lastName);
+        if (dto.name)
+            dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         await this.findOne(id);
         await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
         const { clubHistory, dateOfBirth, ...playerData } = dto;

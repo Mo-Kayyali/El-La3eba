@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminQuestionsService = exports.PatchQuestionDto = exports.CreateQuestionDto = exports.QuestionFilterClauseDto = exports.QuestionAnswerDto = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const string_util_1 = require("../utils/string.util");
 const client_1 = require("@prisma/client");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
@@ -181,6 +182,7 @@ let AdminQuestionsService = class AdminQuestionsService {
         return { gameMode, answerType, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
     }
     async create(createDto) {
+        createDto.text = (0, string_util_1.capitalizeWords)(createDto.text);
         const validated = await this.validateShape(createDto);
         return this.prisma.$transaction(async (tx) => {
             const question = await tx.question.create({
@@ -246,6 +248,8 @@ let AdminQuestionsService = class AdminQuestionsService {
         });
     }
     async update(id, updateDto) {
+        if (updateDto.text)
+            updateDto.text = (0, string_util_1.capitalizeWords)(updateDto.text);
         const validated = await this.validateShape(updateDto);
         return this.prisma.$transaction(async (tx) => {
             const question = await tx.question.update({

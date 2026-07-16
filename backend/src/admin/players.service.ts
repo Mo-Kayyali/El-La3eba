@@ -1,5 +1,6 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { capitalizeWords } from '../utils/string.util';
 import { PlayerDenormService } from '../game/player-denorm.service';
 import { Position, PreferredFoot } from '@prisma/client';
 import { IsString, IsOptional, IsArray, IsUUID, IsBoolean, IsInt, IsEnum, IsDateString, ValidateNested } from 'class-validator';
@@ -219,6 +220,10 @@ export class AdminPlayersService {
   }
 
   async create(dto: CreatePlayerDto) {
+    if (dto.firstName) dto.firstName = capitalizeWords(dto.firstName);
+    if (dto.lastName) dto.lastName = capitalizeWords(dto.lastName);
+    if (dto.name) dto.name = capitalizeWords(dto.name);
+    
     await this.validateFks(dto.nationality, dto.currentClubId);
     
     let aliases = dto.aliases;
@@ -249,6 +254,10 @@ export class AdminPlayersService {
   }
 
   async update(id: string, dto: PatchPlayerDto) {
+    if (dto.firstName) dto.firstName = capitalizeWords(dto.firstName);
+    if (dto.lastName) dto.lastName = capitalizeWords(dto.lastName);
+    if (dto.name) dto.name = capitalizeWords(dto.name);
+    
     await this.findOne(id);
     await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
 

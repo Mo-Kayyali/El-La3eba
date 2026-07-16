@@ -1,5 +1,6 @@
 import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { capitalizeWords } from '../utils/string.util';
 
 import { IsString, IsOptional, IsArray, IsUUID } from 'class-validator';
 
@@ -91,6 +92,7 @@ export class AdminClubsService {
   async findAll() {
     return this.prisma.club.findMany({
       orderBy: { name: 'asc' },
+      include: { clubCompetitions: true }
     });
   }
 
@@ -113,6 +115,7 @@ export class AdminClubsService {
   }
 
   async create(dto: CreateClubDto) {
+    if (dto.name) dto.name = capitalizeWords(dto.name);
     await this.validateFks(dto.countryCode, dto.currentCompetitionId);
     await this.validateCompetitions(dto.competitionIds);
     
@@ -133,6 +136,7 @@ export class AdminClubsService {
   }
 
   async update(id: string, dto: UpdateClubDto) {
+    if (dto.name) dto.name = capitalizeWords(dto.name);
     await this.findOne(id); // exists check
     await this.validateFks(dto.countryCode, dto.currentCompetitionId);
     await this.validateCompetitions(dto.competitionIds);
