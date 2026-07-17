@@ -7,6 +7,7 @@ import { GameModule } from './game/game.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from './users/users.module';
 import { FriendsModule } from './friends/friends.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { FriendsModule } from './friends/friends.module';
     GameModule,
     UsersModule,
     FriendsModule,
+    AdminModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [],

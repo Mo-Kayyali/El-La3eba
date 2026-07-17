@@ -44,6 +44,12 @@ The long-term vision is multiple selectable game modes, not just Strikes. Ideas 
 - **Strikes (current mode) as FFA.** Extend the existing 1v1 Strikes mode to support 3–4 player free-for-all, not just head-to-head.
 - **"Guess the Number" mode.** Host asks a numeric question (e.g. "how many goals has Ronaldo scored for club X"). Players submit a number; closest guess wins the point, exact match wins 2 points. Designed to work both as 1v1 and as free-for-all (3–4 players).
 - **2v2 co-op mode.** Team-based play with its own question logic, plus in-game chat: a team-only channel for teammates and a public/all-players channel, for fun/banter — separate from the core gameplay loop.
+- **Phase 3: Match Composition & Content Mixing**
+  - **Goal**: Transition from simple random match generation to structured, curated gameplay experiences.
+  - **Features**:
+    - Mix National (Egyptian) and International questions in a defined ratio per match (e.g., 3 National, 7 International per game).
+    - Enforce varying difficulty curves or game modes sequentially.
+    - Require the newly added `QuestionScope` field on Questions to drive the mixing logic.
 - **Survival Mode (sudden death)** and **Daily Challenges** — carried over as open ideas, not yet designed in detail.
 
 **Schema implication:** questions need a `game_mode` column (or similar) so a single question bank can be shared/reused across modes where appropriate, rather than duplicating question data per mode. This is a deliberate schema change, not an afterthought — plan it before building the second game mode, not after.

@@ -37,16 +37,17 @@ export declare class AuthController {
             gameSessionId: string;
             createdAt: string;
         } | null;
-        email: string;
-        username: string;
         id: string;
+        email: string;
         createdAt: Date;
+        username: string;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;
         wins: number;
         offlineDisconnectCount: number;
         lastDisconnectAt: Date | null;
+        role: import(".prisma/client").$Enums.Role;
     }>;
     requestVerification(req: any): Promise<{
         success: boolean;

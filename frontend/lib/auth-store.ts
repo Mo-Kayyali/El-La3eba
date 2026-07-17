@@ -11,6 +11,7 @@ export type AuthUser = {
   gamesPlayed?: number;
   isVerified?: boolean;
   createdAt?: string;
+  role?: "ADMIN" | "PLAYER";
   [key: string]: unknown;
 };
 

@@ -2,10 +2,12 @@ import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Server } from 'socket.io';
 import type { ChainableCommander } from 'ioredis';
+import { GameService } from './game.service';
 export type QueueMode = 'ranked' | 'unrated';
 export declare class MatchmakingService {
     private readonly redisClient;
     private readonly prisma;
+    private readonly gameService;
     private readonly logger;
     private server;
     private startTurnTimerFn?;
@@ -14,7 +16,7 @@ export declare class MatchmakingService {
     private readonly PRIVATE_ROOM_TTL_SECONDS;
     private readonly ACTIVE_GAME_KEY_PREFIX;
     private readonly QUEUES;
-    constructor(redisClient: RedisService, prisma: PrismaService);
+    constructor(redisClient: RedisService, prisma: PrismaService, gameService: GameService);
     setServer(server: Server): void;
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
     private queueSearchKey;
@@ -68,7 +70,8 @@ export declare class MatchmakingService {
             [player2Id]: number;
         };
         guessedPlayers: never[];
-        currentQuestion: "Name a football player who played in 2026" | "Name a player who has won the Champions League" | "Name a player who has played in the Premier League" | "Name a player who has won the World Cup" | "Name a player who has won the Ballon d’Or" | "Name a player who has played for Barcelona" | "Name a player who has played for Real Madrid";
+        usedQuestionIds: string[];
+        currentQuestion: any;
         isRanked: boolean;
     }>;
     deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;

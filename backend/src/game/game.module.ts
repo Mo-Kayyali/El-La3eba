@@ -6,6 +6,8 @@ import { RedisModule } from '../redis/redis.module';
 import { MatchmakingService } from './matchmaking.service';
 import { GameService } from './game.service';
 import { LeaderboardService } from './leaderboard.service';
+import { PlayerDenormService } from './player-denorm.service';
+import { ClubDenormService } from './club-denorm.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { FriendsModule } from '../friends/friends.module';
 import { UsersModule } from '../users/users.module';
@@ -19,7 +21,7 @@ import { UsersModule } from '../users/users.module';
     forwardRef(() => FriendsModule),
   ],
   controllers: [GameController],
-  providers: [GameGateway, MatchmakingService, GameService, LeaderboardService],
-  exports: [GameGateway],
+  providers: [GameGateway, MatchmakingService, GameService, LeaderboardService, PlayerDenormService, ClubDenormService],
+  exports: [GameGateway, PlayerDenormService, ClubDenormService, GameService],
 })
 export class GameModule {}
