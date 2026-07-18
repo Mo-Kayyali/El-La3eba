@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search, X } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { Pagination } from "@/components/pagination";
 
 type Club = {
   id: string;
@@ -43,6 +44,11 @@ export default function AdminClubsPage() {
   const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterCountryCode, setFilterCountryCode] = useState<string>("");
   const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
+  
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -55,19 +61,45 @@ export default function AdminClubsPage() {
 
   const fetchData = async () => {
     try {
-      const [clubsRes, compsRes, countriesRes] = await Promise.all([
-        api.get<Club[]>("/admin/clubs"),
-        api.get<Competition[]>("/admin/competitions"),
+      const [compsRes, countriesRes] = await Promise.all([
+        api.get<{data: Competition[]}>("/admin/competitions", { params: { limit: 1000 } }),
         api.get<Country[]>("/admin/countries"),
       ]);
-      setClubs(clubsRes.data);
-      setCompetitions(compsRes.data);
+      setCompetitions(compsRes.data.data);
       setCountries(countriesRes.data);
-      setSelectedClubIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!bootstrapped || !user || user.role !== "ADMIN") return;
+    fetchClubs();
+  }, [page, search, filterCountryCode, filterCompId]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [searchInput]);
+
+  const fetchClubs = async () => {
+    try {
+      const params: any = { page, limit: 50 };
+      if (filterCompId) params.competitionId = filterCompId;
+      if (filterCountryCode) params.countryCode = filterCountryCode;
+      if (search) params.search = search;
+      
+      const { data } = await api.get<{data: Club[], meta: any}>("/admin/clubs", { params });
+      setClubs(data.data);
+      setMeta(data.meta);
+      setSelectedClubIds([]);
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
     }
   };
 
@@ -98,7 +130,7 @@ export default function AdminClubsPage() {
         await api.post("/admin/clubs", payload);
       }
       setIsEditing(null);
-      fetchData();
+      fetchClubs();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -109,7 +141,7 @@ export default function AdminClubsPage() {
     setError("");
     try {
       await api.delete(`/admin/clubs/${id}`);
-      fetchData();
+      fetchClubs();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -122,7 +154,7 @@ export default function AdminClubsPage() {
     try {
       await Promise.all(selectedClubIds.map(id => api.delete(`/admin/clubs/${id}`)));
       setSelectedClubIds([]);
-      fetchData();
+      fetchClubs();
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -145,11 +177,7 @@ export default function AdminClubsPage() {
     setSelectedComps([]);
   };
 
-  const filteredClubs = clubs.filter(c => {
-    if (filterCountryCode && c.countryCode !== filterCountryCode) return false;
-    if (!filterCompId) return true;
-    return c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId);
-  });
+  const filteredClubs = clubs;
 
   const groupedCompetitions = competitions.reduce((acc, comp) => {
     let groupName = "Other";
@@ -197,12 +225,30 @@ export default function AdminClubsPage() {
         </button>
       </div>
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4">
+          <div className="relative min-w-[16rem]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search clubs..."
+              className="h-[42px] w-full rounded-xl border border-white/[0.08] bg-black/40 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none transition"
+            />
+            {search && (
+              <button 
+                onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <div className="w-48">
             <FilterSelect
               value={filterCountryCode}
-              onChange={setFilterCountryCode}
+              onChange={(val) => { setFilterCountryCode(val); setPage(1); }}
               options={countries.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))}
               placeholder="All Countries"
             />
@@ -210,7 +256,7 @@ export default function AdminClubsPage() {
           <div className="w-64">
             <FilterSelect
               value={filterCompId}
-              onChange={setFilterCompId}
+              onChange={(val) => { setFilterCompId(val); setPage(1); }}
               options={sortedGroups.flatMap(group => 
                 groupedCompetitions[group].map(c => ({ value: c.id, label: c.name, group }))
               )}
@@ -219,7 +265,7 @@ export default function AdminClubsPage() {
           </div>
         </div>
         <div className="text-sm text-slate-400 shrink-0">
-          <span className="font-bold text-white">{filteredClubs.length}</span> clubs found
+          <span className="font-bold text-white">{meta.total}</span> clubs found
         </div>
       </div>
 
@@ -400,6 +446,17 @@ export default function AdminClubsPage() {
         </div>
       )}
 
+      {clubs.length > 0 && (
+        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
+
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -458,6 +515,13 @@ export default function AdminClubsPage() {
             </tbody>
           </table>
         </div>
+        
+        <Pagination 
+          currentPage={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.total}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

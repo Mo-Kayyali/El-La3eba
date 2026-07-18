@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Check, X, ArrowLeft, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { Pagination } from "@/components/pagination";
 
 type Suggestion = {
   id: string;
@@ -38,7 +39,7 @@ function AdminSuggestionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, bootstrapped } = useAuthStore();
-  const [allSuggestions, setAllSuggestions] = useState<Suggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // For modal
@@ -50,6 +51,9 @@ function AdminSuggestionsContent() {
   
   const initialTab = (searchParams.get("tab") as any) || "PENDING";
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">(initialTab);
+  
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
 
   useEffect(() => {
     const currentTab = searchParams.get("tab");
@@ -67,28 +71,25 @@ function AdminSuggestionsContent() {
       return;
     }
     fetchSuggestions();
-  }, [bootstrapped, user, router]);
+  }, [bootstrapped, user, router, statusFilter, page]);
 
   const fetchSuggestions = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get("/admin/suggestions");
-      setAllSuggestions(res.data);
+      const params = new URLSearchParams();
+      if (statusFilter !== "ALL") params.append("status", statusFilter);
+      params.append("page", page.toString());
+      params.append("limit", "50");
+      
+      const res = await api.get<{data: Suggestion[], meta: any}>(`/admin/suggestions?${params.toString()}`);
+      setSuggestions(res.data.data);
+      setMeta(res.data.meta);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to load suggestions");
     } finally {
       setIsLoading(false);
     }
   };
-
-  const suggestions = statusFilter === "ALL" 
-    ? allSuggestions 
-    : allSuggestions.filter(s => s.status === statusFilter);
-
-  const pendingCount = allSuggestions.filter(s => s.status === "PENDING").length;
-  const approvedCount = allSuggestions.filter(s => s.status === "APPROVED").length;
-  const rejectedCount = allSuggestions.filter(s => s.status === "REJECTED").length;
-  const allCount = allSuggestions.length;
 
   const handleAction = async () => {
     if (!activeSuggestion || !actionType) return;
@@ -100,8 +101,8 @@ function AdminSuggestionsContent() {
       toast.success(res.data.message || `Suggestion ${actionType}d`);
       
       // Update status in list
-      setAllSuggestions((prev) => 
-        prev.map((s) => s.id === activeSuggestion.id ? { ...s, status: actionType === "approve" ? "APPROVED" : "REJECTED" } : s)
+      setSuggestions((prev) => 
+        prev.map((s: Suggestion) => s.id === activeSuggestion.id ? { ...s, status: actionType === "approve" ? "APPROVED" : "REJECTED" } : s)
       );
       
       if (actionType === "approve") {
@@ -161,12 +162,20 @@ function AdminSuggestionsContent() {
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs font-semibold shrink-0">
-          <div className="flex items-center gap-1.5 text-yellow-400/80 bg-yellow-500/10 px-3 py-1.5 rounded-full"><span className="text-yellow-400">{pendingCount}</span> Pending</div>
-          <div className="flex items-center gap-1.5 text-emerald-400/80 bg-emerald-500/10 px-3 py-1.5 rounded-full"><span className="text-emerald-400">{approvedCount}</span> Approved</div>
-          <div className="flex items-center gap-1.5 text-red-400/80 bg-red-500/10 px-3 py-1.5 rounded-full"><span className="text-red-400">{rejectedCount}</span> Rejected</div>
-          <div className="flex items-center gap-1.5 text-slate-400/80 bg-slate-500/10 px-3 py-1.5 rounded-full"><span className="text-slate-300">{allCount}</span> Total</div>
+          <div className="flex items-center gap-1.5 text-slate-400/80 bg-slate-500/10 px-3 py-1.5 rounded-full"><span className="text-slate-300">{meta.total}</span> {statusFilter === "ALL" ? "Total" : statusFilter} Suggestions</div>
         </div>
       </div>
+
+      {suggestions.length > 0 && !isLoading && (
+        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-20 text-slate-500">Loading suggestions...</div>
@@ -262,6 +271,17 @@ function AdminSuggestionsContent() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="mt-6">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
         </div>
       )}
 

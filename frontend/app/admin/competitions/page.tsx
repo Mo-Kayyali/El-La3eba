@@ -7,6 +7,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { Pagination } from "@/components/pagination";
+import { Search, X } from "lucide-react";
 
 type Competition = {
   id: string;
@@ -29,6 +31,11 @@ export default function AdminCompetitionsPage() {
   const [error, setError] = useState("");
   const [selectedCompetitionIds, setSelectedCompetitionIds] = useState<string[]>([]);
 
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+
   const [isEditing, setIsEditing] = useState<Partial<Competition> | null>(null);
   const [selectedType, setSelectedType] = useState<string>("DOMESTIC_LEAGUE");
 
@@ -44,17 +51,44 @@ export default function AdminCompetitionsPage() {
       router.replace("/");
       return;
     }
-    fetchCompetitions();
+    const loadCountries = async () => {
+      try {
+        const { data } = await api.get<Country[]>("/admin/countries");
+        setCountries(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadCountries();
   }, [bootstrapped, user, router]);
+
+  useEffect(() => {
+    if (!bootstrapped || !user || user.role !== "ADMIN") return;
+    fetchCompetitions();
+  }, [bootstrapped, user, filterCompCountryCode, search, page]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [searchInput]);
 
   const fetchCompetitions = async () => {
     try {
-      const [{ data: comps }, { data: cntrs }] = await Promise.all([
-        api.get<Competition[]>("/admin/competitions"),
-        api.get<Country[]>("/admin/countries"),
-      ]);
-      setCompetitions(comps);
-      setCountries(cntrs);
+      setLoading(true);
+      const params: any = { page, limit: 50 };
+      if (filterCompCountryCode) {
+        if (filterCompCountryCode === "_WORLD") params.countryCode = "_WORLD";
+        else if (filterCompCountryCode === "_CONTINENTAL") params.countryCode = "_CONTINENTAL";
+        else params.countryCode = filterCompCountryCode;
+      }
+      if (search) params.search = search;
+      
+      const { data } = await api.get<{data: Competition[], meta: any}>("/admin/competitions", { params });
+      setCompetitions(data.data);
+      setMeta(data.meta);
       setSelectedCompetitionIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
@@ -255,18 +289,41 @@ export default function AdminCompetitionsPage() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center justify-between">
-        <div className="w-64">
-          <FilterSelect
-            value={filterCompCountryCode}
-            onChange={setFilterCompCountryCode}
-            options={[
-              { value: "_WORLD", label: "World (International)", group: "Global" },
-              { value: "_CONTINENTAL", label: "Continental", group: "Global" },
-              ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
-            ]}
-            placeholder="League Country"
-          />
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative min-w-[16rem]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search competitions..."
+              className="h-[42px] w-full rounded-xl border border-white/[0.08] bg-black/40 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none transition"
+            />
+            {search && (
+              <button 
+                onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="w-64">
+            <FilterSelect
+              value={filterCompCountryCode}
+              onChange={(val) => { setFilterCompCountryCode(val); setPage(1); }}
+              options={[
+                { value: "_WORLD", label: "World (International)", group: "Global" },
+                { value: "_CONTINENTAL", label: "Continental", group: "Global" },
+                ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
+              ]}
+              placeholder="League Country"
+            />
+          </div>
+        </div>
+        <div className="text-sm text-slate-400 shrink-0">
+          <span className="font-bold text-white">{meta.total}</span> competitions found
         </div>
       </div>
 
@@ -299,6 +356,17 @@ export default function AdminCompetitionsPage() {
           </button>
         </div>
       </div>
+
+      {competitions.length > 0 && (
+        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -365,6 +433,12 @@ export default function AdminCompetitionsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination 
+          currentPage={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.total}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

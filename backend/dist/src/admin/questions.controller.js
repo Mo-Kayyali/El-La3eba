@@ -30,9 +30,15 @@ let AdminQuestionsController = class AdminQuestionsController {
     create(createDto) {
         return this.questionsService.create(createDto);
     }
-    findAll(gameMode, isActive) {
+    findAll(gameMode, isActive, search, page, limit) {
         const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-        return this.questionsService.findAll(gameMode, activeFilter);
+        return this.questionsService.findAll({
+            gameMode,
+            isActive: activeFilter,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+        });
     }
     findOne(id) {
         return this.questionsService.findOne(id);
@@ -80,8 +86,11 @@ __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('gameMode')),
     __param(1, (0, common_1.Query)('isActive')),
+    __param(2, (0, common_1.Query)('search')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminQuestionsController.prototype, "findAll", null);
 __decorate([

@@ -27,8 +27,14 @@ let AdminClubsController = class AdminClubsController {
     create(createDto) {
         return this.clubsService.create(createDto);
     }
-    findAll() {
-        return this.clubsService.findAll();
+    findAll(competitionId, countryCode, search, page, limit) {
+        return this.clubsService.findAll({
+            competitionId,
+            countryCode,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+        });
     }
     findOne(id) {
         return this.clubsService.findOne(id);
@@ -50,8 +56,13 @@ __decorate([
 ], AdminClubsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('competitionId')),
+    __param(1, (0, common_1.Query)('countryCode')),
+    __param(2, (0, common_1.Query)('search')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminClubsController.prototype, "findAll", null);
 __decorate([

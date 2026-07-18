@@ -17,14 +17,26 @@ export declare class UpdateCompetitionDto {
 export declare class AdminCompetitionsService {
     private prisma;
     constructor(prisma: PrismaService);
-    findAll(): Promise<{
-        id: string;
-        name: string;
-        type: import(".prisma/client").$Enums.CompetitionType;
-        countryCode: string | null;
-        region: import(".prisma/client").$Enums.Region | null;
-        tier: number | null;
-    }[]>;
+    findAll(filters?: {
+        countryCode?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+    }): Promise<{
+        data: {
+            id: string;
+            name: string;
+            type: import(".prisma/client").$Enums.CompetitionType;
+            countryCode: string | null;
+            region: import(".prisma/client").$Enums.Region | null;
+            tier: number | null;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            totalPages: number;
+        };
+    }>;
     findOne(id: string): Promise<{
         id: string;
         name: string;

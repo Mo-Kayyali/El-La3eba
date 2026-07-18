@@ -22,21 +22,34 @@ export declare class AdminClubsService {
     constructor(prisma: PrismaService, clubDenormService: ClubDenormService);
     private validateFks;
     private validateCompetitions;
-    findAll(): Promise<({
-        clubCompetitions: {
+    findAll(filters?: {
+        competitionId?: string;
+        countryCode?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+    }): Promise<{
+        data: ({
+            clubCompetitions: {
+                id: string;
+                clubId: string;
+                competitionId: string;
+            }[];
+        } & {
             id: string;
-            clubId: string;
-            competitionId: string;
-        }[];
-    } & {
-        id: string;
-        name: string;
-        competitions: string[];
-        aliases: string[];
-        countryCode: string;
-        currentCompetitionId: string | null;
-        logoUrl: string | null;
-    })[]>;
+            name: string;
+            aliases: string[];
+            countryCode: string;
+            currentCompetitionId: string | null;
+            competitions: string[];
+            logoUrl: string | null;
+        })[];
+        meta: {
+            total: number;
+            page: number;
+            totalPages: number;
+        };
+    }>;
     findOne(id: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {
@@ -44,10 +57,10 @@ export declare class AdminClubsService {
         }[];
         id: string;
         name: string;
-        competitions: string[];
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
     create(dto: CreateClubDto): Promise<{
@@ -57,10 +70,10 @@ export declare class AdminClubsService {
         }[];
         id: string;
         name: string;
-        competitions: string[];
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
     update(id: string, dto: UpdateClubDto): Promise<{
@@ -70,19 +83,19 @@ export declare class AdminClubsService {
         }[];
         id: string;
         name: string;
-        competitions: string[];
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
         name: string;
-        competitions: string[];
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
 }

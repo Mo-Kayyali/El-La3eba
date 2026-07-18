@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, X, Search, Check, AlertCircle } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { Pagination } from "@/components/pagination";
 
 type PlayerSearchResult = {
   id: string;
@@ -164,6 +165,11 @@ function AdminQuestionsContent() {
 
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
 
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -197,8 +203,8 @@ function AdminQuestionsContent() {
       router.replace("/");
       return;
     }
-    fetchQuestions();
-  }, [bootstrapped, user, router, filterGameMode, filterIsActive]);
+    fetchData();
+  }, [bootstrapped, user, router]);
 
   useEffect(() => {
     // Auto-set answer type rules based on game mode
@@ -207,27 +213,51 @@ function AdminQuestionsContent() {
     }
   }, [gameMode]);
 
+  const fetchData = async () => {
+    try {
+      const [clubsRes, compsRes, countriesRes] = await Promise.all([
+        api.get<{data: any[]}>("/admin/clubs", { params: { limit: 10000 } }),
+        api.get<{data: any[]}>("/admin/competitions", { params: { limit: 1000 } }),
+        api.get<any[]>("/admin/countries"),
+      ]);
+      setClubs(clubsRes.data.data);
+      setCompetitions(compsRes.data.data);
+      setCountries(countriesRes.data);
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!bootstrapped || !user || user.role !== "ADMIN") return;
+    fetchQuestions();
+  }, [page, search, filterGameMode, filterIsActive]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [searchInput]);
+
   const fetchQuestions = async () => {
     try {
       const params = new URLSearchParams();
       if (filterGameMode) params.append("gameMode", filterGameMode);
       if (filterIsActive) params.append("isActive", filterIsActive);
+      if (search) params.append("search", search);
+      params.append("page", page.toString());
+      params.append("limit", "50");
 
-      const [res, clubsRes, compsRes, countriesRes] = await Promise.all([
-        api.get<Question[]>(`/admin/questions?${params.toString()}`),
-        api.get<any[]>("/admin/clubs"),
-        api.get<any[]>("/admin/competitions"),
-        api.get<any[]>("/admin/countries"),
-      ]);
-      setQuestions(res.data);
-      setClubs(clubsRes.data);
-      setCompetitions(compsRes.data);
-      setCountries(countriesRes.data);
+      const res = await api.get<{data: Question[], meta: any}>(`/admin/questions?${params.toString()}`);
+      setQuestions(res.data.data);
+      setMeta(res.data.meta);
       setSelectedQuestionIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -467,8 +497,8 @@ function AdminQuestionsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl px-6 py-10 text-slate-200">
+      <div>
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -499,7 +529,7 @@ function AdminQuestionsContent() {
 
         {/* Form Panel */}
         {showForm && (
-          <div className="mb-10 rounded-2xl border border-white/10 bg-slate-900/50 p-6 backdrop-blur-md sm:p-8">
+          <div className="mb-10 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl sm:p-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-bold">
                 {editingId ? "Edit Question" : "Create New Question"}
@@ -941,12 +971,32 @@ function AdminQuestionsContent() {
         )}
 
         {/* List Panel */}
-        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-4">
+            <div className="relative min-w-[16rem]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                }}
+                placeholder="Search questions..."
+                className="h-[42px] w-full rounded-xl border border-white/[0.08] bg-black/40 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none transition"
+              />
+              {search && (
+                <button 
+                  onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             <div className="w-48">
               <FilterSelect
                 value={filterGameMode}
-                onChange={setFilterGameMode}
+                onChange={(val) => { setFilterGameMode(val); setPage(1); }}
                 options={[
                   { value: "STRIKES", label: "STRIKES" },
                   { value: "TOP_10", label: "TOP_10" },
@@ -959,7 +1009,7 @@ function AdminQuestionsContent() {
             <div className="w-48">
               <FilterSelect
                 value={filterIsActive}
-                onChange={setFilterIsActive}
+                onChange={(val) => { setFilterIsActive(val); setPage(1); }}
                 options={[
                   { value: "true", label: "Active Only" },
                   { value: "false", label: "Inactive Only" }
@@ -969,7 +1019,7 @@ function AdminQuestionsContent() {
             </div>
           </div>
           <div className="text-sm text-slate-400">
-            {questions.length} question{questions.length === 1 ? '' : 's'} found
+            {meta.total} question{meta.total === 1 ? '' : 's'} found
           </div>
         </div>
 
@@ -1003,7 +1053,18 @@ function AdminQuestionsContent() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-md">
+        {questions.length > 0 && (
+          <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+            <Pagination 
+              currentPage={meta.page}
+              totalPages={meta.totalPages}
+              totalItems={meta.total}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
+
+        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
           {questions.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No questions found. Add one above.
@@ -1088,6 +1149,13 @@ function AdminQuestionsContent() {
             </div>
           )}
         </div>
+        
+        <Pagination 
+          currentPage={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.total}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

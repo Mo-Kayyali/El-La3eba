@@ -29,7 +29,7 @@ let GameService = class GameService {
         else if (guessLen >= 5)
             allowedTypos = 1;
         const [_, matches] = await this.prisma.$transaction([
-            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.15;`),
+            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
             this.prisma.$queryRaw `
         WITH guess AS (
           SELECT lower(unaccent(${normalizedGuess})) AS val

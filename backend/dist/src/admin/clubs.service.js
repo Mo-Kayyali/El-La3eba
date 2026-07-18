@@ -124,11 +124,64 @@ let AdminClubsService = class AdminClubsService {
             }
         }
     }
-    async findAll() {
-        return this.prisma.club.findMany({
+    async findAll(filters = {}) {
+        const where = {};
+        const page = filters.page || 1;
+        const limit = filters.limit || 50;
+        const skip = (page - 1) * limit;
+        if (filters.competitionId) {
+            where.OR = [
+                { currentCompetitionId: filters.competitionId },
+                { clubCompetitions: { some: { competitionId: filters.competitionId } } }
+            ];
+        }
+        if (filters.countryCode) {
+            where.countryCode = filters.countryCode;
+        }
+        if (filters.search) {
+            const normalizedSearch = filters.search.trim();
+            if (normalizedSearch.length <= 2) {
+                where.name = { contains: normalizedSearch, mode: 'insensitive' };
+            }
+            else {
+                const [_, matchedIdsObj] = await this.prisma.$transaction([
+                    this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+                    this.prisma.$queryRaw `
+            SELECT c.id
+            FROM "Club" c
+            WHERE 
+              lower(unaccent_immutable(c.name)) %> lower(unaccent(${normalizedSearch})) OR
+              lower(unaccent_immutable(array_to_string_immutable(c.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+            ORDER BY GREATEST(
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(c.name))),
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(c.aliases, ' '))))
+            ) DESC
+            LIMIT 500;
+          `
+                ]);
+                const matchedIds = matchedIdsObj.map(row => row.id);
+                if (matchedIds.length === 0) {
+                    return { data: [], meta: { total: 0, page, totalPages: 0 } };
+                }
+                where.id = { in: matchedIds };
+            }
+        }
+        const total = await this.prisma.club.count({ where });
+        const data = await this.prisma.club.findMany({
+            where,
+            skip,
+            take: limit,
             orderBy: { name: 'asc' },
             include: { clubCompetitions: true }
         });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     async findOne(id) {
         const club = await this.prisma.club.findUnique({

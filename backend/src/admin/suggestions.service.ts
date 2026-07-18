@@ -5,10 +5,17 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SuggestionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAllSuggestions(status?: 'PENDING' | 'APPROVED' | 'REJECTED') {
-    const whereClause = status ? { status } : {};
-    return this.prisma.answerSuggestion.findMany({
+  async getAllSuggestions(filters: { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; page?: number; limit?: number } = {}) {
+    const whereClause = filters.status ? { status: filters.status } : {};
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const skip = (page - 1) * limit;
+
+    const total = await this.prisma.answerSuggestion.count({ where: whereClause });
+    const data = await this.prisma.answerSuggestion.findMany({
       where: whereClause,
+      skip,
+      take: limit,
       include: {
         question: true,
         player: true,
@@ -18,6 +25,15 @@ export class SuggestionsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async approveSuggestion(id: string, reviewNote?: string) {

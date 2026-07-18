@@ -27,8 +27,13 @@ let AdminCompetitionsController = class AdminCompetitionsController {
     create(createDto) {
         return this.competitionsService.create(createDto);
     }
-    findAll() {
-        return this.competitionsService.findAll();
+    findAll(countryCode, search, page, limit) {
+        return this.competitionsService.findAll({
+            countryCode,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+        });
     }
     findOne(id) {
         return this.competitionsService.findOne(id);
@@ -50,8 +55,12 @@ __decorate([
 ], AdminCompetitionsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('countryCode')),
+    __param(1, (0, common_1.Query)('search')),
+    __param(2, (0, common_1.Query)('page')),
+    __param(3, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminCompetitionsController.prototype, "findAll", null);
 __decorate([

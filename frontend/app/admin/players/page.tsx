@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Search, X } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { Pagination } from "@/components/pagination";
 
 type Club = {
   id: string;
@@ -71,6 +72,11 @@ function AdminPlayersContent() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
 
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState<Partial<Player> | null>(null);
@@ -102,13 +108,13 @@ function AdminPlayersContent() {
   const fetchData = async () => {
     try {
       const [clubsRes, countriesRes, competitionsRes] = await Promise.all([
-        api.get<Club[]>("/admin/clubs"),
+        api.get<{data: Club[]}>("/admin/clubs", { params: { limit: 10000 } }),
         api.get<Country[]>("/admin/countries"),
-        api.get<Competition[]>("/admin/competitions"),
+        api.get<{data: Competition[]}>("/admin/competitions", { params: { limit: 1000 } }),
       ]);
-      setClubs(clubsRes.data);
+      setClubs(clubsRes.data.data);
       setCountries(countriesRes.data);
-      setCompetitions(competitionsRes.data);
+      setCompetitions(competitionsRes.data.data);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -119,17 +125,27 @@ function AdminPlayersContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchPlayers();
-  }, [bootstrapped, user, filterCompId, filterClubId, filterRetired, filterNationality]);
+  }, [page, search, filterNationality, filterCompId, filterClubId, filterRetired]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [searchInput]);
 
   const fetchPlayers = async () => {
     try {
-      const params: any = {};
+      const params: any = { page, limit: 50 };
       if (filterCompId) params.competitionId = filterCompId;
       if (filterClubId) params.clubId = filterClubId;
       if (filterRetired) params.isRetired = filterRetired;
       if (filterNationality) params.nationality = filterNationality;
-      const { data } = await api.get<Player[]>("/admin/players", { params });
-      setPlayers(data);
+      if (search) params.search = search;
+      const { data } = await api.get<{data: Player[], meta: any}>("/admin/players", { params });
+      setPlayers(data.data);
+      setMeta(data.meta);
       setSelectedPlayerIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
@@ -654,68 +670,89 @@ function AdminPlayersContent() {
       )}
 
       <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="flex-1 flex flex-wrap gap-3">
-          <div className="min-w-[12rem] flex-1">
-            <FilterSelect
-              value={filterNationality}
-              onChange={setFilterNationality}
-              options={countries.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))}
-              placeholder="All Nationalities"
-            />
+        <div className="flex-1 flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
+            <div className="min-w-[12rem] flex-1">
+              <FilterSelect
+                value={filterNationality}
+                onChange={(val) => { setFilterNationality(val); setPage(1); }}
+                options={countries.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))}
+                placeholder="All Nationalities"
+              />
+            </div>
+            <div className="min-w-[12rem] flex-1">
+              <FilterSelect
+                value={filterCompId}
+                onChange={(val) => {
+                  setFilterCompId(val);
+                  setFilterClubId(""); // Reset club when league changes
+                  setPage(1);
+                }}
+                options={competitions
+                  .map(c => {
+                    let group = "Other";
+                    if (c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP") group = "Continental";
+                    else if (c.type === "INTERNATIONAL_TOURNAMENT" || c.type === "GLOBAL_CLUB_CHAMPIONSHIP" || c.type === "INTERNATIONAL") group = "International";
+                    else if (c.countryCode) {
+                      group = countries.find(co => co.id === c.countryCode)?.name || c.countryCode;
+                    } else {
+                      group = "Domestic";
+                    }
+                    return { value: c.id, label: c.name, group };
+                  })
+                  .sort((a, b) => {
+                    if (a.group === "Continental") return -1;
+                    if (a.group === "International") return -1;
+                    if (b.group === "Continental") return 1;
+                    if (b.group === "International") return 1;
+                    return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
+                  })}
+                placeholder="All Leagues"
+              />
+            </div>
+            <div className="min-w-[12rem] flex-1">
+              <FilterSelect
+                value={filterClubId}
+                onChange={(val) => { setFilterClubId(val); setPage(1); }}
+                options={clubs
+                  .filter(c => !filterCompId || c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId))
+                  .map(c => ({ value: c.id, label: c.name }))}
+                placeholder="All Clubs"
+              />
+            </div>
+            <div className="min-w-[12rem] flex-1">
+              <FilterSelect
+                value={filterRetired}
+                onChange={(val) => { setFilterRetired(val); setPage(1); }}
+                options={[
+                  { value: "false", label: "Active Only" },
+                  { value: "true", label: "Retired Only" }
+                ]}
+                placeholder="All Statuses"
+              />
+            </div>
           </div>
-          <div className="min-w-[12rem] flex-1">
-            <FilterSelect
-              value={filterCompId}
-              onChange={(val) => {
-                setFilterCompId(val);
-                setFilterClubId(""); // Reset club when league changes
-              }}
-              options={competitions
-                .map(c => {
-                  let group = "Other";
-                  if (c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP") group = "Continental";
-                  else if (c.type === "INTERNATIONAL_TOURNAMENT" || c.type === "GLOBAL_CLUB_CHAMPIONSHIP" || c.type === "INTERNATIONAL") group = "International";
-                  else if (c.countryCode) {
-                    group = countries.find(co => co.id === c.countryCode)?.name || c.countryCode;
-                  } else {
-                    group = "Domestic";
-                  }
-                  return { value: c.id, label: c.name, group };
-                })
-                .sort((a, b) => {
-                  if (a.group === "Continental") return -1;
-                  if (a.group === "International") return -1;
-                  if (b.group === "Continental") return 1;
-                  if (b.group === "International") return 1;
-                  return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
-                })}
-              placeholder="All Leagues"
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search players..."
+              className="h-[42px] w-full rounded-xl border border-white/[0.08] bg-black/40 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none transition"
             />
-          </div>
-          <div className="min-w-[12rem] flex-1">
-            <FilterSelect
-              value={filterClubId}
-              onChange={setFilterClubId}
-              options={clubs
-                .filter(c => !filterCompId || c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId))
-                .map(c => ({ value: c.id, label: c.name }))}
-              placeholder="All Clubs"
-            />
-          </div>
-          <div className="min-w-[12rem] flex-1">
-            <FilterSelect
-              value={filterRetired}
-              onChange={setFilterRetired}
-              options={[
-                { value: "false", label: "Active Only" },
-                { value: "true", label: "Retired Only" }
-              ]}
-              placeholder="All Statuses"
-            />
+            {search && (
+              <button 
+                onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
         <div className="text-sm text-slate-400 shrink-0">
-          <span className="font-bold text-white">{players.length}</span> players found
+          <span className="font-bold text-white">{meta.total}</span> players found
         </div>
       </div>
 
@@ -748,6 +785,17 @@ function AdminPlayersContent() {
           </button>
         </div>
       </div>
+
+      {players.length > 0 && (
+        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -816,6 +864,13 @@ function AdminPlayersContent() {
             </tbody>
           </table>
         </div>
+        
+        <Pagination 
+          currentPage={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.total}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

@@ -16,15 +16,15 @@ export declare class GameService {
         status: string;
         suggestion: {
             id: string;
-            createdAt: Date;
-            status: import(".prisma/client").$Enums.SuggestionStatus;
-            questionId: string;
-            playerId: string;
             guessText: string;
-            suggestedBy: string;
+            status: import(".prisma/client").$Enums.SuggestionStatus;
             comment: string | null;
             reviewNote: string | null;
+            createdAt: Date;
             reviewedAt: Date | null;
+            questionId: string;
+            playerId: string;
+            suggestedBy: string;
         };
         message?: undefined;
     }>;

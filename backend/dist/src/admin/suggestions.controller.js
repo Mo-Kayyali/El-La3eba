@@ -25,8 +25,12 @@ let SuggestionsController = class SuggestionsController {
     constructor(suggestionsService) {
         this.suggestionsService = suggestionsService;
     }
-    async getAllSuggestions(status) {
-        return this.suggestionsService.getAllSuggestions(status);
+    async getAllSuggestions(status, page, limit) {
+        return this.suggestionsService.getAllSuggestions({
+            status,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+        });
     }
     async approveSuggestion(id, body) {
         return this.suggestionsService.approveSuggestion(id, body.reviewNote);
@@ -40,8 +44,10 @@ __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'List suggestions' }),
     __param(0, (0, common_1.Query)('status')),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], SuggestionsController.prototype, "getAllSuggestions", null);
 __decorate([

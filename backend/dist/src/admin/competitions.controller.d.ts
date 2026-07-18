@@ -10,14 +10,21 @@ export declare class AdminCompetitionsController {
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
-    findAll(): Promise<{
-        id: string;
-        name: string;
-        type: import(".prisma/client").$Enums.CompetitionType;
-        countryCode: string | null;
-        region: import(".prisma/client").$Enums.Region | null;
-        tier: number | null;
-    }[]>;
+    findAll(countryCode?: string, search?: string, page?: string, limit?: string): Promise<{
+        data: {
+            id: string;
+            name: string;
+            type: import(".prisma/client").$Enums.CompetitionType;
+            countryCode: string | null;
+            region: import(".prisma/client").$Enums.Region | null;
+            tier: number | null;
+        }[];
+        meta: {
+            total: number;
+            page: number;
+            totalPages: number;
+        };
+    }>;
     findOne(id: string): Promise<{
         id: string;
         name: string;

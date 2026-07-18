@@ -23,8 +23,15 @@ export class AdminPlayersController {
     @Query('clubId') clubId?: string,
     @Query('isRetired') isRetired?: string,
     @Query('nationality') nationality?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.playersService.findAll({ competitionId, compCountryCode, clubId, isRetired, nationality });
+    return this.playersService.findAll({ 
+      competitionId, compCountryCode, clubId, isRetired, nationality, search,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
   }
 
   @Get('search')

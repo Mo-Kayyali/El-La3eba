@@ -16,8 +16,16 @@ export class SuggestionsController {
 
   @Get()
   @ApiOperation({ summary: 'List suggestions' })
-  async getAllSuggestions(@Query('status') status?: 'PENDING' | 'APPROVED' | 'REJECTED') {
-    return this.suggestionsService.getAllSuggestions(status);
+  async getAllSuggestions(
+    @Query('status') status?: 'PENDING' | 'APPROVED' | 'REJECTED',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.suggestionsService.getAllSuggestions({
+      status,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
   }
 
   @Post(':id/approve')

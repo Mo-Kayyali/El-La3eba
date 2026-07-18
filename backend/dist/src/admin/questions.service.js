@@ -225,20 +225,52 @@ let AdminQuestionsService = class AdminQuestionsService {
             return question;
         });
     }
-    findAll(gameMode, isActive) {
+    async findAll(filters = {}) {
         const where = {};
-        if (gameMode)
-            where.gameMode = gameMode;
-        if (isActive !== undefined)
-            where.isActive = isActive;
-        return this.prisma.question.findMany({
+        const page = filters.page || 1;
+        const limit = filters.limit || 50;
+        const skip = (page - 1) * limit;
+        if (filters.gameMode)
+            where.gameMode = filters.gameMode;
+        if (filters.isActive !== undefined)
+            where.isActive = filters.isActive;
+        if (filters.search) {
+            const normalizedSearch = filters.search.trim();
+            if (normalizedSearch.length <= 2) {
+                where.text = { contains: normalizedSearch, mode: 'insensitive' };
+            }
+            else {
+                const [_, matchedIdsObj] = await this.prisma.$transaction([
+                    this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+                    this.prisma.$queryRaw `
+            SELECT q.id
+            FROM "Question" q
+            WHERE lower(unaccent_immutable(q.text)) %> lower(unaccent(${normalizedSearch}))
+          `
+                ]);
+                const matchedIds = matchedIdsObj.map(obj => obj.id);
+                where.id = { in: matchedIds };
+            }
+        }
+        const total = await this.prisma.question.count({ where });
+        const data = await this.prisma.question.findMany({
             where,
+            skip,
+            take: limit,
             include: {
                 _count: { select: { answers: true } },
                 clauses: true
             },
             orderBy: { createdAt: 'desc' }
         });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     findOne(id) {
         return this.prisma.question.findUnique({

@@ -24,9 +24,18 @@ export class AdminQuestionsController {
   findAll(
     @Query('gameMode') gameMode?: GameMode,
     @Query('isActive') isActive?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-    return this.questionsService.findAll(gameMode, activeFilter);
+    return this.questionsService.findAll({
+      gameMode,
+      isActive: activeFilter,
+      search,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
   }
 
   @Get(':id')

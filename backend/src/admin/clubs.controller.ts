@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { AdminClubsService, CreateClubDto, UpdateClubDto } from './clubs.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -17,8 +17,20 @@ export class AdminClubsController {
   }
 
   @Get()
-  findAll() {
-    return this.clubsService.findAll();
+  findAll(
+    @Query('competitionId') competitionId?: string,
+    @Query('countryCode') countryCode?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.clubsService.findAll({
+      competitionId,
+      countryCode,
+      search,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 50,
+    });
   }
 
   @Get(':id')
