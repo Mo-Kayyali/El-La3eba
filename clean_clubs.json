@@ -1,0 +1,3323 @@
+[
+  {
+    "club_id": "10010.0",
+    "club_slug": "esporte-clube-bahia",
+    "clean_name": "Esporte Clube Bahia",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10010.png?lm=1412879423",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10.0",
+    "club_slug": "arminia-bielefeld",
+    "clean_name": "Arminia Bielefeld",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10.png?lm=1629204733",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1010.0",
+    "club_slug": "fc-watford",
+    "clean_name": "Watford FC",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1010.png?lm=1468103673",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10004.0",
+    "club_slug": "paris-fc",
+    "clean_name": "Paris FC",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10004.png?lm=1411995262",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1005.0",
+    "club_slug": "us-lecce",
+    "clean_name": "US Lecce",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1005.png?lm=1689169528",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1023.0",
+    "club_slug": "se-palmeiras-sao-paulo",
+    "clean_name": "Sociedade Esportiva Palmeiras",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1023.png?lm=1411204983",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1003.0",
+    "club_slug": "leicester-city",
+    "clean_name": "Leicester City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1003.png?lm=1472229265",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1020.0",
+    "club_slug": "fc-portsmouth",
+    "clean_name": "Portsmouth FC",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1020.png?lm=1565282045",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1028.0",
+    "club_slug": "fc-millwall",
+    "clean_name": "Millwall FC",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1028.png?lm=1564722431",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1029.0",
+    "club_slug": "club-atletico-velez-sarsfield",
+    "clean_name": "CA Vélez Sarsfield",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1029.png?lm=1634518202",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1035.0",
+    "club_slug": "sheffield-wednesday",
+    "clean_name": "Sheffield Wednesday",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1035.png?lm=1643214896",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1025.0",
+    "club_slug": "fc-bologna",
+    "clean_name": "Bologna FC 1909",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1025.png?lm=1626441324",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1030.0",
+    "club_slug": "argentinos-juniors",
+    "clean_name": "AA Argentinos Juniors",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1030.png?lm=1423343744",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1038.0",
+    "club_slug": "sampdoria-genua",
+    "clean_name": "UC Sampdoria",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1038.png?lm=1520934353",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1041.0",
+    "club_slug": "olympique-lyon",
+    "clean_name": "Olympique Lyon",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1041.png?lm=1656668172",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1039.0",
+    "club_slug": "queens-park-rangers",
+    "clean_name": "Queens Park Rangers",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1039.png?lm=1464680692",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10484.0",
+    "club_slug": "kasimpasa",
+    "clean_name": "Kasimpasa",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10484.png?lm=1753430136",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1049.0",
+    "club_slug": "fc-valencia",
+    "clean_name": "Valencia CF",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1049.png?lm=1406966320",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10511.0",
+    "club_slug": "club-atletico-san-martin-sj-",
+    "clean_name": "CA San Martín (San Juan)",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10511.png?lm=1424603773",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1047.0",
+    "club_slug": "como-1907",
+    "clean_name": "Como 1907",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1047.png?lm=1565704078",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1050.0",
+    "club_slug": "fc-villarreal",
+    "clean_name": "Villarreal CF",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1050.png?lm=1408655310",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1061.0",
+    "club_slug": "los-angeles-galaxy",
+    "clean_name": "Los Angeles Galaxy",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1061.png?lm=1493067070",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "105.0",
+    "club_slug": "sv-darmstadt-98",
+    "clean_name": "SV Darmstadt 98",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/105.png?lm=1501493517",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10492.0",
+    "club_slug": "esporte-clube-juventude",
+    "clean_name": "Esporte Clube Juventude",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10492.png?lm=1416046262",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10718.0",
+    "club_slug": "fc-andorra",
+    "clean_name": "FC Andorra",
+    "countryCode": "AND",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10718.png?lm=1652807647",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1075.0",
+    "club_slug": "sc-braga",
+    "clean_name": "SC Braga",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1075.png?lm=1432893871",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1080.0",
+    "club_slug": "stade-laval",
+    "clean_name": "Stade Lavallois",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1080.png?lm=1683046487",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1082.0",
+    "club_slug": "losc-lille",
+    "clean_name": "LOSC Lille",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1082.png?lm=1529521041",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1084.0",
+    "club_slug": "fc-malaga",
+    "clean_name": "Málaga CF",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1084.png?lm=1749674822",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "10870.0",
+    "club_slug": "fortaleza-esporte-clube",
+    "clean_name": "Fortaleza Esporte Clube",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/10870.png?lm=1631541450",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1095.0",
+    "club_slug": "es-troyes-ac",
+    "clean_name": "ESTAC Troyes",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1095.png?lm=1599945497",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1096.0",
+    "club_slug": "royal-antwerpen-fc",
+    "clean_name": "Royal Antwerp FC",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1096.png?lm=1623758865",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "11.0",
+    "club_slug": "fc-arsenal",
+    "clean_name": "Arsenal FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/11.png?lm=1489787850",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "110302.0",
+    "club_slug": "avs-futebol-sad",
+    "clean_name": "Avs Futebol",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/110302.png?lm=1698968034",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1108.0",
+    "club_slug": "deportivo-alaves",
+    "clean_name": "Deportivo Alavés",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1108.png?lm=1596131395",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1106.0",
+    "club_slug": "club-de-gimnasia-y-esgrima-la-plata",
+    "clean_name": "Club de Gimnasia y Esgrima La Plata",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1106.png?lm=1412763250",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1112.0",
+    "club_slug": "afc-wrexham",
+    "clean_name": "Wrexham AFC",
+    "countryCode": "WAL",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1112.png?lm=1704797430",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "11141.0",
+    "club_slug": "toronto-fc",
+    "clean_name": "Toronto FC",
+    "countryCode": "CAN",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/11141.png?lm=1410196948",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1123.0",
+    "club_slug": "norwich-city",
+    "clean_name": "Norwich City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1123.png?lm=1655469640",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "11273.0",
+    "club_slug": "rodez-af",
+    "clean_name": "Rodez AF",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/11273.png?lm=1498251875",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1132.0",
+    "club_slug": "fc-burnley",
+    "clean_name": "Burnley FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1132.png?lm=1686818840",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "11282.0",
+    "club_slug": "alanyaspor",
+    "clean_name": "Alanyaspor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/11282.png?lm=1753428907",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "114.0",
+    "club_slug": "besiktas-istanbul",
+    "clean_name": "Besiktas JK",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/114.png?lm=1741019298",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1148.0",
+    "club_slug": "fc-brentford",
+    "clean_name": "Brentford FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1148.png?lm=1625150543",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "114977.0",
+    "club_slug": "san-diego-fc",
+    "clean_name": "San Diego FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/114977.png?lm=1701506296",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1154.0",
+    "club_slug": "red-star-fc",
+    "clean_name": "Red Star FC",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1154.png?lm=1609759172",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1158.0",
+    "club_slug": "fc-lorient",
+    "clean_name": "FC Lorient",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1158.png?lm=1406642498",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "11831.0",
+    "club_slug": "club-atletico-tigre",
+    "clean_name": "Club Atlético Tigre",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/11831.png?lm=1604443014",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1159.0",
+    "club_slug": "as-nancy-lorraine",
+    "clean_name": "AS Nancy-Lorraine",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1159.png?lm=1529961068",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1184.0",
+    "club_slug": "krc-genk",
+    "clean_name": "KRC Genk",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1184.png?lm=1717666245",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1164.0",
+    "club_slug": "le-mans-fc",
+    "clean_name": "Le Mans FC",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1164.png?lm=1459583517",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "12.0",
+    "club_slug": "as-rom",
+    "clean_name": "AS Roma",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/12.png?lm=1751979202",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "12301.0",
+    "club_slug": "club-atletico-aldosivi",
+    "clean_name": "CA Aldosivi",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/12301.png?lm=1597769616",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1234.0",
+    "club_slug": "club-atletico-independiente",
+    "clean_name": "CA Independiente",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1234.png?lm=1489920510",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "12321.0",
+    "club_slug": "fc-girona",
+    "clean_name": "Girona FC",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/12321.png?lm=1730455718",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1237.0",
+    "club_slug": "brighton-amp-hove-albion",
+    "clean_name": "Brighton & Hove Albion",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1237.png?lm=1492718902",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "120.0",
+    "club_slug": "kocaelispor",
+    "clean_name": "Kocaelispor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/120.png?lm=1753430297",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1244.0",
+    "club_slug": "cd-leganes",
+    "clean_name": "CD Leganés",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1244.png?lm=1422972468",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "12454.0",
+    "club_slug": "club-atletico-sarmiento-junin-",
+    "clean_name": "CA Sarmiento (Junin)",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/12454.png?lm=1573855879",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1247.0",
+    "club_slug": "colorado-rapids",
+    "clean_name": "Colorado Rapids",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1247.png?lm=1483887816",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "126.0",
+    "club_slug": "caykur-rizespor",
+    "clean_name": "Caykur Rizespor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/126.png?lm=1753432348",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "12179.0",
+    "club_slug": "independiente-rivadavia",
+    "clean_name": "CS Independiente Rivadavia",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/12179.png?lm=1658260209",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "12574.0",
+    "club_slug": "club-deportivo-godoy-cruz-antonio-tomba",
+    "clean_name": "CD Godoy Cruz Antonio Tomba",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/12574.png?lm=1412763466",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "127.0",
+    "club_slug": "sc-paderborn-07",
+    "clean_name": "SC Paderborn 07",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/127.png?lm=1532010365",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1286.0",
+    "club_slug": "club-atletico-newells-old-boys",
+    "clean_name": "Club Atlético Newell's Old Boys",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1286.png?lm=1622640330",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "130.0",
+    "club_slug": "parma-calcio-1913",
+    "clean_name": "Parma Calcio 1913",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/130.png?lm=1530945992",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "129.0",
+    "club_slug": "sg-dynamo-dresden",
+    "clean_name": "SG Dynamo Dresden",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/129.png?lm=1403259018",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "13.0",
+    "club_slug": "atletico-madrid",
+    "clean_name": "Atlético de Madrid",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/13.png?lm=1719915566",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1290.0",
+    "club_slug": "grenoble-foot-38",
+    "clean_name": "Grenoble Foot 38",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1290.png?lm=1711388247",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "131.0",
+    "club_slug": "fc-barcelona",
+    "clean_name": "FC Barcelona",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/131.png?lm=1406739548",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "13222.0",
+    "club_slug": "cd-mirandes",
+    "clean_name": "CD Mirandés",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/13222.png?lm=1407484616",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1385.0",
+    "club_slug": "modena-fc-2018",
+    "clean_name": "Modena FC",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1385.png?lm=1657012115",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1390.0",
+    "club_slug": "cagliari-calcio",
+    "clean_name": "Cagliari Calcio",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1390.png?lm=1626441409",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "142.0",
+    "club_slug": "real-saragossa",
+    "clean_name": "Real Zaragoza",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/142.png?lm=1405877974",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "141.0",
+    "club_slug": "galatasaray-istanbul",
+    "clean_name": "Galatasaray",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/141.png?lm=1406739071",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1421.0",
+    "club_slug": "stade-reims",
+    "clean_name": "Stade Reims",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1421.png?lm=1592601839",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1420.0",
+    "club_slug": "sco-angers",
+    "clean_name": "Angers SCO",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1420.png?lm=1687525425",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1444.0",
+    "club_slug": "racing-club",
+    "clean_name": "Racing Club",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1444.png?lm=1412762689",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1418.0",
+    "club_slug": "club-atletico-rosario-central",
+    "clean_name": "CA Rosario Central",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1418.png?lm=1751129149",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1429.0",
+    "club_slug": "cesena-fc",
+    "clean_name": "Cesena FC",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1429.png?lm=1539765803",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1465.0",
+    "club_slug": "gd-estoril-praia",
+    "clean_name": "GD Estoril Praia",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1465.png?lm=1534340702",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1467.0",
+    "club_slug": "goztepe",
+    "clean_name": "Göztepe",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1467.png?lm=1753429550",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1416.0",
+    "club_slug": "amiens-sc",
+    "clean_name": "Amiens SC",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1416.png?lm=1688037499",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "148.0",
+    "club_slug": "tottenham-hotspur",
+    "clean_name": "Tottenham Hotspur",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/148.png?lm=1732011953",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "150.0",
+    "club_slug": "real-betis-sevilla",
+    "clean_name": "Real Betis Balompié",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/150.png?lm=1663358526",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "15.0",
+    "club_slug": "bayer-04-leverkusen",
+    "clean_name": "Bayer 04 Leverkusen",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/15.png?lm=1710156317",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1531.0",
+    "club_slug": "fc-elche",
+    "clean_name": "Elche CF",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1531.png?lm=1421955260",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1532.0",
+    "club_slug": "albacete-balompie",
+    "clean_name": "Albacete Balompié",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1532.png?lm=1407563756",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1536.0",
+    "club_slug": "burgos-cf",
+    "clean_name": "Burgos CF",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1536.png?lm=1695651736",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "152.0",
+    "club_slug": "samsunspor",
+    "clean_name": "Samsunspor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/152.png?lm=1753432411",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "14554.0",
+    "club_slug": "club-atletico-tucuman",
+    "clean_name": "Club Atlético Tucumán",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/14554.png?lm=1487496550",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1533.0",
+    "club_slug": "sd-eibar",
+    "clean_name": "SD Eibar",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1533.png?lm=1722693682",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "16.0",
+    "club_slug": "borussia-dortmund",
+    "clean_name": "Borussia Dortmund",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/16.png?lm=1396275280",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "157.0",
+    "club_slug": "kaa-gent",
+    "clean_name": "KAA Gent",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/157.png?lm=1715694765",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "164.0",
+    "club_slug": "blackburn-rovers",
+    "clean_name": "Blackburn Rovers",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/164.png?lm=1495228542",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "162.0",
+    "club_slug": "as-monaco",
+    "clean_name": "AS Monaco",
+    "countryCode": "MCO",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/162.png?lm=1654781919",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "16795.0",
+    "club_slug": "fc-granada",
+    "clean_name": "Granada CF",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/16795.png?lm=1724157697",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "167.0",
+    "club_slug": "fc-augsburg",
+    "clean_name": "FC Augsburg",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/167.png?lm=1656582897",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "172.0",
+    "club_slug": "rsc-charleroi",
+    "clean_name": "Royal Charleroi SC",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/172.png?lm=1448474590",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "180.0",
+    "club_slug": "fc-southampton",
+    "clean_name": "Southampton FC",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/180.png?lm=1444560086",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1775.0",
+    "club_slug": "club-atletico-san-lorenzo-de-almagro",
+    "clean_name": "CA San Lorenzo de Almagro",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1775.png?lm=1723433116",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "1829.0",
+    "club_slug": "instituto-ac-cordoba",
+    "clean_name": "Instituto ACC",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/1829.png?lm=1672243566",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "18.0",
+    "club_slug": "borussia-monchengladbach",
+    "clean_name": "Borussia Mönchengladbach",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/18.png?lm=1656585796",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "189.0",
+    "club_slug": "club-atletico-boca-juniors",
+    "clean_name": "CA Boca Juniors",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/189.png?lm=1511621129",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "187.0",
+    "club_slug": "1-fc-magdeburg",
+    "clean_name": "1.FC Magdeburg",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/187.png?lm=1559905461",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "199.0",
+    "club_slug": "corinthians-sao-paulo",
+    "clean_name": "Sport Club Corinthians Paulista",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/199.png?lm=1649430398",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2.0",
+    "club_slug": "1-fc-kaiserslautern",
+    "clean_name": "1.FC Kaiserslautern",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2.png?lm=1580920736",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "19775.0",
+    "club_slug": "cd-riestra",
+    "clean_name": "Club Deportivo Riestra",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/19775.png?lm=1487795829",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2029.0",
+    "club_slug": "ceara-sporting-club",
+    "clean_name": "Ceará Sporting Club",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2029.png?lm=1437429449",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "20519.0",
+    "club_slug": "virtus-entella",
+    "clean_name": "Virtus Entella",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/20519.png?lm=1424769530",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2036.0",
+    "club_slug": "1-fc-heidenheim-1846",
+    "clean_name": "1.FC Heidenheim 1846",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2036.png?lm=1685457789",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2063.0",
+    "club_slug": "club-atletico-huracan",
+    "clean_name": "CA Huracán",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2063.png?lm=1462377063",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "209.0",
+    "club_slug": "club-atletico-river-plate",
+    "clean_name": "CA River Plate",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/209.png?lm=1645539487",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "210.0",
+    "club_slug": "gremio-porto-alegre",
+    "clean_name": "Grêmio Foot-Ball Porto Alegrense",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/210.png?lm=1412879265",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2125.0",
+    "club_slug": "esporte-clube-vitoria",
+    "clean_name": "Esporte Clube Vitória",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2125.png?lm=1412879373",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "22.0",
+    "club_slug": "derby-county",
+    "clean_name": "Derby County",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/22.png?lm=1407654006",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "218.0",
+    "club_slug": "san-jose-earthquakes",
+    "clean_name": "San Jose Earthquakes",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/218.png?lm=1410197504",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2239.0",
+    "club_slug": "us-cremonese",
+    "clean_name": "US Cremonese",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2239.png?lm=1501770762",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "221.0",
+    "club_slug": "fc-santos",
+    "clean_name": "Santos FC",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/221.png?lm=1412879099",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2282.0",
+    "club_slug": "fc-brugge",
+    "clean_name": "Club Brugge KV",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2282.png?lm=1716279106",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "23.0",
+    "club_slug": "eintracht-braunschweig",
+    "clean_name": "Eintracht Braunschweig",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/23.png?lm=1545376138",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2293.0",
+    "club_slug": "konyaspor",
+    "clean_name": "Konyaspor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2293.png?lm=1753430360",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2288.0",
+    "club_slug": "swansea-city",
+    "clean_name": "Swansea City",
+    "countryCode": "WAL",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2288.png?lm=1752825825",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2331.0",
+    "club_slug": "us-avellino-1912",
+    "clean_name": "US Avellino 1912",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2331.png?lm=1446296368",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "24.0",
+    "club_slug": "eintracht-frankfurt",
+    "clean_name": "Eintracht Frankfurt",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/24.png?lm=1700074979",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "237.0",
+    "club_slug": "rcd-mallorca",
+    "clean_name": "RCD Mallorca",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/237.png?lm=1407484750",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "23826.0",
+    "club_slug": "rasenballsport-leipzig",
+    "clean_name": "RB Leipzig",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/23826.png?lm=1619431624",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2417.0",
+    "club_slug": "ca-belgrano",
+    "clean_name": "Club Atlético Belgrano",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2417.png?lm=1707233829",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2402.0",
+    "club_slug": "defensa-y-justicia",
+    "clean_name": "Defensa y Justicia",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2402.png?lm=1642110776",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2425.0",
+    "club_slug": "rio-ave-fc",
+    "clean_name": "Rio Ave FC",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2425.png?lm=1516613968",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2423.0",
+    "club_slug": "cd-santa-clara",
+    "clean_name": "CD Santa Clara",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2423.png?lm=1718909294",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2420.0",
+    "club_slug": "vitoria-guimaraes-sc",
+    "clean_name": "Vitória Guimarães SC",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2420.png?lm=1432894021",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2424.0",
+    "club_slug": "gil-vicente-fc",
+    "clean_name": "Gil Vicente FC",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2424.png?lm=1624283300",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2440.0",
+    "club_slug": "d-c-united",
+    "clean_name": "D.C. United",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2440.png?lm=1450113961",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2448.0",
+    "club_slug": "sporting-gijon",
+    "clean_name": "Sporting Gijón",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2448.png?lm=1693991414",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2431.0",
+    "club_slug": "cf-estrela-amadora-sad",
+    "clean_name": "CF Estrela Amadora",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2431.png?lm=1743687810",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "244.0",
+    "club_slug": "olympique-marseille",
+    "clean_name": "Olympique Marseille",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/244.png?lm=1485642163",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2497.0",
+    "club_slug": "real-oviedo",
+    "clean_name": "Real Oviedo",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2497.png?lm=1417193316",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2462.0",
+    "club_slug": "fluminense-rio-de-janeiro",
+    "clean_name": "Fluminense Football Club",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2462.png?lm=1648225934",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2502.0",
+    "club_slug": "cd-castellon",
+    "clean_name": "CD Castellón",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2502.png?lm=1648726491",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "25184.0",
+    "club_slug": "club-atletico-barracas-central",
+    "clean_name": "CA Barracas Central",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/25184.png?lm=1454105440",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "25467.0",
+    "club_slug": "philadelphia-union",
+    "clean_name": "Philadelphia Union",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/25467.png?lm=1518870543",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2521.0",
+    "club_slug": "fc-alverca",
+    "clean_name": "FC Alverca",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2521.png?lm=1468133408",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "252.0",
+    "club_slug": "genua-cfc",
+    "clean_name": "Genoa CFC",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/252.png?lm=1655305880",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2581.0",
+    "club_slug": "mantova-1911",
+    "clean_name": "Mantova 1911",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2581.png?lm=1719392715",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "269.0",
+    "club_slug": "holstein-kiel",
+    "clean_name": "Holstein Kiel",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/269.png?lm=1740400529",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2687.0",
+    "club_slug": "fc-cadiz",
+    "clean_name": "Cádiz CF",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2687.png?lm=1683542431",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "27.0",
+    "club_slug": "fc-bayern-munchen",
+    "clean_name": "Bayern Munich",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/27.png?lm=1729503608",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "273.0",
+    "club_slug": "fc-stade-rennes",
+    "clean_name": "Stade Rennais FC",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/273.png?lm=1691503972",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2727.0",
+    "club_slug": "oud-heverlee-leuven",
+    "clean_name": "Oud-Heverlee Leuven",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2727.png?lm=1723796027",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "276.0",
+    "club_slug": "hellas-verona",
+    "clean_name": "Hellas Verona",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/276.png?lm=1617228746",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2832.0",
+    "club_slug": "gaziantep-fk",
+    "clean_name": "Gaziantep FK",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2832.png?lm=1753429399",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "281.0",
+    "club_slug": "manchester-city",
+    "clean_name": "Manchester City",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/281.png?lm=1467356331",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "289.0",
+    "club_slug": "afc-sunderland",
+    "clean_name": "Sunderland AFC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/289.png?lm=1485645633",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "288.0",
+    "club_slug": "club-estudiantes-de-la-plata",
+    "clean_name": "Club Estudiantes de La Plata",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/288.png?lm=1615331978",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "290.0",
+    "club_slug": "aj-auxerre",
+    "clean_name": "AJ Auxerre",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/290.png?lm=1635851977",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2921.0",
+    "club_slug": "delfino-pescara-1936",
+    "clean_name": "Delfino Pescara 1936",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2921.png?lm=1517054151",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "29.0",
+    "club_slug": "fc-everton",
+    "clean_name": "Everton FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/29.png?lm=1445949846",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "2919.0",
+    "club_slug": "ac-monza",
+    "clean_name": "AC Monza",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/2919.png?lm=1562072734",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "294.0",
+    "club_slug": "benfica-lissabon",
+    "clean_name": "SL Benfica",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/294.png?lm=1535908439",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3037.0",
+    "club_slug": "calcio-padova",
+    "clean_name": "Calcio Padova",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3037.png?lm=1661941959",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "30204.0",
+    "club_slug": "fc-annecy",
+    "clean_name": "FC Annecy",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/30204.png?lm=1720884905",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3008.0",
+    "club_slug": "hull-city",
+    "clean_name": "Hull City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3008.png?lm=1562662491",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3.0",
+    "club_slug": "1-fc-koln",
+    "clean_name": "1.FC Köln",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3.png?lm=1656580823",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3057.0",
+    "club_slug": "standard-luttich",
+    "clean_name": "Standard Liège",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3057.png?lm=1719832545",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "31.0",
+    "club_slug": "fc-liverpool",
+    "clean_name": "Liverpool FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/31.png?lm=1727873452",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "31284.0",
+    "club_slug": "club-atletico-central-cordoba-sde-",
+    "clean_name": "CA Central Córdoba (SdE)",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/31284.png?lm=1548266049",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3166.0",
+    "club_slug": "pau-fc",
+    "clean_name": "Pau FC",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3166.png?lm=1652729405",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3205.0",
+    "club_slug": "kayserispor",
+    "clean_name": "Kayserispor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3205.png?lm=1753430186",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3268.0",
+    "club_slug": "casa-pia-ac",
+    "clean_name": "Casa Pia AC",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3268.png?lm=1742856850",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "33.0",
+    "club_slug": "fc-schalke-04",
+    "clean_name": "FC Schalke 04",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/33.png?lm=1656580846",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3302.0",
+    "club_slug": "ud-almeria",
+    "clean_name": "UD Almería",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3302.png?lm=1736335439",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "331.0",
+    "club_slug": "ca-osasuna",
+    "clean_name": "CA Osasuna",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/331.png?lm=1686070937",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "332.0",
+    "club_slug": "ssc-bari",
+    "clean_name": "SSC Bari",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/332.png?lm=1536916058",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "330.0",
+    "club_slug": "clube-atletico-mineiro",
+    "clean_name": "Clube Atlético Mineiro",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/330.png?lm=1411033853",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "333.0",
+    "club_slug": "club-atletico-lanus",
+    "clean_name": "CA Lanús",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/333.png?lm=1411033921",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3329.0",
+    "club_slug": "fc-famalicao",
+    "clean_name": "FC Famalicão",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3329.png?lm=1737563329",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "336.0",
+    "club_slug": "sporting-lissabon",
+    "clean_name": "Sporting CP",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/336.png?lm=1621513752",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "337.0",
+    "club_slug": "birmingham-city",
+    "clean_name": "Birmingham City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/337.png?lm=1672321276",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3368.0",
+    "club_slug": "ud-levante",
+    "clean_name": "Levante UD",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3368.png?lm=1408655062",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "347.0",
+    "club_slug": "fc-metz",
+    "clean_name": "FC Metz",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/347.png?lm=1625391843",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "350.0",
+    "club_slug": "sheffield-united",
+    "clean_name": "Sheffield United",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/350.png?lm=1409254138",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3524.0",
+    "club_slug": "clermont-foot-63",
+    "clean_name": "Clermont Foot 63",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3524.png?lm=1625739356",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "35.0",
+    "club_slug": "fc-st-pauli",
+    "clean_name": "FC St. Pauli",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/35.png?lm=1521036360",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3508.0",
+    "club_slug": "sv-zulte-waregem",
+    "clean_name": "Zulte Waregem",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3508.png?lm=1420103130",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "354.0",
+    "club_slug": "kv-mechelen",
+    "clean_name": "KV Mechelen",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/354.png?lm=1693258903",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "358.0",
+    "club_slug": "charlton-athletic",
+    "clean_name": "Charlton Athletic",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/358.png?lm=1448178743",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3522.0",
+    "club_slug": "spezia-calcio",
+    "clean_name": "Spezia Calcio",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3522.png?lm=1751366796",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "36.0",
+    "club_slug": "fenerbahce-istanbul",
+    "clean_name": "Fenerbahce",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/36.png?lm=1753429185",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "367.0",
+    "club_slug": "rayo-vallecano",
+    "clean_name": "Rayo Vallecano",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/367.png?lm=1653488445",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "366.0",
+    "club_slug": "real-valladolid",
+    "clean_name": "Real Valladolid CF",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/366.png?lm=1720163563",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "368.0",
+    "club_slug": "fc-sevilla",
+    "clean_name": "Sevilla FC",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/368.png?lm=1730896593",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3709.0",
+    "club_slug": "fc-getafe",
+    "clean_name": "Getafe CF",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3709.png?lm=1408655116",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "379.0",
+    "club_slug": "west-ham-united",
+    "clean_name": "West Ham United",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/379.png?lm=1464675260",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "38.0",
+    "club_slug": "fortuna-dusseldorf",
+    "clean_name": "Fortuna Düsseldorf",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/38.png?lm=1405514004",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3876.0",
+    "club_slug": "mirassol-futebol-clube-sp-",
+    "clean_name": "Mirassol Futebol Clube (SP)",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3876.png?lm=1585083395",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "39.0",
+    "club_slug": "1-fsv-mainz-05",
+    "clean_name": "1.FSV Mainz 05",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/39.png?lm=1564748880",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3911.0",
+    "club_slug": "stade-brest-29",
+    "clean_name": "Stade Brestois 29",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3911.png?lm=1408780312",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3901.0",
+    "club_slug": "raal-la-louviere",
+    "clean_name": "RAAL La Louvière",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3901.png?lm=1752058395",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3938.0",
+    "club_slug": "club-atletico-talleres",
+    "clean_name": "CA Talleres",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3938.png?lm=1636589988",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "3948.0",
+    "club_slug": "royale-union-saint-gilloise",
+    "clean_name": "Union Saint-Gilloise",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/3948.png?lm=1624390507",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4.0",
+    "club_slug": "1-fc-nurnberg",
+    "clean_name": "1.FC Nuremberg",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4.png?lm=1525459914",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "398.0",
+    "club_slug": "lazio-rom",
+    "clean_name": "SS Lazio",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/398.png?lm=1601537785",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "40058.0",
+    "club_slug": "new-york-city-fc",
+    "clean_name": "New York City FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/40058.png?lm=1726077065",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "399.0",
+    "club_slug": "leeds-united",
+    "clean_name": "Leeds United",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/399.png?lm=1645652224",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "405.0",
+    "club_slug": "aston-villa",
+    "clean_name": "Aston Villa",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/405.png?lm=1717155982",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4078.0",
+    "club_slug": "club-de-foot-montreal",
+    "clean_name": "CF Montréal",
+    "countryCode": "CAN",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4078.png?lm=1668716810",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "410.0",
+    "club_slug": "udinese-calcio",
+    "clean_name": "Udinese Calcio",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/410.png?lm=1688982584",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "41.0",
+    "club_slug": "hamburger-sv",
+    "clean_name": "Hamburger SV",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/41.png?lm=1597319274",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4097.0",
+    "club_slug": "us-catanzaro",
+    "clean_name": "US Catanzaro",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4097.png?lm=1567460762",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "415.0",
+    "club_slug": "fc-toulouse",
+    "clean_name": "FC Toulouse",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/415.png?lm=1740065124",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "416.0",
+    "club_slug": "fc-turin",
+    "clean_name": "Torino FC",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/416.png?lm=1438548174",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4159.0",
+    "club_slug": "carrarese-calcio-1908",
+    "clean_name": "Carrarese Calcio 1908",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4159.png?lm=1719392824",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4172.0",
+    "club_slug": "ac-pisa-1909",
+    "clean_name": "Pisa Sporting Club",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4172.png?lm=1693294828",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "42.0",
+    "club_slug": "hannover-96",
+    "clean_name": "Hannover 96",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/42.png?lm=1625590625",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "417.0",
+    "club_slug": "ogc-nizza",
+    "clean_name": "OGC Nice",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/417.png?lm=1408779490",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "418.0",
+    "club_slug": "real-madrid",
+    "clean_name": "Real Madrid",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/418.png?lm=1729684474",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4291.0",
+    "club_slug": "portland-timbers",
+    "clean_name": "Portland Timbers",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4291.png?lm=1549058121",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "430.0",
+    "club_slug": "ac-florenz",
+    "clean_name": "ACF Fiorentina",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/430.png?lm=1722844765",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "432.0",
+    "club_slug": "chicago-fire-fc",
+    "clean_name": "Chicago Fire FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/432.png?lm=1634667489",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4284.0",
+    "club_slug": "sporting-kansas-city",
+    "clean_name": "Sporting Kansas City",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4284.png?lm=1520721827",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "44.0",
+    "club_slug": "hertha-bsc",
+    "clean_name": "Hertha BSC",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/44.png?lm=1656580875",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4542.0",
+    "club_slug": "cultural-leonesa",
+    "clean_name": "Cultural Leonesa",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4542.png?lm=1517666376",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "449.0",
+    "club_slug": "trabzonspor",
+    "clean_name": "Trabzonspor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/449.png?lm=1727269339",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "45604.0",
+    "club_slug": "orlando-city-sc",
+    "clean_name": "Orlando City SC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/45604.png?lm=1412248067",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "46.0",
+    "club_slug": "inter-mailand",
+    "clean_name": "Inter Milan",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/46.png?lm=1618900989",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "4554.0",
+    "club_slug": "fc-sudtirol",
+    "clean_name": "FC Südtirol",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/4554.png?lm=1465161205",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "472.0",
+    "club_slug": "ud-las-palmas",
+    "clean_name": "UD Las Palmas",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/472.png?lm=1407484865",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "458.0",
+    "club_slug": "palermo-fc",
+    "clean_name": "Palermo FC",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/458.png?lm=1701339000",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "475.0",
+    "club_slug": "vv-st-truiden",
+    "clean_name": "Sint-Truidense VV",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/475.png?lm=1448474474",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "48.0",
+    "club_slug": "karlsruher-sc",
+    "clean_name": "Karlsruher SC",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/48.png?lm=1434793006",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "466.0",
+    "club_slug": "preston-north-end",
+    "clean_name": "Preston North End",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/466.png?lm=1414769167",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "5.0",
+    "club_slug": "ac-mailand",
+    "clean_name": "AC Milan",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/5.png?lm=1605166627",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "512.0",
+    "club_slug": "stoke-city",
+    "clean_name": "Stoke City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/512.png?lm=1472243727",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "51663.0",
+    "club_slug": "atlanta-united-fc",
+    "clean_name": "Atlanta United FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/51663.png?lm=1478716243",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "51772.0",
+    "club_slug": "fc-cincinnati",
+    "clean_name": "FC Cincinnati",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/51772.png?lm=1543266460",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "520.0",
+    "club_slug": "cercle-brugge",
+    "clean_name": "Cercle Brugge",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/520.png?lm=1713864588",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "51828.0",
+    "club_slug": "los-angeles-fc",
+    "clean_name": "Los Angeles FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/51828.png?lm=1511112738",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "506.0",
+    "club_slug": "juventus-turin",
+    "clean_name": "Juventus FC",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/506.png?lm=1626441487",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "5358.0",
+    "club_slug": "sd-huesca",
+    "clean_name": "SD Huesca",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/5358.png?lm=1726751837",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "537.0",
+    "club_slug": "botafogo-rio-de-janeiro",
+    "clean_name": "Botafogo de Futebol e Regatas",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/537.png?lm=1651494898",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "533.0",
+    "club_slug": "tsg-1899-hoffenheim",
+    "clean_name": "TSG 1899 Hoffenheim",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/533.png?lm=1675591766",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "56089.0",
+    "club_slug": "minnesota-united-fc",
+    "clean_name": "Minnesota United FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/56089.png?lm=1474755528",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "5587.0",
+    "club_slug": "ss-juve-stabia",
+    "clean_name": "SS Juve Stabia",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/5587.png?lm=1731306677",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "5621.0",
+    "club_slug": "ac-reggiana-1919",
+    "clean_name": "AC Reggiana 1919",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/5621.png?lm=1732610021",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "543.0",
+    "club_slug": "wolverhampton-wanderers",
+    "clean_name": "Wolverhampton Wanderers",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/543.png?lm=1467496784",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "58.0",
+    "club_slug": "rsc-anderlecht",
+    "clean_name": "RSC Anderlecht",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/58.png?lm=1718695206",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "585.0",
+    "club_slug": "fc-sao-paulo",
+    "clean_name": "São Paulo Futebol Clube",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/585.png?lm=1409133922",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "595.0",
+    "club_slug": "sc-bastia",
+    "clean_name": "SC Bastia",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/595.png?lm=1721932444",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "60.0",
+    "club_slug": "sc-freiburg",
+    "clean_name": "SC Freiburg",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/60.png?lm=1517249279",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "583.0",
+    "club_slug": "fc-paris-saint-germain",
+    "clean_name": "Paris Saint-Germain",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/583.png?lm=1728026461",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "609.0",
+    "club_slug": "ec-cruzeiro-belo-horizonte",
+    "clean_name": "Cruzeiro Esporte Clube",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/609.png?lm=1757639240",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "618.0",
+    "club_slug": "as-saint-etienne",
+    "clean_name": "AS Saint-Étienne",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/618.png?lm=1658260152",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "614.0",
+    "club_slug": "flamengo-rio-de-janeiro",
+    "clean_name": "CR Flamengo",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/614.png?lm=1551023331",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6195.0",
+    "club_slug": "ssc-neapel",
+    "clean_name": "SSC Napoli",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6195.png?lm=1753167643",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "621.0",
+    "club_slug": "athletic-bilbao",
+    "clean_name": "Athletic Bilbao",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/621.png?lm=1695069038",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "589.0",
+    "club_slug": "antalyaspor",
+    "clean_name": "Antalyaspor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/589.png?lm=1753428974",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "626.0",
+    "club_slug": "new-england-revolution",
+    "clean_name": "New England Revolution",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/626.png?lm=1641076134",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6321.0",
+    "club_slug": "vancouver-whitecaps-fc",
+    "clean_name": "Vancouver Whitecaps FC",
+    "countryCode": "CAN",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6321.png?lm=1420976934",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "631.0",
+    "club_slug": "fc-chelsea",
+    "clean_name": "Chelsea FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/631.png?lm=1682435911",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "630.0",
+    "club_slug": "racing-santander",
+    "clean_name": "Racing Santander",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/630.png?lm=1407484479",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "607.0",
+    "club_slug": "venezia-fc",
+    "clean_name": "Venezia FC",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/607.png?lm=1657392944",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "623.0",
+    "club_slug": "new-york-red-bulls",
+    "clean_name": "New York Red Bulls",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/623.png?lm=1464530064",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "63966.0",
+    "club_slug": "nashville-sc",
+    "clean_name": "Nashville SC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/63966.png?lm=1550768787",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "64.0",
+    "club_slug": "sv-07-elversberg",
+    "clean_name": "SV 07 Elversberg",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/64.png?lm=1658300359",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "641.0",
+    "club_slug": "fc-middlesbrough",
+    "clean_name": "Middlesbrough FC",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/641.png?lm=1697546042",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "65.0",
+    "club_slug": "spvgg-greuther-furth",
+    "clean_name": "SpVgg Greuther Fürth",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/65.png?lm=1503682935",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6600.0",
+    "club_slug": "sc-internacional-porto-alegre",
+    "clean_name": "Sport Club Internacional",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6600.png?lm=1644878605",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6574.0",
+    "club_slug": "us-sassuolo",
+    "clean_name": "US Sassuolo",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6574.png?lm=1755894334",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6646.0",
+    "club_slug": "fatih-karagumruk",
+    "clean_name": "Fatih Karagümrük",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6646.png?lm=1753429757",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6643.0",
+    "club_slug": "real-salt-lake-city",
+    "clean_name": "Real Salt Lake City",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6643.png?lm=1410197995",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "667.0",
+    "club_slug": "rc-strassburg-alsace",
+    "clean_name": "RC Strasbourg Alsace",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/667.png?lm=1664991833",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "681.0",
+    "club_slug": "real-sociedad-san-sebastian",
+    "clean_name": "Real Sociedad",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/681.png?lm=1614795530",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "677.0",
+    "club_slug": "ipswich-town",
+    "clean_name": "Ipswich Town",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/677.png?lm=1407655249",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "6890.0",
+    "club_slug": "istanbul-basaksehir-fk",
+    "clean_name": "Basaksehir FK",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/6890.png?lm=1753429032",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "69261.0",
+    "club_slug": "inter-miami-cf",
+    "clean_name": "Inter Miami CF",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/69261.png?lm=1573561237",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "703.0",
+    "club_slug": "nottingham-forest",
+    "clean_name": "Nottingham Forest",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/703.png?lm=1598890289",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "7042.0",
+    "club_slug": "us-boulogne",
+    "clean_name": "US Boulogne",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/7042.png?lm=1750768700",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "698.0",
+    "club_slug": "bristol-city",
+    "clean_name": "Bristol City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/698.png?lm=1571314125",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "7097.0",
+    "club_slug": "club-atletico-union",
+    "clean_name": "CA Unión (Santa Fe)",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/7097.png?lm=1517242630",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "7160.0",
+    "club_slug": "eyupspor",
+    "clean_name": "Eyüpspor",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/7160.png?lm=1753429120",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "7179.0",
+    "club_slug": "cd-tondela",
+    "clean_name": "CD Tondela",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/7179.png?lm=1506427804",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "714.0",
+    "club_slug": "espanyol-barcelona",
+    "clean_name": "RCD Espanyol Barcelona",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/714.png?lm=1406966369",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "720.0",
+    "club_slug": "fc-porto",
+    "clean_name": "FC Porto",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/720.png?lm=1486310161",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "72309.0",
+    "club_slug": "austin-fc",
+    "clean_name": "Austin FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/72309.png?lm=1549705034",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "738.0",
+    "club_slug": "ac-le-havre",
+    "clean_name": "Le Havre AC",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/738.png?lm=1408780648",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "749.0",
+    "club_slug": "fc-empoli",
+    "clean_name": "FC Empoli",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/749.png?lm=1626441481",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "762.0",
+    "club_slug": "newcastle-united",
+    "clean_name": "Newcastle United",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/762.png?lm=1472921161",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "79.0",
+    "club_slug": "vfb-stuttgart",
+    "clean_name": "VfB Stuttgart",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/79.png?lm=1680587427",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "80.0",
+    "club_slug": "vfl-bochum",
+    "clean_name": "VfL Bochum",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/80.png?lm=1656583090",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "800.0",
+    "club_slug": "atalanta-bergamo",
+    "clean_name": "Atalanta BC",
+    "countryCode": "ITA",
+    "competition_id": "IT1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/800.png?lm=1438547428",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "78435.0",
+    "club_slug": "charlotte-fc",
+    "clean_name": "Charlotte FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/78435.png?lm=1595433219",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "8024.0",
+    "club_slug": "fc-arouca",
+    "clean_name": "FC Arouca",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/8024.png?lm=1530096604",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "820.0",
+    "club_slug": "genclerbirligi-ankara",
+    "clean_name": "Genclerbirligi Ankara",
+    "countryCode": "TUR",
+    "competition_id": "TR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/820.png?lm=1753429938",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "826.0",
+    "club_slug": "rc-lens",
+    "clean_name": "RC Lens",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/826.png?lm=1595457059",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "82686.0",
+    "club_slug": "st-louis-city-sc",
+    "clean_name": "St. Louis CITY SC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/82686.png?lm=1597347681",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "830.0",
+    "club_slug": "club-atletico-banfield",
+    "clean_name": "CA Banfield",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/830.png?lm=1412763415",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "813.0",
+    "club_slug": "columbus-crew-sc",
+    "clean_name": "Columbus Crew",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/813.png?lm=1621435558",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "82.0",
+    "club_slug": "vfl-wolfsburg",
+    "clean_name": "VfL Wolfsburg",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/82.png?lm=1503060755",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "855.0",
+    "club_slug": "ea-guingamp",
+    "clean_name": "EA Guingamp",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/855.png?lm=1669659728",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "8718.0",
+    "club_slug": "sport-club-do-recife",
+    "clean_name": "Sport Club do Recife",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/8718.png?lm=1708623979",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "8568.0",
+    "club_slug": "ad-ceuta",
+    "clean_name": "AD Ceuta FC",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/8568.png?lm=1422971808",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "86.0",
+    "club_slug": "sv-werder-bremen",
+    "clean_name": "SV Werder Bremen",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/86.png?lm=1403082298",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "8793.0",
+    "club_slug": "red-bull-bragantino",
+    "clean_name": "Red Bull Bragantino",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/8793.png?lm=1577915313",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "873.0",
+    "club_slug": "crystal-palace",
+    "clean_name": "Crystal Palace",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/873.png?lm=1457723287",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "8816.0",
+    "club_slug": "fc-dallas",
+    "clean_name": "FC Dallas",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/8816.png?lm=1402484487",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "89.0",
+    "club_slug": "1-fc-union-berlin",
+    "clean_name": "1.FC Union Berlin",
+    "countryCode": "DEU",
+    "competition_id": "L1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/89.png?lm=1402956210",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "9010.0",
+    "club_slug": "fcv-dender-eh",
+    "clean_name": "FCV Dender EH",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/9010.png?lm=1449921839",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "9168.0",
+    "club_slug": "houston-dynamo-fc",
+    "clean_name": "Houston Dynamo FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/9168.png?lm=1605636557",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "8970.0",
+    "club_slug": "frosinone-calcio",
+    "clean_name": "Frosinone Calcio",
+    "countryCode": "ITA",
+    "competition_id": "IT2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/8970.png?lm=1438547543",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "897.0",
+    "club_slug": "deportivo-la-coruna",
+    "clean_name": "Deportivo de La Coruña",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/897.png?lm=1563373966",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "931.0",
+    "club_slug": "fc-fulham",
+    "clean_name": "Fulham FC",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/931.png?lm=1556831687",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "91.0",
+    "club_slug": "preussen-munster",
+    "clean_name": "Preußen Münster",
+    "countryCode": "DEU",
+    "competition_id": "L2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/91.png?lm=1602575455",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "928.0",
+    "club_slug": "club-atletico-platense",
+    "clean_name": "Club Atlético Platense",
+    "countryCode": "ARG",
+    "competition_id": "ARGC",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/928.png?lm=1424605971",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "940.0",
+    "club_slug": "celta-vigo",
+    "clean_name": "Celta de Vigo",
+    "countryCode": "ESP",
+    "competition_id": "ES1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/940.png?lm=1406966406",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "9202.0",
+    "club_slug": "usl-dunkerque",
+    "clean_name": "USL Dunkerque",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/9202.png?lm=1750768730",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "978.0",
+    "club_slug": "vasco-da-gama-rio-de-janeiro",
+    "clean_name": "Clube de Regatas Vasco da Gama",
+    "countryCode": "BRA",
+    "competition_id": "BRA1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/978.png?lm=1651168164",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "979.0",
+    "club_slug": "moreirense-fc",
+    "clean_name": "Moreirense FC",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/979.png?lm=1552324606",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "982.0",
+    "club_slug": "cd-nacional",
+    "clean_name": "CD Nacional",
+    "countryCode": "PRT",
+    "competition_id": "PO1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/982.png?lm=1549988602",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "969.0",
+    "club_slug": "montpellier-hsc",
+    "clean_name": "Montpellier HSC",
+    "countryCode": "FRA",
+    "competition_id": "FR2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/969.png?lm=1748640687",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "984.0",
+    "club_slug": "west-bromwich-albion",
+    "clean_name": "West Bromwich Albion",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/984.png?lm=1457991758",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "9636.0",
+    "club_slug": "seattle-sounders-fc",
+    "clean_name": "Seattle Sounders FC",
+    "countryCode": "USA",
+    "competition_id": "MLS1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/9636.png?lm=1703495814",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "9899.0",
+    "club_slug": "real-sociedad-b",
+    "clean_name": "Real Sociedad B",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/9899.png?lm=1614795531",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "993.0",
+    "club_slug": "fc-cordoba",
+    "clean_name": "Córdoba CF",
+    "countryCode": "ESP",
+    "competition_id": "ES2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/993.png?lm=1458766826",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "985.0",
+    "club_slug": "manchester-united",
+    "clean_name": "Manchester United",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/985.png?lm=1457975903",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "990.0",
+    "club_slug": "coventry-city",
+    "clean_name": "Coventry City",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/990.png?lm=1684518179",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "989.0",
+    "club_slug": "afc-bournemouth",
+    "clean_name": "AFC Bournemouth",
+    "countryCode": "ENG",
+    "competition_id": "GB1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/989.png?lm=1457991811",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "988.0",
+    "club_slug": "oxford-united",
+    "clean_name": "Oxford United",
+    "countryCode": "ENG",
+    "competition_id": "GB2",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/988.png?lm=1522938199",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "995.0",
+    "club_slug": "fc-nantes",
+    "clean_name": "FC Nantes",
+    "countryCode": "FRA",
+    "competition_id": "FR1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/995.png?lm=1581355747",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "968.0",
+    "club_slug": "kvc-westerlo",
+    "clean_name": "KVC Westerlo",
+    "countryCode": "BEL",
+    "competition_id": "BE1",
+    "logo_url": "https://tmssl.akamaized.net//images/wappen/head/968.png?lm=1715694370",
+    "source_batch": "main_transfermarkt"
+  },
+  {
+    "club_id": "e7ed226b-91ae-4c13-9dbe-128e0c66683f",
+    "club_slug": "zamalek",
+    "clean_name": "Zamalek",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "5448b436-d895-4c2e-8fdd-0cf09a4b8c8b",
+    "club_slug": "pyramids",
+    "clean_name": "Pyramids",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "d967aa8d-dd52-41f1-ae2f-0a0bfac16946",
+    "club_slug": "al-ahly",
+    "clean_name": "Al Ahly",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "9670babe-ecc5-463c-a525-3743d806b999",
+    "club_slug": "ceramica-cleopatra",
+    "clean_name": "Ceramica Cleopatra",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "2a2547a6-63a5-4595-a248-70e4ba97624f",
+    "club_slug": "al-masry",
+    "clean_name": "Al Masry",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "e1d0f0bf-e114-410a-9d29-34fbb01d9426",
+    "club_slug": "smouha",
+    "clean_name": "Smouha",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "2c3711c1-15ff-4291-9ee8-521eade9ace7",
+    "club_slug": "wadi-degla",
+    "clean_name": "Wadi Degla",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "cb77bbd9-b68d-4d0a-9ebe-cc6752856d9e",
+    "club_slug": "zed",
+    "clean_name": "ZED",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "b8075d7e-e024-4ae5-a366-d19fe2f778f3",
+    "club_slug": "national-bank-of-egypt",
+    "clean_name": "National Bank of Egypt",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "215df7eb-b3d8-4fa1-b26f-992cc17e0530",
+    "club_slug": "petrojet",
+    "clean_name": "Petrojet",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "b13bbf53-a3ff-45b8-9187-91c5f3860326",
+    "club_slug": "enppi",
+    "clean_name": "ENPPI",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "e2ed7cd2-924e-4a0e-b502-4955bb44e5c2",
+    "club_slug": "el-gouna",
+    "clean_name": "El Gouna",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "c4c726f9-36a4-4732-b520-1e951c2d436f",
+    "club_slug": "modern-sport",
+    "clean_name": "Modern Sport",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "13d116c1-0a81-45c3-91f6-e43174914f19",
+    "club_slug": "ghazl-el-mahalla",
+    "clean_name": "Ghazl El Mahalla",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "9956d29b-3220-4e9f-8aa6-cb9da682df4b",
+    "club_slug": "al-mokawloon-al-arab",
+    "clean_name": "Al Mokawloon Al Arab",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "dd158663-e0c4-4735-84ed-1928626a8528",
+    "club_slug": "al-ittihad",
+    "clean_name": "Al Ittihad",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "549829a1-9edb-4978-ac22-0260e6e2564b",
+    "club_slug": "haras-el-hodoud",
+    "clean_name": "Haras El Hodoud",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "c2790886-99fe-4d7f-b922-f412ec69ec33",
+    "club_slug": "tala'ea-el-gaish",
+    "clean_name": "Tala'ea El Gaish",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "cf14402d-a4b3-4685-abdf-a31fe89c276e",
+    "club_slug": "pharco",
+    "clean_name": "Pharco",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "49365b68-7c02-4db5-b75c-19814d5b3a8f",
+    "club_slug": "kahraba-ismailia",
+    "clean_name": "Kahraba Ismailia",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "f3502fd5-f58c-48ce-91a3-52dc99cb4617",
+    "club_slug": "ismaily",
+    "clean_name": "Ismaily",
+    "countryCode": "EGY",
+    "competition_id": "EGY1",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "48547775-23e9-491b-b13a-1ffaf4c3a81e",
+    "club_slug": "el-qanah",
+    "clean_name": "El Qanah",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "847e2947-ce60-4891-a777-b5e9e9edfd6d",
+    "club_slug": "asyut-petroleum",
+    "clean_name": "Asyut Petroleum",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "13498891-b062-4d13-a3f4-9ce2c3d1fda4",
+    "club_slug": "abou-qir-fertilizers",
+    "clean_name": "Abou Qir Fertilizers",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "11dd52f4-afb6-456a-9d2d-588db5e7b0d8",
+    "club_slug": "fc-masar",
+    "clean_name": "FC Masar",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "834f1c2a-02cb-467e-b140-d21f2eccf2c0",
+    "club_slug": "la-viena",
+    "clean_name": "La Viena",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "456f696a-8cf9-4fe6-b17a-abfb5c9bab99",
+    "club_slug": "proxy",
+    "clean_name": "Proxy",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "77bf31c2-5f60-4fb8-bb2c-7195c395778e",
+    "club_slug": "telecom-egypt",
+    "clean_name": "Telecom Egypt",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "790f9b3d-1cd5-4ae9-8fb6-ebe02561cb83",
+    "club_slug": "el-sekka-el-hadid",
+    "clean_name": "El Sekka El Hadid",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "d048ea0e-8dfc-44b5-b61f-8a11276ed074",
+    "club_slug": "el-mansoura",
+    "clean_name": "El Mansoura",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "a2f30118-7906-4455-b461-4bbfe09e29ea",
+    "club_slug": "el-entag-el-harby",
+    "clean_name": "El Entag El Harby",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "098c9769-deca-4d08-93c1-d521e23e0e68",
+    "club_slug": "tersana",
+    "clean_name": "Tersana",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "c64a1f5a-e443-4b93-a09a-f408e236048f",
+    "club_slug": "maleyat-kafr-el-zayat",
+    "clean_name": "Maleyat Kafr El Zayat",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "3ba7c4a8-ddee-4506-9ead-42e2a3890ff9",
+    "club_slug": "el-dakhleya",
+    "clean_name": "El Dakhleya",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "a8a612ca-c505-4cd2-bb9c-5b82f2729c5e",
+    "club_slug": "dayrout",
+    "clean_name": "Dayrout",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "d2786eb7-27ea-4c5e-9f19-33f656b06998",
+    "club_slug": "baladiyat-el-mahalla",
+    "clean_name": "Baladiyat El Mahalla",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "965f3515-c0e5-49bc-9d77-78abce88c91b",
+    "club_slug": "tanta",
+    "clean_name": "Tanta",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "ff37531f-5ca7-48e7-84cc-56adaa881f7e",
+    "club_slug": "aswan",
+    "clean_name": "Aswan",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  },
+  {
+    "club_id": "f306440a-a43b-4aaa-be5a-2bff2564155a",
+    "club_slug": "raya-ghazl-kafr-el-dawar",
+    "clean_name": "Raya Ghazl Kafr El Dawar",
+    "countryCode": "EGY",
+    "competition_id": "EGY2",
+    "logo_url": null,
+    "source_batch": "egypt_manual"
+  }
+]
