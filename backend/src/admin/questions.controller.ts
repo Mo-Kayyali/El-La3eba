@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Req } from '@nestjs/common';
 import { AdminQuestionsService, CreateQuestionDto, PatchQuestionDto } from './questions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -16,8 +16,8 @@ export class AdminQuestionsController {
   ) {}
 
   @Post()
-  create(@Body() createDto: CreateQuestionDto) {
-    return this.questionsService.create(createDto);
+  create(@Body() createDto: CreateQuestionDto, @Req() req: any) {
+    return this.questionsService.create(createDto, req.user.userId);
   }
 
   @Get()
@@ -27,6 +27,8 @@ export class AdminQuestionsController {
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
     const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
     return this.questionsService.findAll({
@@ -35,6 +37,8 @@ export class AdminQuestionsController {
       search,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 50,
+      sort,
+      order,
     });
   }
 
@@ -44,8 +48,8 @@ export class AdminQuestionsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: PatchQuestionDto) {
-    return this.questionsService.update(id, updateDto);
+  update(@Param('id') id: string, @Body() updateDto: PatchQuestionDto, @Req() req: any) {
+    return this.questionsService.update(id, updateDto, req.user.userId);
   }
 
   @Delete(':id')

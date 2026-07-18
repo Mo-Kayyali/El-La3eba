@@ -36,7 +36,7 @@ export declare class AdminQuestionsService {
         answers: QuestionAnswerDto[];
         clauses: QuestionFilterClauseDto[];
     }>;
-    create(createDto: CreateQuestionDto): Promise<{
+    create(createDto: CreateQuestionDto, adminUserId: string): Promise<{
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
@@ -48,6 +48,7 @@ export declare class AdminQuestionsService {
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
+        createdBy: string | null;
     }>;
     findAll(filters?: {
         gameMode?: GameMode;
@@ -55,6 +56,8 @@ export declare class AdminQuestionsService {
         search?: string;
         page?: number;
         limit?: number;
+        sort?: string;
+        order?: string;
     }): Promise<{
         data: ({
             clauses: {
@@ -79,6 +82,7 @@ export declare class AdminQuestionsService {
             playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
             createdAt: Date;
             updatedAt: Date;
+            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -123,8 +127,9 @@ export declare class AdminQuestionsService {
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
+        createdBy: string | null;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
-    update(id: string, updateDto: PatchQuestionDto): Promise<{
+    update(id: string, updateDto: PatchQuestionDto, adminUserId: string): Promise<{
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
@@ -136,6 +141,7 @@ export declare class AdminQuestionsService {
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
         createdAt: Date;
         updatedAt: Date;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         success: boolean;

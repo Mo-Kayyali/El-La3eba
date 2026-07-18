@@ -8,6 +8,7 @@ import { ArrowLeft, Search, X } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
+import { SortHeader } from "@/components/sort-header";
 
 type Club = {
   id: string;
@@ -16,6 +17,7 @@ type Club = {
   countryCode: string | null;
   currentCompetitionId: string | null;
   logoUrl: string | null;
+  createdAt: string;
   clubCompetitions?: { competitionId: string }[];
 };
 
@@ -49,6 +51,8 @@ export default function AdminClubsPage() {
   const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [sort, setSort] = useState("name");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -77,7 +81,7 @@ export default function AdminClubsPage() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchClubs();
-  }, [page, search, filterCountryCode, filterCompId]);
+  }, [page, search, filterCountryCode, filterCompId, sort, order]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -93,6 +97,8 @@ export default function AdminClubsPage() {
       if (filterCompId) params.competitionId = filterCompId;
       if (filterCountryCode) params.countryCode = filterCountryCode;
       if (search) params.search = search;
+      if (sort) params.sort = sort;
+      if (order) params.order = order;
       
       const { data } = await api.get<{data: Club[], meta: any}>("/admin/clubs", { params });
       setClubs(data.data);
@@ -463,9 +469,10 @@ export default function AdminClubsPage() {
             <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
                 <th className="px-5 py-4 w-12"></th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Country</th>
+                <SortHeader label="Name" field="name" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Country" field="countryCode" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
                 <th className="px-5 py-4 font-semibold text-slate-300">Aliases</th>
+                <SortHeader label="Date Entered" field="createdAt" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
                 <th className="px-5 py-4 font-semibold text-slate-300 text-right">Actions</th>
               </tr>
             </thead>
@@ -489,16 +496,19 @@ export default function AdminClubsPage() {
                   <td className="px-5 py-4 text-slate-400">
                     {club.aliases.length > 0 ? club.aliases.join(", ") : "-"}
                   </td>
+                  <td className="px-5 py-4 text-slate-400 text-xs">
+                    {new Date(club.createdAt).toLocaleDateString()}
+                  </td>
                   <td className="px-5 py-4 flex justify-end gap-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleEdit(club); }}
-                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                     >
                       Edit
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(club.id); }}
-                      className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
                     </button>
@@ -507,7 +517,7 @@ export default function AdminClubsPage() {
               ))}
               {filteredClubs.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-500">
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
                     No clubs found.
                   </td>
                 </tr>

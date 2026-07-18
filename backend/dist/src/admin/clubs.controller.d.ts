@@ -2,7 +2,7 @@ import { AdminClubsService, CreateClubDto, UpdateClubDto } from './clubs.service
 export declare class AdminClubsController {
     private readonly clubsService;
     constructor(clubsService: AdminClubsService);
-    create(createDto: CreateClubDto): Promise<{
+    create(createDto: CreateClubDto, req: any): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
@@ -14,8 +14,10 @@ export declare class AdminClubsController {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    findAll(competitionId?: string, countryCode?: string, search?: string, page?: string, limit?: string): Promise<{
+    findAll(competitionId?: string, countryCode?: string, search?: string, page?: string, limit?: string, sort?: string, order?: string): Promise<{
         data: ({
             clubCompetitions: {
                 id: string;
@@ -30,6 +32,8 @@ export declare class AdminClubsController {
             currentCompetitionId: string | null;
             competitions: string[];
             logoUrl: string | null;
+            createdAt: Date;
+            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -49,8 +53,10 @@ export declare class AdminClubsController {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    update(id: string, updateDto: UpdateClubDto): Promise<{
+    update(id: string, updateDto: UpdateClubDto, req: any): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
@@ -62,6 +68,8 @@ export declare class AdminClubsController {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -71,5 +79,7 @@ export declare class AdminClubsController {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
 }

@@ -2,7 +2,7 @@ import { AdminPlayersService, CreatePlayerDto, PatchPlayerDto } from './players.
 export declare class AdminPlayersController {
     private readonly playersService;
     constructor(playersService: AdminPlayersService);
-    create(createDto: CreatePlayerDto): Promise<{
+    create(createDto: CreatePlayerDto, req: any): Promise<{
         id: string;
         firstName: string;
         lastName: string;
@@ -19,8 +19,10 @@ export declare class AdminPlayersController {
         imageUrl: string | null;
         clubs: string[];
         competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    findAll(competitionId?: string, compCountryCode?: string, clubId?: string, isRetired?: string, nationality?: string, search?: string, page?: string, limit?: string): Promise<{
+    findAll(competitionId?: string, compCountryCode?: string, clubId?: string, isRetired?: string, nationality?: string, search?: string, page?: string, limit?: string, sort?: string, order?: string): Promise<{
         data: ({
             currentClub: {
                 id: string;
@@ -44,6 +46,8 @@ export declare class AdminPlayersController {
             imageUrl: string | null;
             clubs: string[];
             competitions: string[];
+            createdAt: Date;
+            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -68,6 +72,8 @@ export declare class AdminPlayersController {
             name: string;
             aliases: string[];
             competitions: string[];
+            createdAt: Date;
+            createdBy: string | null;
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
@@ -78,6 +84,8 @@ export declare class AdminPlayersController {
                 name: string;
                 aliases: string[];
                 competitions: string[];
+                createdAt: Date;
+                createdBy: string | null;
                 countryCode: string;
                 currentCompetitionId: string | null;
                 logoUrl: string | null;
@@ -107,13 +115,17 @@ export declare class AdminPlayersController {
         imageUrl: string | null;
         clubs: string[];
         competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    update(id: string, updateDto: PatchPlayerDto): Promise<{
+    update(id: string, updateDto: PatchPlayerDto, req: any): Promise<{
         currentClub: {
             id: string;
             name: string;
             aliases: string[];
             competitions: string[];
+            createdAt: Date;
+            createdBy: string | null;
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
@@ -124,6 +136,8 @@ export declare class AdminPlayersController {
                 name: string;
                 aliases: string[];
                 competitions: string[];
+                createdAt: Date;
+                createdBy: string | null;
                 countryCode: string;
                 currentCompetitionId: string | null;
                 logoUrl: string | null;
@@ -153,6 +167,8 @@ export declare class AdminPlayersController {
         imageUrl: string | null;
         clubs: string[];
         competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -171,5 +187,7 @@ export declare class AdminPlayersController {
         imageUrl: string | null;
         clubs: string[];
         competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
 }

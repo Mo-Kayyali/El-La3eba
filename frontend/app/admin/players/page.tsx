@@ -8,6 +8,7 @@ import { ArrowLeft, Check, Search, X } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
+import { SortHeader } from "@/components/sort-header";
 
 type Club = {
   id: string;
@@ -51,6 +52,7 @@ type Player = {
   isRetired: boolean;
   currentClubId: string | null;
   imageUrl: string | null;
+  createdAt: string;
   currentClub?: Club | null;
   playerClubs?: { club: Club; startYear: number | null; endYear: number | null; isCurrent: boolean }[];
 };
@@ -77,6 +79,8 @@ function AdminPlayersContent() {
   const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [sort, setSort] = useState("name");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
 
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState<Partial<Player> | null>(null);
@@ -125,7 +129,7 @@ function AdminPlayersContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchPlayers();
-  }, [page, search, filterNationality, filterCompId, filterClubId, filterRetired]);
+  }, [page, search, filterNationality, filterCompId, filterClubId, filterRetired, sort, order]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -143,6 +147,8 @@ function AdminPlayersContent() {
       if (filterRetired) params.isRetired = filterRetired;
       if (filterNationality) params.nationality = filterNationality;
       if (search) params.search = search;
+      if (sort) params.sort = sort;
+      if (order) params.order = order;
       const { data } = await api.get<{data: Player[], meta: any}>("/admin/players", { params });
       setPlayers(data.data);
       setMeta(data.meta);
@@ -803,10 +809,11 @@ function AdminPlayersContent() {
             <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
                 <th className="px-5 py-4 w-12"></th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Nationality</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Current Club</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Status</th>
+                <SortHeader label="Name" field="name" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Nationality" field="nationality" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Current Club" field="currentClub" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Status" field="isRetired" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Date Entered" field="createdAt" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
                 <th className="px-5 py-4 font-semibold text-slate-300 text-right">Actions</th>
               </tr>
             </thead>
@@ -838,16 +845,19 @@ function AdminPlayersContent() {
                       <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/20">Active</span>
                     )}
                   </td>
+                  <td className="px-5 py-4 text-slate-400 text-xs">
+                    {new Date(player.createdAt).toLocaleDateString()}
+                  </td>
                   <td className="px-5 py-4 flex justify-end gap-3 mt-2">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleEdit(player); }}
-                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                     >
                       Edit
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }}
-                      className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
                     </button>
@@ -856,7 +866,7 @@ function AdminPlayersContent() {
               ))}
               {players.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
                     No players found.
                   </td>
                 </tr>

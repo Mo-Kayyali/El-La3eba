@@ -248,16 +248,16 @@ function AdminSuggestionsContent() {
                   </div>
                 )}
                 {suggestion.status === "APPROVED" && (
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-end gap-3 mt-2">
                     <Link
                       href={`/admin/players?edit=${suggestion.player.id}`}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300 underline"
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20 text-center w-full sm:w-auto"
                     >
                       Edit this player's data
                     </Link>
                     <Link
                       href={`/admin/questions?edit=${suggestion.question.id}`}
-                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline"
+                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20 text-center w-full sm:w-auto"
                     >
                       Edit this question
                     </Link>

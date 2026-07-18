@@ -195,7 +195,7 @@ export class AdminPlayersService {
     });
   }
 
-  async findAll(filters: { competitionId?: string; compCountryCode?: string; clubId?: string; isRetired?: string; nationality?: string; search?: string; page?: number; limit?: number } = {}) {
+  async findAll(filters: { competitionId?: string; compCountryCode?: string; clubId?: string; isRetired?: string; nationality?: string; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
     const where: any = {};
     const page = filters.page || 1;
     const limit = filters.limit || 50;
@@ -270,11 +270,22 @@ export class AdminPlayersService {
     }
 
     const total = await this.prisma.player.count({ where });
+
+    let orderBy: any = { name: 'asc' };
+    if (filters.sort) {
+      const validSorts = ['name', 'createdAt', 'isRetired', 'nationality'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+      } else if (filters.sort === 'currentClub') {
+        orderBy = { currentClub: { name: filters.order === 'desc' ? 'desc' : 'asc' } };
+      }
+    }
+
     const data = await this.prisma.player.findMany({
       where,
       skip,
       take: limit,
-      orderBy: { name: 'asc' },
+      orderBy,
       include: {
         currentClub: { select: { id: true, name: true, logoUrl: true } }
       }
@@ -305,7 +316,7 @@ export class AdminPlayersService {
     return player;
   }
 
-  async create(dto: CreatePlayerDto) {
+  async create(dto: CreatePlayerDto, adminUserId: string) {
     if (dto.firstName) dto.firstName = capitalizeWords(dto.firstName);
     if (dto.lastName) dto.lastName = capitalizeWords(dto.lastName);
     if (dto.name) dto.name = capitalizeWords(dto.name);
@@ -322,6 +333,7 @@ export class AdminPlayersService {
         ...dto,
         aliases,
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+        createdBy: adminUserId,
       }
     });
 
@@ -339,7 +351,7 @@ export class AdminPlayersService {
     return player;
   }
 
-  async update(id: string, dto: PatchPlayerDto) {
+  async update(id: string, dto: PatchPlayerDto, adminUserId: string) {
     if (dto.firstName) dto.firstName = capitalizeWords(dto.firstName);
     if (dto.lastName) dto.lastName = capitalizeWords(dto.lastName);
     if (dto.name) dto.name = capitalizeWords(dto.name);
@@ -348,7 +360,7 @@ export class AdminPlayersService {
     await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
 
     const { clubHistory, dateOfBirth, ...playerData } = dto;
-    const dataToUpdate: any = { ...playerData };
+    const dataToUpdate: any = { ...playerData, createdBy: adminUserId };
     if (dateOfBirth !== undefined) {
       dataToUpdate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
     }

@@ -137,7 +137,7 @@ export class AdminQuestionsService {
     return { gameMode, answerType, scope: (dto as any).scope, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
   }
 
-  async create(createDto: CreateQuestionDto) {
+  async create(createDto: CreateQuestionDto, adminUserId: string) {
     createDto.text = capitalizeWords(createDto.text);
     const validated = await this.validateShape(createDto);
 
@@ -152,6 +152,7 @@ export class AdminQuestionsService {
           photoPlayerId: validated.photoPlayerId || null,
           playerStatusFilter: createDto.playerStatusFilter || 'ANY',
           isActive: createDto.isActive ?? true,
+          createdBy: adminUserId,
         }
       });
 
@@ -181,7 +182,7 @@ export class AdminQuestionsService {
     });
   }
 
-  async findAll(filters: { gameMode?: GameMode; isActive?: boolean; search?: string; page?: number; limit?: number } = {}) {
+  async findAll(filters: { gameMode?: GameMode; isActive?: boolean; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
     const where: any = {};
     const page = filters.page || 1;
     const limit = filters.limit || 50;
@@ -209,6 +210,15 @@ export class AdminQuestionsService {
     }
 
     const total = await this.prisma.question.count({ where });
+
+    let orderBy: any = { createdAt: 'desc' };
+    if (filters.sort) {
+      const validSorts = ['text', 'createdAt', 'gameMode'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'asc' ? 'asc' : 'desc' };
+      }
+    }
+
     const data = await this.prisma.question.findMany({
       where,
       skip,
@@ -217,7 +227,7 @@ export class AdminQuestionsService {
         _count: { select: { answers: true } },
         clauses: true
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy
     });
 
     return {
@@ -244,7 +254,7 @@ export class AdminQuestionsService {
     });
   }
 
-  async update(id: string, updateDto: PatchQuestionDto) {
+  async update(id: string, updateDto: PatchQuestionDto, adminUserId: string) {
     if (updateDto.text) updateDto.text = capitalizeWords(updateDto.text);
     const validated = await this.validateShape(updateDto);
 
@@ -260,6 +270,7 @@ export class AdminQuestionsService {
           photoPlayerId: validated.photoPlayerId || null,
           playerStatusFilter: updateDto.playerStatusFilter || 'ANY',
           isActive: updateDto.isActive ?? true,
+          createdBy: adminUserId,
         }
       });
 

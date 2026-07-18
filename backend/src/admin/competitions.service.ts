@@ -50,7 +50,7 @@ export class UpdateCompetitionDto {
 export class AdminCompetitionsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(filters: { countryCode?: string; search?: string; page?: number; limit?: number } = {}) {
+  async findAll(filters: { countryCode?: string; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
     const where: any = {};
     const page = filters.page || 1;
     const limit = filters.limit || 50;
@@ -90,11 +90,26 @@ export class AdminCompetitionsService {
     }
 
     const total = await this.prisma.competition.count({ where });
+
+    let orderBy: any = { name: 'asc' };
+    if (filters.sort) {
+      const validSorts = ['name', 'createdAt', 'type', 'tier'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+      } else if (filters.sort === 'location') {
+        // Sort by countryCode primarily, or region if countryCode is null
+        orderBy = [
+          { countryCode: filters.order === 'desc' ? 'desc' : 'asc' },
+          { region: filters.order === 'desc' ? 'desc' : 'asc' }
+        ];
+      }
+    }
+
     const data = await this.prisma.competition.findMany({
       where,
       skip,
       take: limit,
-      orderBy: { name: 'asc' },
+      orderBy,
     });
 
     return {
@@ -144,12 +159,12 @@ export class AdminCompetitionsService {
     }
   }
 
-  async create(dto: CreateCompetitionDto) {
+  async create(dto: CreateCompetitionDto, adminUserId: string) {
     this.validateRules(dto.type, dto.countryCode, dto.region);
-    return this.prisma.competition.create({ data: dto });
+    return this.prisma.competition.create({ data: { ...dto, createdBy: adminUserId } });
   }
 
-  async update(id: string, dto: UpdateCompetitionDto) {
+  async update(id: string, dto: UpdateCompetitionDto, adminUserId: string) {
     const comp = await this.findOne(id);
     const newType = dto.type !== undefined ? dto.type : comp.type;
     const newCountryCode = dto.countryCode !== undefined ? dto.countryCode : comp.countryCode;
@@ -165,6 +180,7 @@ export class AdminCompetitionsService {
     } else {
       updateData.countryCode = null;
     }
+    updateData.createdBy = adminUserId;
     
     return this.prisma.competition.update({ where: { id }, data: updateData });
   }

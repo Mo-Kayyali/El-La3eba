@@ -28,6 +28,8 @@ export declare class AdminClubsService {
         search?: string;
         page?: number;
         limit?: number;
+        sort?: string;
+        order?: string;
     }): Promise<{
         data: ({
             clubCompetitions: {
@@ -43,6 +45,8 @@ export declare class AdminClubsService {
             currentCompetitionId: string | null;
             competitions: string[];
             logoUrl: string | null;
+            createdAt: Date;
+            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -62,8 +66,10 @@ export declare class AdminClubsService {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    create(dto: CreateClubDto): Promise<{
+    create(dto: CreateClubDto, adminUserId: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
@@ -75,8 +81,10 @@ export declare class AdminClubsService {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    update(id: string, dto: UpdateClubDto): Promise<{
+    update(id: string, dto: UpdateClubDto, adminUserId: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
@@ -88,6 +96,8 @@ export declare class AdminClubsService {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -97,5 +107,7 @@ export declare class AdminClubsService {
         currentCompetitionId: string | null;
         competitions: string[];
         logoUrl: string | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
 }

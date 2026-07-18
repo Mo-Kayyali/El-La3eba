@@ -167,11 +167,18 @@ let AdminClubsService = class AdminClubsService {
             }
         }
         const total = await this.prisma.club.count({ where });
+        let orderBy = { name: 'asc' };
+        if (filters.sort) {
+            const validSorts = ['name', 'createdAt', 'countryCode'];
+            if (validSorts.includes(filters.sort)) {
+                orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+            }
+        }
         const data = await this.prisma.club.findMany({
             where,
             skip,
             take: limit,
-            orderBy: { name: 'asc' },
+            orderBy,
             include: { clubCompetitions: true }
         });
         return {
@@ -199,13 +206,13 @@ let AdminClubsService = class AdminClubsService {
             competitionIds: club.clubCompetitions.map(cc => cc.competitionId)
         };
     }
-    async create(dto) {
+    async create(dto, adminUserId) {
         if (dto.name)
             dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
         await this.validateCompetitions(dto.competitionIds);
         const { competitionIds, ...clubData } = dto;
-        const club = await this.prisma.club.create({ data: clubData });
+        const club = await this.prisma.club.create({ data: { ...clubData, createdBy: adminUserId } });
         if (competitionIds && competitionIds.length > 0) {
             await this.prisma.clubCompetition.createMany({
                 data: competitionIds.map(compId => ({
@@ -229,7 +236,7 @@ let AdminClubsService = class AdminClubsService {
         }
         return this.findOne(club.id);
     }
-    async update(id, dto) {
+    async update(id, dto, adminUserId) {
         if (dto.name)
             dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         const existingClub = await this.findOne(id);
@@ -237,8 +244,9 @@ let AdminClubsService = class AdminClubsService {
         await this.validateCompetitions(dto.competitionIds);
         const { competitionIds, ...clubData } = dto;
         await this.prisma.$transaction(async (tx) => {
-            if (Object.keys(clubData).length > 0) {
-                await tx.club.update({ where: { id }, data: clubData });
+            const updatePayload = { ...clubData, createdBy: adminUserId };
+            if (Object.keys(updatePayload).length > 0) {
+                await tx.club.update({ where: { id }, data: updatePayload });
             }
             if (competitionIds !== undefined) {
                 await tx.clubCompetition.deleteMany({ where: { clubId: id } });

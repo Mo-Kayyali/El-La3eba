@@ -9,6 +9,7 @@ import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
 import { Search, X } from "lucide-react";
+import { SortHeader } from "@/components/sort-header";
 
 type Competition = {
   id: string;
@@ -17,6 +18,7 @@ type Competition = {
   countryCode: string | null;
   region: string | null;
   tier: number | null;
+  createdAt: string;
 };
 
 type Country = { id: string; name: string };
@@ -35,6 +37,8 @@ export default function AdminCompetitionsPage() {
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("name");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
 
   const [isEditing, setIsEditing] = useState<Partial<Competition> | null>(null);
   const [selectedType, setSelectedType] = useState<string>("DOMESTIC_LEAGUE");
@@ -65,7 +69,7 @@ export default function AdminCompetitionsPage() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchCompetitions();
-  }, [bootstrapped, user, filterCompCountryCode, search, page]);
+  }, [bootstrapped, user, filterCompCountryCode, search, page, sort, order]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -85,6 +89,8 @@ export default function AdminCompetitionsPage() {
         else params.countryCode = filterCompCountryCode;
       }
       if (search) params.search = search;
+      if (sort) params.sort = sort;
+      if (order) params.order = order;
       
       const { data } = await api.get<{data: Competition[], meta: any}>("/admin/competitions", { params });
       setCompetitions(data.data);
@@ -374,10 +380,11 @@ export default function AdminCompetitionsPage() {
             <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
                 <th className="px-5 py-4 w-12"></th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Type</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Location</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Tier</th>
+                <SortHeader label="Name" field="name" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Type" field="type" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Location" field="location" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Tier" field="tier" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Date Entered" field="createdAt" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
                 <th className="px-5 py-4 font-semibold text-slate-300 text-right">Actions</th>
               </tr>
             </thead>
@@ -407,16 +414,19 @@ export default function AdminCompetitionsPage() {
                   <td className="px-5 py-4 text-slate-400">{comp.type}</td>
                   <td className="px-5 py-4 text-slate-300">{comp.countryCode || comp.region || "-"}</td>
                   <td className="px-5 py-4 text-slate-300">{comp.tier || "-"}</td>
+                  <td className="px-5 py-4 text-slate-400 text-xs">
+                    {new Date(comp.createdAt).toLocaleDateString()}
+                  </td>
                   <td className="px-5 py-4 flex justify-end gap-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); setIsEditing(comp); }}
-                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                     >
                       Edit
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(comp.id); }}
-                      className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
                     </button>
@@ -425,7 +435,7 @@ export default function AdminCompetitionsPage() {
               ))}
               {competitions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
                     No competitions found.
                   </td>
                 </tr>

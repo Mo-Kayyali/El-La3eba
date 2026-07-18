@@ -24,22 +24,24 @@ let AdminCompetitionsController = class AdminCompetitionsController {
     constructor(competitionsService) {
         this.competitionsService = competitionsService;
     }
-    create(createDto) {
-        return this.competitionsService.create(createDto);
+    create(createDto, req) {
+        return this.competitionsService.create(createDto, req.user.userId);
     }
-    findAll(countryCode, search, page, limit) {
+    findAll(countryCode, search, page, limit, sort, order) {
         return this.competitionsService.findAll({
             countryCode,
             search,
             page: page ? parseInt(page, 10) : 1,
             limit: limit ? parseInt(limit, 10) : 50,
+            sort,
+            order,
         });
     }
     findOne(id) {
         return this.competitionsService.findOne(id);
     }
-    update(id, updateDto) {
-        return this.competitionsService.update(id, updateDto);
+    update(id, updateDto, req) {
+        return this.competitionsService.update(id, updateDto, req.user.userId);
     }
     remove(id) {
         return this.competitionsService.remove(id);
@@ -49,8 +51,9 @@ exports.AdminCompetitionsController = AdminCompetitionsController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [competitions_service_1.CreateCompetitionDto]),
+    __metadata("design:paramtypes", [competitions_service_1.CreateCompetitionDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminCompetitionsController.prototype, "create", null);
 __decorate([
@@ -59,8 +62,10 @@ __decorate([
     __param(1, (0, common_1.Query)('search')),
     __param(2, (0, common_1.Query)('page')),
     __param(3, (0, common_1.Query)('limit')),
+    __param(4, (0, common_1.Query)('sort')),
+    __param(5, (0, common_1.Query)('order')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminCompetitionsController.prototype, "findAll", null);
 __decorate([
@@ -74,8 +79,9 @@ __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, competitions_service_1.UpdateCompetitionDto]),
+    __metadata("design:paramtypes", [String, competitions_service_1.UpdateCompetitionDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminCompetitionsController.prototype, "update", null);
 __decorate([

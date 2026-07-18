@@ -184,6 +184,8 @@ model Competition {
   countryCode String?
   region      Region?
   tier        Int?
+  createdAt   DateTime        @default(now())
+  createdBy   String?
 
   country          Country?          @relation(fields: [countryCode], references: [id])
   clubs            Club[]            @relation("ClubCurrentCompetition")
@@ -203,6 +205,8 @@ model Club {
   /// matching the same pattern as the old FootballPlayer.clubs array.
   competitions         String[] @default([])
   logoUrl              String?
+  createdAt            DateTime @default(now())
+  createdBy            String?
 
   country            Country           @relation(fields: [countryCode], references: [id])
   currentCompetition Competition?      @relation("ClubCurrentCompetition", fields: [currentCompetitionId], references: [id])
@@ -255,6 +259,8 @@ model Player {
   /// Denormalised flat list of competition names derived from clubs[].competitions.
   /// GIN indexed. Do NOT set directly — use PlayerDenormService.regenerateForPlayer().
   competitions    String[]       @default([])
+  createdAt       DateTime       @default(now())
+  createdBy       String?
 
   currentClub     Club?              @relation(fields: [currentClubId], references: [id])
   playerClubs     PlayerClub[]
@@ -306,6 +312,7 @@ model Question {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdBy String?
 
   photoPlayer Player?                @relation("QuestionPhotoPlayer", fields: [photoPlayerId], references: [id])
   clauses     QuestionFilterClause[]

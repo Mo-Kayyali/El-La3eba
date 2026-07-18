@@ -339,11 +339,21 @@ let AdminPlayersService = class AdminPlayersService {
             where.nationality = filters.nationality;
         }
         const total = await this.prisma.player.count({ where });
+        let orderBy = { name: 'asc' };
+        if (filters.sort) {
+            const validSorts = ['name', 'createdAt', 'isRetired', 'nationality'];
+            if (validSorts.includes(filters.sort)) {
+                orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+            }
+            else if (filters.sort === 'currentClub') {
+                orderBy = { currentClub: { name: filters.order === 'desc' ? 'desc' : 'asc' } };
+            }
+        }
         const data = await this.prisma.player.findMany({
             where,
             skip,
             take: limit,
-            orderBy: { name: 'asc' },
+            orderBy,
             include: {
                 currentClub: { select: { id: true, name: true, logoUrl: true } }
             }
@@ -372,7 +382,7 @@ let AdminPlayersService = class AdminPlayersService {
             throw new common_1.NotFoundException('Player not found');
         return player;
     }
-    async create(dto) {
+    async create(dto, adminUserId) {
         if (dto.firstName)
             dto.firstName = (0, string_util_1.capitalizeWords)(dto.firstName);
         if (dto.lastName)
@@ -389,6 +399,7 @@ let AdminPlayersService = class AdminPlayersService {
                 ...dto,
                 aliases,
                 dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+                createdBy: adminUserId,
             }
         });
         if (player.currentClubId) {
@@ -403,7 +414,7 @@ let AdminPlayersService = class AdminPlayersService {
         }
         return player;
     }
-    async update(id, dto) {
+    async update(id, dto, adminUserId) {
         if (dto.firstName)
             dto.firstName = (0, string_util_1.capitalizeWords)(dto.firstName);
         if (dto.lastName)
@@ -413,7 +424,7 @@ let AdminPlayersService = class AdminPlayersService {
         await this.findOne(id);
         await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
         const { clubHistory, dateOfBirth, ...playerData } = dto;
-        const dataToUpdate = { ...playerData };
+        const dataToUpdate = { ...playerData, createdBy: adminUserId };
         if (dateOfBirth !== undefined) {
             dataToUpdate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
         }

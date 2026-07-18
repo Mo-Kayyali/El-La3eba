@@ -123,11 +123,24 @@ let AdminCompetitionsService = class AdminCompetitionsService {
             }
         }
         const total = await this.prisma.competition.count({ where });
+        let orderBy = { name: 'asc' };
+        if (filters.sort) {
+            const validSorts = ['name', 'createdAt', 'type', 'tier'];
+            if (validSorts.includes(filters.sort)) {
+                orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+            }
+            else if (filters.sort === 'location') {
+                orderBy = [
+                    { countryCode: filters.order === 'desc' ? 'desc' : 'asc' },
+                    { region: filters.order === 'desc' ? 'desc' : 'asc' }
+                ];
+            }
+        }
         const data = await this.prisma.competition.findMany({
             where,
             skip,
             take: limit,
-            orderBy: { name: 'asc' },
+            orderBy,
         });
         return {
             data,
@@ -175,11 +188,11 @@ let AdminCompetitionsService = class AdminCompetitionsService {
                 throw new common_1.BadRequestException('International/Global competitions cannot have a countryCode.');
         }
     }
-    async create(dto) {
+    async create(dto, adminUserId) {
         this.validateRules(dto.type, dto.countryCode, dto.region);
-        return this.prisma.competition.create({ data: dto });
+        return this.prisma.competition.create({ data: { ...dto, createdBy: adminUserId } });
     }
-    async update(id, dto) {
+    async update(id, dto, adminUserId) {
         const comp = await this.findOne(id);
         const newType = dto.type !== undefined ? dto.type : comp.type;
         const newCountryCode = dto.countryCode !== undefined ? dto.countryCode : comp.countryCode;
@@ -192,6 +205,7 @@ let AdminCompetitionsService = class AdminCompetitionsService {
         else {
             updateData.countryCode = null;
         }
+        updateData.createdBy = adminUserId;
         return this.prisma.competition.update({ where: { id }, data: updateData });
     }
     async remove(id) {

@@ -89,7 +89,7 @@ export class AdminClubsService {
     }
   }
 
-  async findAll(filters: { competitionId?: string; countryCode?: string; search?: string; page?: number; limit?: number } = {}) {
+  async findAll(filters: { competitionId?: string; countryCode?: string; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
     const where: any = {};
     const page = filters.page || 1;
     const limit = filters.limit || 50;
@@ -134,11 +134,20 @@ export class AdminClubsService {
     }
 
     const total = await this.prisma.club.count({ where });
+
+    let orderBy: any = { name: 'asc' };
+    if (filters.sort) {
+      const validSorts = ['name', 'createdAt', 'countryCode'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+      }
+    }
+
     const data = await this.prisma.club.findMany({
       where,
       skip,
       take: limit,
-      orderBy: { name: 'asc' },
+      orderBy,
       include: { clubCompetitions: true }
     });
 
@@ -170,13 +179,13 @@ export class AdminClubsService {
     };
   }
 
-  async create(dto: CreateClubDto) {
+  async create(dto: CreateClubDto, adminUserId: string) {
     if (dto.name) dto.name = capitalizeWords(dto.name);
     await this.validateFks(dto.countryCode, dto.currentCompetitionId);
     await this.validateCompetitions(dto.competitionIds);
     
     const { competitionIds, ...clubData } = dto;
-    const club = await this.prisma.club.create({ data: clubData });
+    const club = await this.prisma.club.create({ data: { ...clubData, createdBy: adminUserId } });
     
     if (competitionIds && competitionIds.length > 0) {
       await this.prisma.clubCompetition.createMany({
@@ -205,7 +214,7 @@ export class AdminClubsService {
     return this.findOne(club.id);
   }
 
-  async update(id: string, dto: UpdateClubDto) {
+  async update(id: string, dto: UpdateClubDto, adminUserId: string) {
     if (dto.name) dto.name = capitalizeWords(dto.name);
     const existingClub = await this.findOne(id); // exists check
     await this.validateFks(dto.countryCode, dto.currentCompetitionId);
@@ -214,8 +223,9 @@ export class AdminClubsService {
     const { competitionIds, ...clubData } = dto;
     
     await this.prisma.$transaction(async (tx) => {
-      if (Object.keys(clubData).length > 0) {
-        await tx.club.update({ where: { id }, data: clubData });
+      const updatePayload: any = { ...clubData, createdBy: adminUserId };
+      if (Object.keys(updatePayload).length > 0) {
+        await tx.club.update({ where: { id }, data: updatePayload });
       }
       
       if (competitionIds !== undefined) {

@@ -8,6 +8,7 @@ import { ArrowLeft, X, Search, Check, AlertCircle } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
+import { SortHeader } from "@/components/sort-header";
 
 type PlayerSearchResult = {
   id: string;
@@ -46,6 +47,7 @@ type Question = {
   isActive?: boolean;
   playerStatusFilter?: "ANY" | "CURRENT_ONLY" | "RETIRED_ONLY";
   scope?: "NATIONAL" | "INTERNATIONAL" | "BOTH";
+  createdAt: string;
 };
 
 function PlayerSearch({ 
@@ -169,6 +171,8 @@ function AdminQuestionsContent() {
   const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [sort, setSort] = useState("createdAt");
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -233,7 +237,7 @@ function AdminQuestionsContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchQuestions();
-  }, [page, search, filterGameMode, filterIsActive]);
+  }, [page, search, filterGameMode, filterIsActive, sort, order]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -249,6 +253,8 @@ function AdminQuestionsContent() {
       if (filterGameMode) params.append("gameMode", filterGameMode);
       if (filterIsActive) params.append("isActive", filterIsActive);
       if (search) params.append("search", search);
+      if (sort) params.append("sort", sort);
+      if (order) params.append("order", order);
       params.append("page", page.toString());
       params.append("limit", "50");
 
@@ -1075,8 +1081,9 @@ function AdminQuestionsContent() {
                 <thead className="bg-slate-800/50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <tr>
                     <th className="px-6 py-4 w-12"></th>
-                    <th className="px-6 py-4">Question Text</th>
-                    <th className="px-6 py-4">Mode / Type</th>
+                    <SortHeader label="Question Text" field="text" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} className="px-6" />
+                    <SortHeader label="Mode / Type" field="gameMode" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} className="px-6" />
+                    <SortHeader label="Date Entered" field="createdAt" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} className="px-6" />
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1128,16 +1135,19 @@ function AdminQuestionsContent() {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-slate-400 text-xs">
+                        {new Date(q.createdAt).toLocaleDateString()}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEdit(q); }}
-                          className="mr-3 font-medium text-violet-400 hover:text-violet-300"
+                          className="mr-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                         >
                           Edit
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
-                          className="font-medium text-red-400 hover:text-red-300"
+                          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                         >
                           Delete
                         </button>

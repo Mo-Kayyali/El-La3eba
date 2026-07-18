@@ -73,6 +73,8 @@ Competition
   countryCode  string? (fk -> Country)
   region       Region?
   tier         int?
+  createdAt    datetime
+  createdBy    string?
 
 Club
   id                   uuid (pk)
@@ -82,6 +84,8 @@ Club
   currentCompetitionId uuid? (fk -> Competition)
   competitions         string[]  // denormalised historical list; GIN indexed (derived from ClubCompetition)
   logoUrl              string?
+  createdAt            datetime
+  createdBy            string?
   // Indexes: GIN on competitions[]
 
 ClubCompetition
@@ -108,6 +112,8 @@ Player  (replaces FootballPlayer — clean slate, no data migration)
   imageUrl        string?
   clubs           string[]       // denormalised — set by PlayerDenormService only
   competitions    string[]       // denormalised — set by PlayerDenormService only
+  createdAt       datetime
+  createdBy       string?
   // Indexes:
   //   GIN + pg_trgm (gin_trgm_ops) on `name`
   //   GIN + pg_trgm on array_to_string_immutable(aliases,' ') — same strategy
@@ -135,6 +141,7 @@ Question
   playerStatusFilter PlayerStatusFilter (default ANY)
   createdAt          datetime
   updatedAt          datetime
+  createdBy          string?
   // Indexes: gameMode; answerType
 
 QuestionFilterClause

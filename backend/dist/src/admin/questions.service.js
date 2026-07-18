@@ -186,7 +186,7 @@ let AdminQuestionsService = class AdminQuestionsService {
         }
         return { gameMode, answerType, scope: dto.scope, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
     }
-    async create(createDto) {
+    async create(createDto, adminUserId) {
         createDto.text = (0, string_util_1.capitalizeWords)(createDto.text);
         const validated = await this.validateShape(createDto);
         return this.prisma.$transaction(async (tx) => {
@@ -200,6 +200,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                     photoPlayerId: validated.photoPlayerId || null,
                     playerStatusFilter: createDto.playerStatusFilter || 'ANY',
                     isActive: createDto.isActive ?? true,
+                    createdBy: adminUserId,
                 }
             });
             if (validated.clauses.length > 0) {
@@ -253,6 +254,13 @@ let AdminQuestionsService = class AdminQuestionsService {
             }
         }
         const total = await this.prisma.question.count({ where });
+        let orderBy = { createdAt: 'desc' };
+        if (filters.sort) {
+            const validSorts = ['text', 'createdAt', 'gameMode'];
+            if (validSorts.includes(filters.sort)) {
+                orderBy = { [filters.sort]: filters.order === 'asc' ? 'asc' : 'desc' };
+            }
+        }
         const data = await this.prisma.question.findMany({
             where,
             skip,
@@ -261,7 +269,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                 _count: { select: { answers: true } },
                 clauses: true
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy
         });
         return {
             data,
@@ -285,7 +293,7 @@ let AdminQuestionsService = class AdminQuestionsService {
             }
         });
     }
-    async update(id, updateDto) {
+    async update(id, updateDto, adminUserId) {
         if (updateDto.text)
             updateDto.text = (0, string_util_1.capitalizeWords)(updateDto.text);
         const validated = await this.validateShape(updateDto);
@@ -301,6 +309,7 @@ let AdminQuestionsService = class AdminQuestionsService {
                     photoPlayerId: validated.photoPlayerId || null,
                     playerStatusFilter: updateDto.playerStatusFilter || 'ANY',
                     isActive: updateDto.isActive ?? true,
+                    createdBy: adminUserId,
                 }
             });
             await tx.questionAnswer.deleteMany({

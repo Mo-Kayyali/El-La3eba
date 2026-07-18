@@ -22,6 +22,8 @@ export declare class AdminCompetitionsService {
         search?: string;
         page?: number;
         limit?: number;
+        sort?: string;
+        order?: string;
     }): Promise<{
         data: {
             id: string;
@@ -30,6 +32,8 @@ export declare class AdminCompetitionsService {
             countryCode: string | null;
             region: import(".prisma/client").$Enums.Region | null;
             tier: number | null;
+            createdAt: Date;
+            createdBy: string | null;
         }[];
         meta: {
             total: number;
@@ -44,23 +48,29 @@ export declare class AdminCompetitionsService {
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     private validateRules;
-    create(dto: CreateCompetitionDto): Promise<{
+    create(dto: CreateCompetitionDto, adminUserId: string): Promise<{
         id: string;
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
-    update(id: string, dto: UpdateCompetitionDto): Promise<{
+    update(id: string, dto: UpdateCompetitionDto, adminUserId: string): Promise<{
         id: string;
         name: string;
         type: import(".prisma/client").$Enums.CompetitionType;
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -69,5 +79,7 @@ export declare class AdminCompetitionsService {
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
+        createdAt: Date;
+        createdBy: string | null;
     }>;
 }
