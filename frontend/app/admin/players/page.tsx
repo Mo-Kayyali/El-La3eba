@@ -72,6 +72,7 @@ function AdminPlayersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState<Partial<Player> | null>(null);
   const [clubHistory, setClubHistory] = useState<any[]>([]);
   const [isRetiredState, setIsRetiredState] = useState(false);
@@ -131,6 +132,7 @@ function AdminPlayersContent() {
       if (filterNationality) params.nationality = filterNationality;
       const { data } = await api.get<Player[]>("/admin/players", { params });
       setPlayers(data);
+      setSelectedPlayerIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -237,6 +239,25 @@ function AdminPlayersContent() {
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPlayerIds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedPlayerIds.length} selected players?`)) return;
+    setError("");
+    try {
+      await Promise.all(selectedPlayerIds.map(id => api.delete(`/admin/players/${id}`)));
+      setSelectedPlayerIds([]);
+      fetchPlayers();
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
+    }
+  };
+
+  const togglePlayerSelection = (id: string) => {
+    setSelectedPlayerIds(prev => 
+      prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+    );
   };
 
   const togglePosition = (pos: string) => {
@@ -705,11 +726,42 @@ function AdminPlayersContent() {
         </div>
       </div>
 
+      <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-slate-400 pl-2">
+            <span className="font-bold text-white">{selectedPlayerIds.length}</span> selected
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {selectedPlayerIds.length > 0 && (
+            <button
+              onClick={() => setSelectedPlayerIds([])}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={handleBulkDelete}
+            disabled={selectedPlayerIds.length === 0}
+            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
+              selectedPlayerIds.length > 0 
+                ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
+                : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
+            }`}
+          >
+            Delete Selected
+          </button>
+        </div>
+      </div>
+
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
+                <th className="px-5 py-4 w-12"></th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Nationality</th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Current Club</th>
@@ -719,7 +771,19 @@ function AdminPlayersContent() {
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
               {players.map((player) => (
-                <tr key={player.id} className="transition hover:bg-white/[0.02]">
+                <tr 
+                  key={player.id} 
+                  onClick={() => togglePlayerSelection(player.id)}
+                  className={`transition cursor-pointer ${selectedPlayerIds.includes(player.id) ? 'bg-violet-500/10' : 'hover:bg-white/[0.02]'}`}
+                >
+                  <td className="px-5 py-4 text-center">
+                    <input 
+                      type="checkbox"
+                      checked={selectedPlayerIds.includes(player.id)}
+                      readOnly
+                      className="rounded border-white/20 bg-black/40 text-violet-500 w-4 h-4 focus:ring-violet-500/50 focus:ring-offset-0 transition pointer-events-none"
+                    />
+                  </td>
                   <td className="px-5 py-4">
                     <div className="font-medium text-white">{player.name}</div>
                     <div className="text-xs text-slate-500">{player.firstName} {player.lastName}</div>
@@ -735,13 +799,13 @@ function AdminPlayersContent() {
                   </td>
                   <td className="px-5 py-4 flex justify-end gap-3 mt-2">
                     <button
-                      onClick={() => handleEdit(player)}
+                      onClick={(e) => { e.stopPropagation(); handleEdit(player); }}
                       className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(player.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }}
                       className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
                     >
                       Delete
@@ -751,7 +815,7 @@ function AdminPlayersContent() {
               ))}
               {players.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
                     No players found.
                   </td>
                 </tr>

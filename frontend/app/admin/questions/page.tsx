@@ -162,6 +162,8 @@ function AdminQuestionsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -221,6 +223,7 @@ function AdminQuestionsContent() {
       setClubs(clubsRes.data);
       setCompetitions(compsRes.data);
       setCountries(countriesRes.data);
+      setSelectedQuestionIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -274,6 +277,25 @@ function AdminQuestionsContent() {
     } catch (err) {
       alert(extractApiErrorMessage(err));
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestionIds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedQuestionIds.length} selected questions?`)) return;
+    setError("");
+    try {
+      await Promise.all(selectedQuestionIds.map(id => api.delete(`/admin/questions/${id}`)));
+      setSelectedQuestionIds([]);
+      fetchQuestions();
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
+    }
+  };
+
+  const toggleQuestionSelection = (id: string) => {
+    setSelectedQuestionIds(prev => 
+      prev.includes(id) ? prev.filter(qid => qid !== id) : [...prev, id]
+    );
   };
 
   const resetForm = () => {
@@ -951,6 +973,36 @@ function AdminQuestionsContent() {
           </div>
         </div>
 
+        <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 backdrop-blur-xl">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-400 pl-2">
+              <span className="font-bold text-white">{selectedQuestionIds.length}</span> selected
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {selectedQuestionIds.length > 0 && (
+              <button
+                onClick={() => setSelectedQuestionIds([])}
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition"
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedQuestionIds.length === 0}
+              className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
+                selectedQuestionIds.length > 0 
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
+                  : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
+              }`}
+            >
+              Delete Selected
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-md">
           {questions.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
@@ -961,6 +1013,7 @@ function AdminQuestionsContent() {
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-800/50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <tr>
+                    <th className="px-6 py-4 w-12"></th>
                     <th className="px-6 py-4">Question Text</th>
                     <th className="px-6 py-4">Mode / Type</th>
                     <th className="px-6 py-4 text-right">Actions</th>
@@ -970,8 +1023,17 @@ function AdminQuestionsContent() {
                   {questions.map((q) => (
                     <tr
                       key={q.id}
-                      className="transition hover:bg-slate-800/50"
+                      onClick={() => toggleQuestionSelection(q.id)}
+                      className={`transition cursor-pointer ${selectedQuestionIds.includes(q.id) ? 'bg-violet-500/10' : 'hover:bg-slate-800/50'}`}
                     >
+                      <td className="px-6 py-4 text-center">
+                        <input 
+                          type="checkbox"
+                          checked={selectedQuestionIds.includes(q.id)}
+                          readOnly
+                          className="rounded border-white/20 bg-black/40 text-violet-500 w-4 h-4 focus:ring-violet-500/50 focus:ring-offset-0 transition pointer-events-none"
+                        />
+                      </td>
                       <td className="px-6 py-4 font-medium text-white">
                         {q.text}
                       </td>
@@ -1007,13 +1069,13 @@ function AdminQuestionsContent() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button
-                          onClick={() => handleEdit(q)}
+                          onClick={(e) => { e.stopPropagation(); handleEdit(q); }}
                           className="mr-3 font-medium text-violet-400 hover:text-violet-300"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(q.id)}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
                           className="font-medium text-red-400 hover:text-red-300"
                         >
                           Delete

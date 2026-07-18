@@ -42,6 +42,7 @@ export default function AdminClubsPage() {
   const [selectedComps, setSelectedComps] = useState<string[]>([]);
   const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterCountryCode, setFilterCountryCode] = useState<string>("");
+  const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -62,6 +63,7 @@ export default function AdminClubsPage() {
       setClubs(clubsRes.data);
       setCompetitions(compsRes.data);
       setCountries(countriesRes.data);
+      setSelectedClubIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -111,6 +113,25 @@ export default function AdminClubsPage() {
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedClubIds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedClubIds.length} selected clubs?`)) return;
+    setError("");
+    try {
+      await Promise.all(selectedClubIds.map(id => api.delete(`/admin/clubs/${id}`)));
+      setSelectedClubIds([]);
+      fetchData();
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
+    }
+  };
+
+  const toggleClubSelection = (id: string) => {
+    setSelectedClubIds(prev => 
+      prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
+    );
   };
 
   const handleEdit = (club: Club) => {
@@ -199,6 +220,36 @@ export default function AdminClubsPage() {
         </div>
         <div className="text-sm text-slate-400 shrink-0">
           <span className="font-bold text-white">{filteredClubs.length}</span> clubs found
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-slate-400 pl-2">
+            <span className="font-bold text-white">{selectedClubIds.length}</span> selected
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {selectedClubIds.length > 0 && (
+            <button
+              onClick={() => setSelectedClubIds([])}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={handleBulkDelete}
+            disabled={selectedClubIds.length === 0}
+            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
+              selectedClubIds.length > 0 
+                ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
+                : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
+            }`}
+          >
+            Delete Selected
+          </button>
         </div>
       </div>
 
@@ -354,6 +405,7 @@ export default function AdminClubsPage() {
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
+                <th className="px-5 py-4 w-12"></th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Country</th>
                 <th className="px-5 py-4 font-semibold text-slate-300">Aliases</th>
@@ -362,7 +414,19 @@ export default function AdminClubsPage() {
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
               {filteredClubs.map((club) => (
-                <tr key={club.id} className="transition hover:bg-white/[0.02]">
+                <tr 
+                  key={club.id} 
+                  onClick={() => toggleClubSelection(club.id)}
+                  className={`transition cursor-pointer ${selectedClubIds.includes(club.id) ? 'bg-emerald-500/10' : 'hover:bg-white/[0.02]'}`}
+                >
+                  <td className="px-5 py-4 text-center">
+                    <input 
+                      type="checkbox"
+                      checked={selectedClubIds.includes(club.id)}
+                      readOnly
+                      className="rounded border-white/20 bg-black/40 text-emerald-500 w-4 h-4 focus:ring-emerald-500/50 focus:ring-offset-0 transition pointer-events-none"
+                    />
+                  </td>
                   <td className="px-5 py-4 font-medium text-white">{club.name}</td>
                   <td className="px-5 py-4 text-slate-300">{club.countryCode}</td>
                   <td className="px-5 py-4 text-slate-400">
@@ -370,13 +434,13 @@ export default function AdminClubsPage() {
                   </td>
                   <td className="px-5 py-4 flex justify-end gap-3">
                     <button
-                      onClick={() => handleEdit(club)}
+                      onClick={(e) => { e.stopPropagation(); handleEdit(club); }}
                       className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(club.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(club.id); }}
                       className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
                     >
                       Delete
