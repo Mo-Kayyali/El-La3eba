@@ -390,15 +390,37 @@ export class AdminPlayersService {
 
       // AUTO-SYNC currentClubId
       const currentClubId = 'currentClubId' in dataToUpdate ? dataToUpdate.currentClubId : (await tx.player.findUnique({ where: { id }, select: { currentClubId: true } }))?.currentClubId;
+      
       if (currentClubId) {
-        const existing = await tx.playerClub.findFirst({
-          where: { playerId: id, clubId: currentClubId, isCurrent: true }
+        // 1. Remove isCurrent mark from all other clubs
+        await tx.playerClub.updateMany({
+          where: { playerId: id, isCurrent: true, clubId: { not: currentClubId } },
+          data: { isCurrent: false }
         });
-        if (!existing) {
+
+        // 2. Ensure current club is marked as current
+        const existing = await tx.playerClub.findFirst({
+          where: { playerId: id, clubId: currentClubId }
+        });
+        
+        if (existing) {
+          if (!existing.isCurrent) {
+            await tx.playerClub.update({
+              where: { id: existing.id },
+              data: { isCurrent: true }
+            });
+          }
+        } else {
           await tx.playerClub.create({
             data: { playerId: id, clubId: currentClubId, isCurrent: true }
           });
         }
+      } else {
+        // If current club is cleared, no club should be marked current
+        await tx.playerClub.updateMany({
+          where: { playerId: id, isCurrent: true },
+          data: { isCurrent: false }
+        });
       }
     });
     // 3. Regenerate denormalized arrays

@@ -448,14 +448,32 @@ let AdminPlayersService = class AdminPlayersService {
             }
             const currentClubId = 'currentClubId' in dataToUpdate ? dataToUpdate.currentClubId : (await tx.player.findUnique({ where: { id }, select: { currentClubId: true } }))?.currentClubId;
             if (currentClubId) {
-                const existing = await tx.playerClub.findFirst({
-                    where: { playerId: id, clubId: currentClubId, isCurrent: true }
+                await tx.playerClub.updateMany({
+                    where: { playerId: id, isCurrent: true, clubId: { not: currentClubId } },
+                    data: { isCurrent: false }
                 });
-                if (!existing) {
+                const existing = await tx.playerClub.findFirst({
+                    where: { playerId: id, clubId: currentClubId }
+                });
+                if (existing) {
+                    if (!existing.isCurrent) {
+                        await tx.playerClub.update({
+                            where: { id: existing.id },
+                            data: { isCurrent: true }
+                        });
+                    }
+                }
+                else {
                     await tx.playerClub.create({
                         data: { playerId: id, clubId: currentClubId, isCurrent: true }
                     });
                 }
+            }
+            else {
+                await tx.playerClub.updateMany({
+                    where: { playerId: id, isCurrent: true },
+                    data: { isCurrent: false }
+                });
             }
         });
         await this.playerDenormService.regenerateForPlayer(id);
