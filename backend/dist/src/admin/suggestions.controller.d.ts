@@ -18,6 +18,7 @@ export declare class SuggestionsController {
                 dateOfBirth: Date | null;
                 heightCm: number | null;
                 preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+                positionCategories: import(".prisma/client").$Enums.PositionCategory[];
                 positions: import(".prisma/client").$Enums.Position[];
                 primaryPosition: import(".prisma/client").$Enums.Position | null;
                 isRetired: boolean;

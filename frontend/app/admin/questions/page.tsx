@@ -514,7 +514,7 @@ function AdminQuestionsContent() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10 text-slate-200">
+    <div className="mx-auto max-w-7xl px-6 py-10 text-slate-200">
       <ConfirmModal
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}

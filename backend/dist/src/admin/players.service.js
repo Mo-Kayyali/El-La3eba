@@ -51,6 +51,7 @@ class CreatePlayerDto {
     dateOfBirth;
     heightCm;
     preferredFoot;
+    positionCategories;
     positions;
     primaryPosition;
     isRetired;
@@ -96,6 +97,12 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePlayerDto.prototype, "preferredFoot", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(client_1.PositionCategory, { each: true }),
+    __metadata("design:type", Array)
+], CreatePlayerDto.prototype, "positionCategories", void 0);
+__decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsEnum)(client_1.Position, { each: true }),
     __metadata("design:type", Array)
@@ -131,6 +138,7 @@ class PatchPlayerDto {
     dateOfBirth;
     heightCm;
     preferredFoot;
+    positionCategories;
     positions;
     primaryPosition;
     isRetired;
@@ -180,6 +188,12 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.PreferredFoot),
     __metadata("design:type", String)
 ], PatchPlayerDto.prototype, "preferredFoot", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(client_1.PositionCategory, { each: true }),
+    __metadata("design:type", Array)
+], PatchPlayerDto.prototype, "positionCategories", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),

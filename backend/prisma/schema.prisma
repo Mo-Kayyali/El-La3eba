@@ -45,6 +45,13 @@ enum Region {
   WORLD
 }
 
+enum PositionCategory {
+  GOALKEEPER
+  DEFENDER
+  MIDFIELDER
+  FORWARD
+}
+
 enum Position {
   GK
   RB
@@ -248,6 +255,7 @@ model Player {
   dateOfBirth     DateTime?
   heightCm        Int?
   preferredFoot   PreferredFoot?
+  positionCategories PositionCategory[] @default([])
   positions       Position[]     @default([])
   primaryPosition Position?
   isRetired       Boolean        @default(false)
@@ -270,6 +278,7 @@ model Player {
 
   // GIN index on positions array for filter queries
   @@index([positions], type: Gin)
+  @@index([positionCategories], type: Gin)
   // GIN index on clubs (denormalised) for fast filter queries
   @@index([clubs], type: Gin)
   // GIN index on competitions (denormalised) for fast filter queries

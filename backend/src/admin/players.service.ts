@@ -2,7 +2,7 @@ import { Injectable, ConflictException, NotFoundException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { capitalizeWords } from '../utils/string.util';
 import { PlayerDenormService } from '../game/player-denorm.service';
-import { Position, PreferredFoot } from '@prisma/client';
+import { Position, PreferredFoot, PositionCategory } from '@prisma/client';
 import { IsString, IsOptional, IsArray, IsUUID, IsBoolean, IsInt, IsEnum, IsDateString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -51,6 +51,11 @@ export class CreatePlayerDto {
   @IsOptional()
   @IsEnum(PreferredFoot)
   preferredFoot?: PreferredFoot;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(PositionCategory, { each: true })
+  positionCategories?: PositionCategory[];
 
   @IsArray()
   @IsEnum(Position, { each: true })
@@ -110,6 +115,11 @@ export class PatchPlayerDto {
   @IsOptional()
   @IsEnum(PreferredFoot)
   preferredFoot?: PreferredFoot;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(PositionCategory, { each: true })
+  positionCategories?: PositionCategory[];
 
   @IsOptional()
   @IsArray()

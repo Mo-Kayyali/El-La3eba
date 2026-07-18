@@ -46,6 +46,7 @@ Enum LogicOperator     AND | OR
 Enum QuestionScope     NATIONAL | INTERNATIONAL | BOTH
 Enum AnswerType        FILTER | LIST
 Enum FilterType        COMPETITION | NATIONALITY | CLUB | POSITION | POSITION_CATEGORY
+Enum PositionCategory  GOALKEEPER | DEFENDER | MIDFIELDER | FORWARD
 Enum PlayerStatusFilter ANY | CURRENT_ONLY | RETIRED_ONLY
 Enum SuggestionStatus  PENDING | APPROVED | REJECTED
 
@@ -108,6 +109,7 @@ Player  (replaces FootballPlayer — clean slate, no data migration)
   dateOfBirth     datetime?
   heightCm        int?
   preferredFoot   PreferredFoot?
+  positionCategories PositionCategory[]
   positions       Position[]
   primaryPosition Position?
   isRetired       boolean (default false)
@@ -122,7 +124,7 @@ Player  (replaces FootballPlayer — clean slate, no data migration)
   //   GIN + pg_trgm on array_to_string_immutable(aliases,' ') — same strategy
   //     as old FootballPlayer; uses an IMMUTABLE SQL wrapper because
   //     array_to_string() is STABLE in Postgres 15
-  //   GIN on positions[], clubs[], competitions[]
+  //   GIN on positionCategories[], positions[], clubs[], competitions[]
 
 PlayerClub
   id        uuid (pk)
@@ -260,7 +262,7 @@ Provides comprehensive CRUD operations. List (`GET`) endpoints support paginatio
 - `game.questions.ts` is now a stub (hardcoded question strings removed); real question data lives in the `Question` / `QuestionAnswer` DB tables.
 - **Fuzzy Search:** Uses a similarity-threshold approach (e.g., `pg_trgm.word_similarity_threshold = 0.2` in game mode, `0.5` in admin search) via `word_similarity` functions in Prisma `$queryRaw` targeting the `Player` table. The old length-based typo tiers were removed. GIN + pg_trgm expression indexes power the prefilter. The fuzzy search returns the **top 5 matches**, and the guess validator steps through them to find the first candidate that hasn't been guessed yet and satisfies the current question's rules. This correctly handles ambiguous names (e.g. "Ronaldo").
 - **Guess Validation:** Guesses are answer-type-aware. After resolving a player via fuzzy search, the gateway checks the active `Question`:
-  - `FILTER`: Evaluates all associated `QuestionFilterClause` rows against the player's attributes (`COMPETITION` -> `Player.competitions`, `CLUB` -> `Player.clubs` (scoped by `clause.timeframe` checking `CURRENT` / `PAST`), `NATIONALITY` -> `Player.nationality`, `POSITION` -> `Player.positions`, `POSITION_CATEGORY` -> mapped position categories defined in `position.util.ts` via exact match). The per-clause boolean results are combined using the question's `logicOperator` (`AND` or `OR`). Additional question-level qualifiers such as `playerStatusFilter` (`CURRENT_ONLY` / `RETIRED_ONLY`) are checked first.
+  - `FILTER`: Evaluates all associated `QuestionFilterClause` rows against the player's attributes (`COMPETITION` -> `Player.competitions`, `CLUB` -> `Player.clubs` (scoped by `clause.timeframe` checking `CURRENT` / `PAST`), `NATIONALITY` -> `Player.nationality`, `POSITION` -> `Player.positions`, `POSITION_CATEGORY` -> `Player.positionCategories` via exact match on the new explicitly stored enum). The per-clause boolean results are combined using the question's `logicOperator` (`AND` or `OR`). Additional question-level qualifiers such as `playerStatusFilter` (`CURRENT_ONLY` / `RETIRED_ONLY`) are checked first.
   - `LIST`: Checks for an existing `QuestionAnswer` row matching `(questionId, playerId)`.
   - Already-guessed players in the current game session are rejected as "already taken" (strike).
 - **Question Picker & Exclusion Logic:** Replaced the old hardcoded questions stub with a real DB-backed random picker (`GameService.getRandomQuestion(gameMode)`). The game state (`gameSessionId`) tracks `usedQuestionIds` throughout the match. `getRandomQuestion` uses this list to strictly prevent repeating questions in the same match, and filters exclusively for `isActive === true` questions. If the remaining pool is exhausted (0 candidates left), the backend automatically resets the exclusion list *except* for the single most-recently-used question, guaranteeing a match never shows the exact same question twice in a row, even with a small database pool.

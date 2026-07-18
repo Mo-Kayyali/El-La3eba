@@ -21,7 +21,7 @@ export default function AdminDashboardPage() {
   if (!bootstrapped || !user || user.role !== "ADMIN") return null;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-7xl px-6 py-10">
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-extrabold text-white">Admin Dashboard</h1>
         <p className="mt-2 text-slate-400">

@@ -13,7 +13,6 @@ exports.GameService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const guess_matcher_util_1 = require("./guess-matcher.util");
-const position_util_1 = require("./position.util");
 let GameService = class GameService {
     prisma;
     constructor(prisma) {
@@ -156,8 +155,7 @@ let GameService = class GameService {
                     return player.positions?.includes(clause.filterValue) ?? false;
                 }
                 else if (clause.filterType === 'POSITION_CATEGORY') {
-                    const allowedPositions = clause.filterValue ? position_util_1.POSITION_CATEGORY_MAP[clause.filterValue] || [] : [];
-                    return player.positions?.some((p) => allowedPositions.includes(p)) ?? false;
+                    return player.positionCategories?.includes(clause.filterValue) ?? false;
                 }
                 return false;
             };

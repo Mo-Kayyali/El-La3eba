@@ -159,8 +159,7 @@ export class GameService {
         } else if (clause.filterType === 'POSITION') {
           return player.positions?.includes(clause.filterValue) ?? false;
         } else if (clause.filterType === 'POSITION_CATEGORY') {
-          const allowedPositions = clause.filterValue ? POSITION_CATEGORY_MAP[clause.filterValue] || [] : [];
-          return player.positions?.some((p: string) => allowedPositions.includes(p)) ?? false;
+          return player.positionCategories?.includes(clause.filterValue) ?? false;
         }
         return false;
       };

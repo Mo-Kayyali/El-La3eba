@@ -1,6 +1,6 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { PlayerDenormService } from '../game/player-denorm.service';
-import { Position, PreferredFoot } from '@prisma/client';
+import { Position, PreferredFoot, PositionCategory } from '@prisma/client';
 export declare class ClubHistoryDto {
     clubId: string;
     startYear?: number;
@@ -16,6 +16,7 @@ export declare class CreatePlayerDto {
     dateOfBirth?: string;
     heightCm?: number;
     preferredFoot?: PreferredFoot;
+    positionCategories?: PositionCategory[];
     positions: Position[];
     primaryPosition?: Position;
     isRetired: boolean;
@@ -33,6 +34,7 @@ export declare class PatchPlayerDto {
     dateOfBirth?: string;
     heightCm?: number;
     preferredFoot?: PreferredFoot;
+    positionCategories?: PositionCategory[];
     positions?: Position[];
     primaryPosition?: Position;
     isRetired?: boolean;
@@ -88,6 +90,7 @@ export declare class AdminPlayersService {
             dateOfBirth: Date | null;
             heightCm: number | null;
             preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+            positionCategories: import(".prisma/client").$Enums.PositionCategory[];
             positions: import(".prisma/client").$Enums.Position[];
             primaryPosition: import(".prisma/client").$Enums.Position | null;
             isRetired: boolean;
@@ -146,6 +149,7 @@ export declare class AdminPlayersService {
         dateOfBirth: Date | null;
         heightCm: number | null;
         preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+        positionCategories: import(".prisma/client").$Enums.PositionCategory[];
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
@@ -166,6 +170,7 @@ export declare class AdminPlayersService {
         dateOfBirth: Date | null;
         heightCm: number | null;
         preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+        positionCategories: import(".prisma/client").$Enums.PositionCategory[];
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
@@ -218,6 +223,7 @@ export declare class AdminPlayersService {
         dateOfBirth: Date | null;
         heightCm: number | null;
         preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+        positionCategories: import(".prisma/client").$Enums.PositionCategory[];
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
@@ -238,6 +244,7 @@ export declare class AdminPlayersService {
         dateOfBirth: Date | null;
         heightCm: number | null;
         preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+        positionCategories: import(".prisma/client").$Enums.PositionCategory[];
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
