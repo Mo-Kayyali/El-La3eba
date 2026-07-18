@@ -8,8 +8,8 @@ export declare class AdminPlayersController {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -20,8 +20,8 @@ export declare class AdminPlayersController {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        currentClubId: string | null;
         imageUrl: string | null;
+        currentClubId: string | null;
     }>;
     findAll(competitionId?: string, compCountryCode?: string, clubId?: string, isRetired?: string, nationality?: string, search?: string, page?: string, limit?: string, sort?: string, order?: string): Promise<{
         data: ({
@@ -36,8 +36,8 @@ export declare class AdminPlayersController {
             name: string;
             clubs: string[];
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
+            createdBy: string | null;
             firstName: string;
             lastName: string;
             nationality: string;
@@ -48,8 +48,8 @@ export declare class AdminPlayersController {
             positions: import(".prisma/client").$Enums.Position[];
             primaryPosition: import(".prisma/client").$Enums.Position | null;
             isRetired: boolean;
-            currentClubId: string | null;
             imageUrl: string | null;
+            currentClubId: string | null;
         })[];
         meta: {
             total: number;
@@ -75,30 +75,30 @@ export declare class AdminPlayersController {
                 createdAt: Date;
                 name: string;
                 competitions: string[];
-                createdBy: string | null;
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
                 logoUrl: string | null;
+                createdBy: string | null;
             };
         } & {
             id: string;
-            playerId: string;
             clubId: string;
             startYear: number | null;
             endYear: number | null;
             isCurrent: boolean;
+            playerId: string;
         })[];
         currentClub: {
             id: string;
             createdAt: Date;
             name: string;
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
+            createdBy: string | null;
         } | null;
     } & {
         id: string;
@@ -106,8 +106,8 @@ export declare class AdminPlayersController {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -118,8 +118,8 @@ export declare class AdminPlayersController {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        currentClubId: string | null;
         imageUrl: string | null;
+        currentClubId: string | null;
     }>;
     update(id: string, updateDto: PatchPlayerDto, req: any): Promise<{
         playerClubs: ({
@@ -128,30 +128,30 @@ export declare class AdminPlayersController {
                 createdAt: Date;
                 name: string;
                 competitions: string[];
-                createdBy: string | null;
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
                 logoUrl: string | null;
+                createdBy: string | null;
             };
         } & {
             id: string;
-            playerId: string;
             clubId: string;
             startYear: number | null;
             endYear: number | null;
             isCurrent: boolean;
+            playerId: string;
         })[];
         currentClub: {
             id: string;
             createdAt: Date;
             name: string;
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
+            createdBy: string | null;
         } | null;
     } & {
         id: string;
@@ -159,8 +159,8 @@ export declare class AdminPlayersController {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -171,8 +171,8 @@ export declare class AdminPlayersController {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        currentClubId: string | null;
         imageUrl: string | null;
+        currentClubId: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
@@ -180,8 +180,8 @@ export declare class AdminPlayersController {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -192,7 +192,7 @@ export declare class AdminPlayersController {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        currentClubId: string | null;
         imageUrl: string | null;
+        currentClubId: string | null;
     }>;
 }

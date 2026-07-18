@@ -42,11 +42,11 @@ export declare class AdminClubsService {
             createdAt: Date;
             name: string;
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
+            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -63,11 +63,11 @@ export declare class AdminClubsService {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
+        createdBy: string | null;
     }>;
     create(dto: CreateClubDto, adminUserId: string): Promise<{
         competitionIds: string[];
@@ -78,11 +78,11 @@ export declare class AdminClubsService {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
+        createdBy: string | null;
     }>;
     update(id: string, dto: UpdateClubDto, adminUserId: string): Promise<{
         competitionIds: string[];
@@ -93,21 +93,21 @@ export declare class AdminClubsService {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
+        createdBy: string | null;
     }>;
 }
