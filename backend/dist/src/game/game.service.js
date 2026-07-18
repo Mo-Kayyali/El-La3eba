@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const guess_matcher_util_1 = require("./guess-matcher.util");
 const position_util_1 = require("./position.util");
 let GameService = class GameService {
     prisma;
@@ -23,13 +24,8 @@ let GameService = class GameService {
         const guessLen = normalizedGuess.length;
         if (guessLen < 3)
             return [];
-        let allowedTypos = 0;
-        if (guessLen >= 8)
-            allowedTypos = 2;
-        else if (guessLen >= 5)
-            allowedTypos = 1;
-        const [_, matches] = await this.prisma.$transaction([
-            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.3;`),
+        const [_, candidates] = await this.prisma.$transaction([
+            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.2;`),
             this.prisma.$queryRaw `
         WITH guess AS (
           SELECT lower(unaccent(${normalizedGuess})) AS val
@@ -40,13 +36,6 @@ let GameService = class GameService {
             c.name as "currentClubName",
             c.competitions as "currentClubCompetitions",
             g.val,
-            -- Best edit distance to the FULL name or any FULL alias within length tolerance (hyphens normalized)
-            (
-              SELECT min(levenshtein(replace(lower(unaccent(alias)), '-', ' '), g.val))
-              FROM unnest(array_append(p.aliases, p.name)) as alias
-              WHERE abs(char_length(g.val) - char_length(replace(alias, '-', ' '))) <= 3
-            ) as best_dist,
-            -- Trigram similarity against both name and aliases for sorting (and pre-filtering)
             GREATEST(
               word_similarity(g.val, replace(lower(unaccent_immutable(p.name)), '-', ' ')),
               word_similarity(g.val, replace(lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))), '-', ' '))
@@ -55,7 +44,7 @@ let GameService = class GameService {
           LEFT JOIN "Club" c ON p."currentClubId" = c.id
           CROSS JOIN guess g
           WHERE
-            -- Generous prefilter to narrow candidates via GIN index (if configured) or fast discard
+            -- Generous prefilter to narrow candidates via GIN index
             (
               lower(unaccent_immutable(p.name)) %> g.val OR
               lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> g.val
@@ -63,16 +52,37 @@ let GameService = class GameService {
         )
         SELECT *
         FROM player_metrics
-        WHERE 
-          best_dist <= ${allowedTypos}
-        ORDER BY 
-          best_dist ASC,
-          abs(char_length((SELECT val FROM guess)) - char_length(replace(name, '-', ' '))) ASC,
-          w_sim DESC
-        LIMIT 5;
+        ORDER BY w_sim DESC
+        LIMIT 20;
       `
         ]);
-        return matches;
+        const scoredCandidates = candidates.map(c => {
+            let bestConfidence = 0;
+            const targets = [c.name, ...(c.aliases || [])];
+            for (const target of targets) {
+                const result = (0, guess_matcher_util_1.evaluateMatch)(normalizedGuess, target);
+                if (result.confidence > bestConfidence) {
+                    bestConfidence = result.confidence;
+                }
+            }
+            return { ...c, matchConfidence: bestConfidence };
+        });
+        const validCandidates = scoredCandidates
+            .filter(c => c.matchConfidence >= 0.3)
+            .sort((a, b) => b.matchConfidence - a.matchConfidence)
+            .slice(0, 10);
+        if (validCandidates.length > 0) {
+            const topScore = validCandidates[0].matchConfidence;
+            let isAmbiguous = false;
+            if (topScore < 0.95 && validCandidates.length > 1) {
+                const gap = topScore - validCandidates[1].matchConfidence;
+                if (gap <= 0.05) {
+                    isAmbiguous = true;
+                }
+            }
+            validCandidates[0].isAmbiguous = isAmbiguous;
+        }
+        return validCandidates;
     }
     async getRandomQuestion(gameMode = 'STRIKES', excludeIds = []) {
         let effectiveExclude = excludeIds;

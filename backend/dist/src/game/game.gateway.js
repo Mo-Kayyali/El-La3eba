@@ -1052,7 +1052,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                                 }
                             }
                             if (!matchedPlayer) {
-                                matchedPlayer = matchedPlayers[0];
+                                if (matchedPlayers[0].isAmbiguous) {
+                                    matchedPlayer = null;
+                                }
+                                else {
+                                    matchedPlayer = matchedPlayers[0];
+                                }
                                 initialIsCorrect = false;
                             }
                         }

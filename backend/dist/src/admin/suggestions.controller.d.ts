@@ -4,6 +4,26 @@ export declare class SuggestionsController {
     constructor(suggestionsService: SuggestionsService);
     getAllSuggestions(status?: 'PENDING' | 'APPROVED' | 'REJECTED', page?: string, limit?: string): Promise<{
         data: ({
+            player: {
+                id: string;
+                createdAt: Date;
+                name: string;
+                clubs: string[];
+                competitions: string[];
+                createdBy: string | null;
+                aliases: string[];
+                firstName: string;
+                lastName: string;
+                nationality: string;
+                dateOfBirth: Date | null;
+                heightCm: number | null;
+                preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+                positions: import(".prisma/client").$Enums.Position[];
+                primaryPosition: import(".prisma/client").$Enums.Position | null;
+                isRetired: boolean;
+                currentClubId: string | null;
+                imageUrl: string | null;
+            } | null;
             question: {
                 id: string;
                 createdAt: Date;
@@ -18,26 +38,6 @@ export declare class SuggestionsController {
                 playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
                 createdBy: string | null;
             };
-            player: {
-                id: string;
-                createdAt: Date;
-                name: string;
-                createdBy: string | null;
-                firstName: string;
-                lastName: string;
-                aliases: string[];
-                nationality: string;
-                dateOfBirth: Date | null;
-                heightCm: number | null;
-                preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
-                positions: import(".prisma/client").$Enums.Position[];
-                primaryPosition: import(".prisma/client").$Enums.Position | null;
-                isRetired: boolean;
-                currentClubId: string | null;
-                imageUrl: string | null;
-                clubs: string[];
-                competitions: string[];
-            } | null;
             suggester: {
                 id: string;
                 email: string;
@@ -45,14 +45,14 @@ export declare class SuggestionsController {
             };
         } & {
             id: string;
-            questionId: string;
-            guessText: string;
-            playerId: string | null;
-            suggestedBy: string;
+            createdAt: Date;
             status: import(".prisma/client").$Enums.SuggestionStatus;
+            questionId: string;
+            playerId: string | null;
+            guessText: string;
+            suggestedBy: string;
             comment: string | null;
             reviewNote: string | null;
-            createdAt: Date;
             reviewedAt: Date | null;
         })[];
         meta: {
@@ -69,14 +69,14 @@ export declare class SuggestionsController {
         createdAnswer: boolean;
         suggestion: {
             id: string;
-            questionId: string;
-            guessText: string;
-            playerId: string | null;
-            suggestedBy: string;
+            createdAt: Date;
             status: import(".prisma/client").$Enums.SuggestionStatus;
+            questionId: string;
+            playerId: string | null;
+            guessText: string;
+            suggestedBy: string;
             comment: string | null;
             reviewNote: string | null;
-            createdAt: Date;
             reviewedAt: Date | null;
         };
     }>;
@@ -87,14 +87,14 @@ export declare class SuggestionsController {
         message: string;
         suggestion: {
             id: string;
-            questionId: string;
-            guessText: string;
-            playerId: string | null;
-            suggestedBy: string;
+            createdAt: Date;
             status: import(".prisma/client").$Enums.SuggestionStatus;
+            questionId: string;
+            playerId: string | null;
+            guessText: string;
+            suggestedBy: string;
             comment: string | null;
             reviewNote: string | null;
-            createdAt: Date;
             reviewedAt: Date | null;
         };
     }>;

@@ -1524,7 +1524,11 @@ export class GameGateway
               // If no candidate is both un-guessed and correct, fallback to the top match
               // so the logic below registers it as either a wrong guess or an already-taken strike.
               if (!matchedPlayer) {
-                matchedPlayer = matchedPlayers[0];
+                if (matchedPlayers[0].isAmbiguous) {
+                  matchedPlayer = null;
+                } else {
+                  matchedPlayer = matchedPlayers[0];
+                }
                 initialIsCorrect = false;
               }
             }
