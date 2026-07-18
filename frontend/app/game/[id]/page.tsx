@@ -31,7 +31,7 @@ type Question = {
 };
 
 /** A guess entry in the activity feed. Backend now sends objects with guessedBy. */
-type GuessEntry = { name: string; guessedBy: string; isCorrect?: boolean; playerId?: string } | string;
+type GuessEntry = { name: string; guessedBy: string; isCorrect?: boolean; playerId?: string | null; guessText?: string } | string;
 
 type GameState = {
   players?: Array<string | number | Player>;
@@ -98,14 +98,16 @@ function parseGuessEntry(entry: GuessEntry): {
   name: string;
   guessedBy: string | null;
   isCorrect: boolean;
-  playerId?: string;
+  playerId?: string | null;
+  guessText?: string;
 } {
-  if (typeof entry === "string") return { name: entry, guessedBy: null, isCorrect: true };
+  if (typeof entry === "string") return { name: entry, guessedBy: null, isCorrect: true, guessText: entry };
   return { 
     name: entry.name, 
     guessedBy: entry.guessedBy, 
     isCorrect: entry.isCorrect ?? true,
-    playerId: entry.playerId
+    playerId: entry.playerId,
+    guessText: entry.guessText || entry.name
   };
 }
 
@@ -221,7 +223,12 @@ export default function GamePage() {
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
 
   // Report Guess state
-  const [reportModalData, setReportModalData] = useState<{ playerId: string; guessName: string } | null>(null);
+  const [reportModalData, setReportModalData] = useState<{ 
+    playerId: string | null; 
+    guessText: string; 
+    matchedName: string | null;
+  } | null>(null);
+  const [reportIntent, setReportIntent] = useState<"matched" | "unmatched">("matched");
   const [reportComment, setReportComment] = useState("");
   const [reportedGuesses, setReportedGuesses] = useState<Set<string>>(new Set());
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
@@ -689,14 +696,18 @@ export default function GamePage() {
     if (!reportModalData || !gameState?.currentQuestion?.id || isSubmittingReport) return;
     setIsSubmittingReport(true);
     try {
+      const finalPlayerId = (reportModalData.playerId && reportIntent === "matched") 
+        ? reportModalData.playerId 
+        : null;
+
       await api.post("/game/suggestions", {
         questionId: gameState.currentQuestion.id,
-        playerId: reportModalData.playerId,
-        guessText: reportModalData.guessName,
+        playerId: finalPlayerId,
+        guessText: reportModalData.guessText,
         comment: reportComment.trim() || undefined,
       });
       toast.success("Suggestion reported to admins!");
-      setReportedGuesses((prev) => new Set(prev).add(reportModalData.playerId));
+      setReportedGuesses((prev) => new Set(prev).add(reportModalData.playerId || reportModalData.guessText));
       setReportModalData(null);
       setReportComment("");
     } catch (err: any) {
@@ -1124,13 +1135,50 @@ export default function GamePage() {
               className="w-full max-w-md rounded-3xl border border-blue-500/25 bg-[#030712] p-8 shadow-[0_0_60px_rgba(59,130,246,0.12)]"
             >
               <h3 className="text-lg font-extrabold text-white">
-                Report "{reportModalData.guessName}"
+                Report Suggestion
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                Are you sure this player is correct? Your report will be reviewed by admins.
-              </p>
               
-              <div className="mt-4">
+              {reportModalData.playerId ? (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm leading-relaxed text-slate-400">
+                    You guessed <strong className="text-white">"{reportModalData.guessText}"</strong>, which matched <strong className="text-white">{reportModalData.matchedName}</strong>.
+                  </p>
+                  
+                  <div className="mt-2 space-y-2">
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.02] p-4 cursor-pointer hover:bg-white/[0.05] transition">
+                      <input
+                        type="radio"
+                        checked={reportIntent === "matched"}
+                        onChange={() => setReportIntent("matched")}
+                        className="h-4 w-4 shrink-0 text-blue-500 focus:ring-blue-500 bg-black border-slate-600"
+                      />
+                      <span className="text-sm font-medium text-slate-200">
+                        I meant <strong className="text-white">{reportModalData.matchedName}</strong> and they should be correct.
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.02] p-4 cursor-pointer hover:bg-white/[0.05] transition">
+                      <input
+                        type="radio"
+                        checked={reportIntent === "unmatched"}
+                        onChange={() => setReportIntent("unmatched")}
+                        className="h-4 w-4 shrink-0 text-blue-500 focus:ring-blue-500 bg-black border-slate-600"
+                      />
+                      <span className="text-sm font-medium text-slate-200">
+                        I meant someone else named <strong className="text-white">"{reportModalData.guessText}"</strong>.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <p className="text-sm leading-relaxed text-slate-400">
+                    We couldn't find a player matching <strong className="text-white">"{reportModalData.guessText}"</strong>. Do you want to suggest this player to the admins?
+                  </p>
+                </div>
+              )}
+              
+              <div className="mt-6">
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Optional comment
                 </label>
@@ -1379,7 +1427,7 @@ export default function GamePage() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {guessedPlayers.map((entry, idx) => {
-                        const { name, guessedBy, isCorrect, playerId } = parseGuessEntry(entry);
+                        const { name, guessedBy, isCorrect, playerId, guessText } = parseGuessEntry(entry);
                         const isMine =
                           guessedBy !== null &&
                           String(guessedBy) === String(userId);
@@ -1388,14 +1436,20 @@ export default function GamePage() {
                           String(guessedBy) !== String(userId);
 
                         const isRejected = isCorrect === false;
-                        const hasReported = playerId ? reportedGuesses.has(playerId) : false;
+                        const reportKey = playerId || guessText || name;
+                        const hasReported = reportedGuesses.has(reportKey);
 
                         return (
                           <span
                             key={`${name}-${idx}`}
                             onClick={() => {
-                              if (isRejected && playerId && !hasReported) {
-                                setReportModalData({ playerId, guessName: name });
+                              if (isRejected && !hasReported) {
+                                setReportModalData({ 
+                                  playerId: playerId || null, 
+                                  guessText: guessText || name,
+                                  matchedName: playerId ? name : null
+                                });
+                                setReportIntent("matched");
                               }
                             }}
                             className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition ${

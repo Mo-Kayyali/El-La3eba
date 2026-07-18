@@ -181,7 +181,7 @@ OfflinePenalty
 AnswerSuggestion
   id          uuid (pk)
   questionId  uuid (fk -> Question, cascade delete)
-  playerId    uuid (fk -> Player, cascade delete)
+  playerId    uuid? (fk -> Player, cascade delete)
   guessText   string
   suggestedBy uuid (fk -> User, cascade delete)
   comment     string?

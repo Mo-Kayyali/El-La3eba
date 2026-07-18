@@ -8,7 +8,7 @@ export declare class GameService {
     validateAnswer(question: Question & {
         playerStatusFilter?: string;
     }, player: any): Promise<boolean>;
-    createSuggestion(userId: string, questionId: string, playerId: string, guessText: string, comment?: string): Promise<{
+    createSuggestion(userId: string, questionId: string, playerId: string | null, guessText: string, comment?: string): Promise<{
         status: string;
         message: string;
         suggestion?: undefined;
@@ -16,15 +16,15 @@ export declare class GameService {
         status: string;
         suggestion: {
             id: string;
-            createdAt: Date;
-            status: import(".prisma/client").$Enums.SuggestionStatus;
-            questionId: string;
-            playerId: string;
             guessText: string;
-            suggestedBy: string;
+            status: import(".prisma/client").$Enums.SuggestionStatus;
             comment: string | null;
             reviewNote: string | null;
+            createdAt: Date;
             reviewedAt: Date | null;
+            questionId: string;
+            playerId: string | null;
+            suggestedBy: string;
         };
         message?: undefined;
     }>;

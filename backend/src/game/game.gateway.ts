@@ -1577,10 +1577,12 @@ export class GameGateway
             // Penalty: treat already-guessed as a WRONG answer (strike)
             finalIsCorrect = false;
             state.strikes[userId] += 1;
+            // We optionally could push this back to feed, but currently we just add a strike
           } else {
             if (finalIsCorrect) {
               state.guessedPlayers.push({
                 name: matchedPlayer.name,
+                guessText: guessName,
                 guessedBy: userId,
                 isCorrect: true,
                 playerId: matchedPlayer.id,
@@ -1588,14 +1590,13 @@ export class GameGateway
               state.scores[userId] += 1;
             } else {
               state.strikes[userId] += 1;
-              if (matchedPlayer) {
-                state.guessedPlayers.push({
-                  name: matchedPlayer.name,
-                  guessedBy: userId,
-                  isCorrect: false,
-                  playerId: matchedPlayer.id,
-                });
-              }
+              state.guessedPlayers.push({
+                name: matchedPlayer ? matchedPlayer.name : guessName,
+                guessText: guessName,
+                guessedBy: userId,
+                isCorrect: false,
+                playerId: matchedPlayer ? matchedPlayer.id : null,
+              });
             }
           }
 

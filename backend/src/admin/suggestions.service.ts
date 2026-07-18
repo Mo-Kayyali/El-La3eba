@@ -50,26 +50,30 @@ export class SuggestionsService {
     let createdAnswer = false;
 
     if (suggestion.question.answerType === 'LIST') {
-      const existing = await this.prisma.questionAnswer.findUnique({
-        where: {
-          questionId_playerId: {
-            questionId: suggestion.questionId,
-            playerId: suggestion.playerId,
-          },
-        },
-      });
-
-      if (!existing) {
-        await this.prisma.questionAnswer.create({
-          data: {
-            questionId: suggestion.questionId,
-            playerId: suggestion.playerId,
+      if (!suggestion.playerId) {
+        message = 'Suggestion approved. Note: No player was linked. Please add the player manually to the database.';
+      } else {
+        const existing = await this.prisma.questionAnswer.findUnique({
+          where: {
+            questionId_playerId: {
+              questionId: suggestion.questionId,
+              playerId: suggestion.playerId,
+            },
           },
         });
-        createdAnswer = true;
-        message = 'Suggestion approved and new QuestionAnswer created for LIST question.';
-      } else {
-        message = 'Suggestion approved, but QuestionAnswer already existed.';
+
+        if (!existing) {
+          await this.prisma.questionAnswer.create({
+            data: {
+              questionId: suggestion.questionId,
+              playerId: suggestion.playerId,
+            },
+          });
+          createdAnswer = true;
+          message = 'Suggestion approved and new QuestionAnswer created for LIST question.';
+        } else {
+          message = 'Suggestion approved, but QuestionAnswer already existed.';
+        }
       }
     } else {
       message = 'Suggestion approved for FILTER question. Admin recorded judgment signal.';

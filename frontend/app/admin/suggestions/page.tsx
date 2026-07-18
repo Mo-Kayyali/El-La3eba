@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Check, X, ArrowLeft, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { Pagination } from "@/components/pagination";
+import { PlayerFormModal } from "@/components/admin/player-form-modal";
 
 type Suggestion = {
   id: string;
@@ -24,7 +25,7 @@ type Suggestion = {
     name: string;
     aliases: string[];
     image: string | null;
-  };
+  } | null;
   question: {
     id: string;
     text: string;
@@ -48,6 +49,7 @@ function AdminSuggestionsContent() {
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessOptions, setShowSuccessOptions] = useState(false);
+  const [addPlayerName, setAddPlayerName] = useState<string | null>(null);
   
   const initialTab = (searchParams.get("tab") as any) || "PENDING";
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">(initialTab);
@@ -214,7 +216,7 @@ function AdminSuggestionsContent() {
                 </div>
                 <div className="flex items-center gap-2 text-sm mt-1">
                   <span className="text-slate-400">Matched Player:</span>
-                  <span className="font-semibold text-emerald-300">{suggestion.player.name}</span>
+                  <span className="font-semibold text-emerald-300">{suggestion.player ? suggestion.player.name : "None (Unmatched)"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm mt-1">
                   <span className="text-slate-400">Suggested By:</span>
@@ -249,12 +251,21 @@ function AdminSuggestionsContent() {
                 )}
                 {suggestion.status === "APPROVED" && (
                   <div className="flex flex-col items-end gap-3 mt-2">
-                    <Link
-                      href={`/admin/players?edit=${suggestion.player.id}`}
-                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20 text-center w-full sm:w-auto"
-                    >
-                      Edit this player's data
-                    </Link>
+                    {suggestion.player ? (
+                      <Link
+                        href={`/admin/players?edit=${suggestion.player.id}`}
+                        className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20 text-center w-full sm:w-auto"
+                      >
+                        Edit this player's data
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => setAddPlayerName(suggestion.guessText)}
+                        className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20 text-center w-full sm:w-auto"
+                      >
+                        Add Player ({suggestion.guessText})
+                      </button>
+                    )}
                     <Link
                       href={`/admin/questions?edit=${suggestion.question.id}`}
                       className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20 text-center w-full sm:w-auto"
@@ -303,12 +314,21 @@ function AdminSuggestionsContent() {
                   Would you like to edit the player or question data now?
                 </p>
                 <div className="flex flex-col gap-3">
-                  <Link
-                    href={`/admin/players?edit=${activeSuggestion.player.id}`}
-                    className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-500 transition"
-                  >
-                    Edit Player ({activeSuggestion.player.name})
-                  </Link>
+                  {activeSuggestion.player ? (
+                    <Link
+                      href={`/admin/players?edit=${activeSuggestion.player.id}`}
+                      className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-500 transition"
+                    >
+                      Edit Player ({activeSuggestion.player.name})
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => { closeModal(); setAddPlayerName(activeSuggestion.guessText); }}
+                      className="rounded-xl bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-emerald-500 transition"
+                    >
+                      Add Player ({activeSuggestion.guessText})
+                    </button>
+                  )}
                   <Link
                     href={`/admin/questions?edit=${activeSuggestion.question.id}`}
                     className="rounded-xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500 transition"
@@ -372,6 +392,19 @@ function AdminSuggestionsContent() {
           </div>
         </div>
       )}
+      <PlayerFormModal
+        isOpen={!!addPlayerName}
+        onClose={() => setAddPlayerName(null)}
+        initialData={addPlayerName ? {
+          name: addPlayerName,
+          firstName: addPlayerName.split(" ")[0] || "",
+          lastName: addPlayerName.split(" ").slice(1).join(" ") || ""
+        } : null}
+        onSuccess={() => {
+          setAddPlayerName(null);
+          toast.success("Player added successfully.");
+        }}
+      />
     </div>
   );
 }

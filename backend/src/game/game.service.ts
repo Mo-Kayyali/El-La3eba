@@ -12,7 +12,7 @@ export class GameService {
   constructor(private readonly prisma: PrismaService) {}
 
   async guessPlayer(guessName: string): Promise<any[]> {
-    const normalizedGuess = guessName.trim();
+    const normalizedGuess = guessName.trim().replace(/-/g, ' ');
     const guessLen = normalizedGuess.length;
     if (guessLen < 3) return [];
 
@@ -21,7 +21,7 @@ export class GameService {
     else if (guessLen >= 5) allowedTypos = 1;
 
     const [_, matches] = await this.prisma.$transaction([
-      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.3;`),
       this.prisma.$queryRaw<any[]>`
         WITH guess AS (
           SELECT lower(unaccent(${normalizedGuess})) AS val
@@ -32,16 +32,16 @@ export class GameService {
             c.name as "currentClubName",
             c.competitions as "currentClubCompetitions",
             g.val,
-            -- Best edit distance to the FULL name or any FULL alias within length tolerance
+            -- Best edit distance to the FULL name or any FULL alias within length tolerance (hyphens normalized)
             (
-              SELECT min(levenshtein(lower(unaccent(alias)), g.val))
+              SELECT min(levenshtein(replace(lower(unaccent(alias)), '-', ' '), g.val))
               FROM unnest(array_append(p.aliases, p.name)) as alias
-              WHERE abs(char_length(g.val) - char_length(alias)) <= 3
+              WHERE abs(char_length(g.val) - char_length(replace(alias, '-', ' '))) <= 3
             ) as best_dist,
             -- Trigram similarity against both name and aliases for sorting (and pre-filtering)
             GREATEST(
-              word_similarity(g.val, lower(unaccent_immutable(p.name))),
-              word_similarity(g.val, lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+              word_similarity(g.val, replace(lower(unaccent_immutable(p.name)), '-', ' ')),
+              word_similarity(g.val, replace(lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))), '-', ' '))
             ) as w_sim
           FROM "Player" p
           LEFT JOIN "Club" c ON p."currentClubId" = c.id
@@ -58,8 +58,9 @@ export class GameService {
         WHERE 
           best_dist <= ${allowedTypos}
         ORDER BY 
-          w_sim DESC,
-          best_dist ASC
+          best_dist ASC,
+          abs(char_length((SELECT val FROM guess)) - char_length(replace(name, '-', ' '))) ASC,
+          w_sim DESC
         LIMIT 5;
       `
     ]);
@@ -184,7 +185,7 @@ export class GameService {
   async createSuggestion(
     userId: string,
     questionId: string,
-    playerId: string,
+    playerId: string | null,
     guessText: string,
     comment?: string,
   ) {
@@ -192,7 +193,7 @@ export class GameService {
       where: {
         suggestedBy: userId,
         questionId,
-        playerId,
+        ...(playerId ? { playerId } : { guessText }),
         status: 'PENDING',
       },
     });
@@ -207,7 +208,7 @@ export class GameService {
     const suggestion = await this.prisma.answerSuggestion.create({
       data: {
         questionId,
-        playerId,
+        playerId: playerId as any,
         guessText,
         suggestedBy: userId,
         comment,

@@ -36,10 +36,10 @@ let GameController = class GameController {
         return { gameSessionId };
     }
     async createSuggestion(req, body) {
-        if (!body.questionId || !body.playerId || !body.guessText) {
+        if (!body.questionId || !body.guessText) {
             return { status: 'error', message: 'Missing required fields' };
         }
-        return this.gameService.createSuggestion(req.user.userId, body.questionId, body.playerId, body.guessText, body.comment);
+        return this.gameService.createSuggestion(req.user.userId, body.questionId, body.playerId || null, body.guessText, body.comment);
     }
 };
 exports.GameController = GameController;

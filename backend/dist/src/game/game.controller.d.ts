@@ -20,22 +20,22 @@ export declare class GameController {
         };
     }, body: {
         questionId: string;
-        playerId: string;
+        playerId?: string | null;
         guessText: string;
         comment?: string;
     }): Promise<{
         status: string;
         suggestion: {
             id: string;
-            createdAt: Date;
-            status: import(".prisma/client").$Enums.SuggestionStatus;
-            questionId: string;
-            playerId: string;
             guessText: string;
-            suggestedBy: string;
+            status: import(".prisma/client").$Enums.SuggestionStatus;
             comment: string | null;
             reviewNote: string | null;
+            createdAt: Date;
             reviewedAt: Date | null;
+            questionId: string;
+            playerId: string | null;
+            suggestedBy: string;
         };
         message?: undefined;
     } | {

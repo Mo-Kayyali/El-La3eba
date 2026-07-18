@@ -39,15 +39,15 @@ export class GameController {
   @Post('suggestions')
   async createSuggestion(
     @Request() req: { user: { userId: string } },
-    @Body() body: { questionId: string; playerId: string; guessText: string; comment?: string },
+    @Body() body: { questionId: string; playerId?: string | null; guessText: string; comment?: string },
   ) {
-    if (!body.questionId || !body.playerId || !body.guessText) {
+    if (!body.questionId || !body.guessText) {
       return { status: 'error', message: 'Missing required fields' };
     }
     return this.gameService.createSuggestion(
       req.user.userId,
       body.questionId,
-      body.playerId,
+      body.playerId || null,
       body.guessText,
       body.comment,
     );

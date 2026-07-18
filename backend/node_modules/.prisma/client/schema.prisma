@@ -359,7 +359,7 @@ model AnswerSuggestion {
   id          String           @id @default(uuid())
   questionId  String
   guessText   String
-  playerId    String
+  playerId    String?
   suggestedBy String
   status      SuggestionStatus @default(PENDING)
   comment     String?
@@ -368,7 +368,7 @@ model AnswerSuggestion {
   reviewedAt  DateTime?
 
   question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  player    Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
   suggester User     @relation(fields: [suggestedBy], references: [id], onDelete: Cascade)
 
   @@index([questionId, status])

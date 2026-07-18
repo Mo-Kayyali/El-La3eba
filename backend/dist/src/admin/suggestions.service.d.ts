@@ -8,26 +8,6 @@ export declare class SuggestionsService {
         limit?: number;
     }): Promise<{
         data: ({
-            player: {
-                id: string;
-                createdAt: Date;
-                name: string;
-                clubs: string[];
-                competitions: string[];
-                createdBy: string | null;
-                aliases: string[];
-                firstName: string;
-                lastName: string;
-                nationality: string;
-                dateOfBirth: Date | null;
-                heightCm: number | null;
-                preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
-                positions: import(".prisma/client").$Enums.Position[];
-                primaryPosition: import(".prisma/client").$Enums.Position | null;
-                isRetired: boolean;
-                currentClubId: string | null;
-                imageUrl: string | null;
-            };
             question: {
                 id: string;
                 createdAt: Date;
@@ -42,6 +22,26 @@ export declare class SuggestionsService {
                 playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
                 createdBy: string | null;
             };
+            player: {
+                id: string;
+                createdAt: Date;
+                name: string;
+                createdBy: string | null;
+                firstName: string;
+                lastName: string;
+                aliases: string[];
+                nationality: string;
+                dateOfBirth: Date | null;
+                heightCm: number | null;
+                preferredFoot: import(".prisma/client").$Enums.PreferredFoot | null;
+                positions: import(".prisma/client").$Enums.Position[];
+                primaryPosition: import(".prisma/client").$Enums.Position | null;
+                isRetired: boolean;
+                currentClubId: string | null;
+                imageUrl: string | null;
+                clubs: string[];
+                competitions: string[];
+            } | null;
             suggester: {
                 id: string;
                 email: string;
@@ -49,14 +49,14 @@ export declare class SuggestionsService {
             };
         } & {
             id: string;
-            createdAt: Date;
-            status: import(".prisma/client").$Enums.SuggestionStatus;
             questionId: string;
-            playerId: string;
             guessText: string;
+            playerId: string | null;
             suggestedBy: string;
+            status: import(".prisma/client").$Enums.SuggestionStatus;
             comment: string | null;
             reviewNote: string | null;
+            createdAt: Date;
             reviewedAt: Date | null;
         })[];
         meta: {
@@ -71,14 +71,14 @@ export declare class SuggestionsService {
         createdAnswer: boolean;
         suggestion: {
             id: string;
-            createdAt: Date;
-            status: import(".prisma/client").$Enums.SuggestionStatus;
             questionId: string;
-            playerId: string;
             guessText: string;
+            playerId: string | null;
             suggestedBy: string;
+            status: import(".prisma/client").$Enums.SuggestionStatus;
             comment: string | null;
             reviewNote: string | null;
+            createdAt: Date;
             reviewedAt: Date | null;
         };
     }>;
@@ -87,14 +87,14 @@ export declare class SuggestionsService {
         message: string;
         suggestion: {
             id: string;
-            createdAt: Date;
-            status: import(".prisma/client").$Enums.SuggestionStatus;
             questionId: string;
-            playerId: string;
             guessText: string;
+            playerId: string | null;
             suggestedBy: string;
+            status: import(".prisma/client").$Enums.SuggestionStatus;
             comment: string | null;
             reviewNote: string | null;
+            createdAt: Date;
             reviewedAt: Date | null;
         };
     }>;
