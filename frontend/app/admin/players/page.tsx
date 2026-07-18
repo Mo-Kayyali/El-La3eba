@@ -4,12 +4,13 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft, Check, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, Check, Plus, Search, Trash2, X } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
 import { Modal } from "@/components/modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 type Club = {
   id: string;
@@ -84,6 +85,7 @@ function AdminPlayersContent() {
   const [order, setOrder] = useState<"asc" | "desc">("asc");
 
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string, bulk?: boolean, count?: number } | null>(null);
   const [isEditing, setIsEditing] = useState<Partial<Player> | null>(null);
   const [clubHistory, setClubHistory] = useState<any[]>([]);
   const [isRetiredState, setIsRetiredState] = useState(false);
@@ -278,11 +280,11 @@ function AdminPlayersContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
     setError("");
     try {
       await api.delete(`/admin/players/${id}`);
       fetchPlayers();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -290,12 +292,12 @@ function AdminPlayersContent() {
 
   const handleBulkDelete = async () => {
     if (selectedPlayerIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedPlayerIds.length} selected players?`)) return;
     setError("");
     try {
       await Promise.all(selectedPlayerIds.map(id => api.delete(`/admin/players/${id}`)));
       setSelectedPlayerIds([]);
       fetchPlayers();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -831,17 +833,16 @@ function AdminPlayersContent() {
               Cancel
             </button>
           )}
-          <button
-            onClick={handleBulkDelete}
-            disabled={selectedPlayerIds.length === 0}
-            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
-              selectedPlayerIds.length > 0 
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
-            }`}
-          >
-            Delete Selected
-          </button>
+          {/* Bulk Action Buttons */}
+          {selectedPlayerIds.length > 0 && (
+            <button
+              onClick={() => setConfirmDelete({ bulk: true, count: selectedPlayerIds.length })}
+              className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Selected ({selectedPlayerIds.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -909,7 +910,7 @@ function AdminPlayersContent() {
                       Edit
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(player.id); }}
+                      onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: player.id }); }}
                       className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
@@ -935,6 +936,23 @@ function AdminPlayersContent() {
           onPageChange={setPage}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="Confirm Deletion"
+        message={confirmDelete?.bulk ? `Are you sure you want to delete ${confirmDelete.count} selected players? This action cannot be undone.` : "Are you sure you want to delete this player? This action cannot be undone."}
+        onConfirm={() => {
+          if (confirmDelete?.bulk) {
+            handleBulkDelete();
+          } else if (confirmDelete?.id) {
+            handleDelete(confirmDelete.id);
+          }
+          setConfirmDelete(null);
+        }}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 }

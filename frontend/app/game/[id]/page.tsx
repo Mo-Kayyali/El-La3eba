@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/lib/auth-store";
 import { api, refreshAuthProfile } from "@/lib/api";
 import { useSocketStore } from "@/src/store/socketStore";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { getRank } from "@/lib/rank";
 import type { Socket } from "socket.io-client";
 
@@ -1165,56 +1166,28 @@ export default function GamePage() {
           </div>
         )}
 
-        {showForfeitModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="forfeit-title"
-              className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#030712] p-8 shadow-[0_0_60px_rgba(239,68,68,0.12)]"
-            >
-              <h3
-                id="forfeit-title"
-                className="text-lg font-extrabold text-white"
-              >
-                Forfeit this match?
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                Are you sure? This counts as a loss and will drop your MMR in
-                ranked games.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowForfeitModal(false)}
-                  className="rounded-2xl border border-white/[0.1] bg-white/[0.05] px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/[0.08] transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!socket?.connected || !gameSessionId) return;
-                    socket.emit(
-                      "forfeitMatch",
-                      { gameSessionId },
-                      (res: { status?: string; message?: string }) => {
-                        if (res?.status === "ok") {
-                          setShowForfeitModal(false);
-                        } else {
-                          toast.error(res?.message ?? "Could not forfeit.");
-                        }
-                      },
-                    );
-                  }}
-                  className="rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(239,68,68,0.25)] hover:brightness-110 transition"
-                >
-                  Yes, forfeit
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      <ConfirmModal
+        isOpen={showForfeitModal}
+        onClose={() => setShowForfeitModal(false)}
+        title="Forfeit this match?"
+        message="Are you sure? This counts as a loss and will drop your MMR in ranked games."
+        onConfirm={() => {
+          if (!socket?.connected || !gameSessionId) return;
+          socket.emit(
+            "forfeitMatch",
+            { gameSessionId },
+            (res: { status?: string; message?: string }) => {
+              if (res?.status === "ok") {
+                setShowForfeitModal(false);
+              } else {
+                toast.error(res?.message ?? "Could not forfeit.");
+              }
+            },
+          );
+        }}
+        confirmText="Yes, forfeit"
+        isDestructive={true}
+      />
 
         {disconnectedUserId && !isMatchOver && (
           <div className="mt-5 flex justify-center">

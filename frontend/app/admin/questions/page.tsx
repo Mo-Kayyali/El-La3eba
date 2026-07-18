@@ -7,6 +7,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowLeft, Plus, Search, Trash2, X, Check } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { Pagination } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
 import { Modal } from "@/components/modal";
@@ -167,6 +168,7 @@ function AdminQuestionsContent() {
   const [error, setError] = useState("");
 
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string, bulk?: boolean, count?: number } | null>(null);
 
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
@@ -312,11 +314,11 @@ function AdminQuestionsContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this question?")) return;
     try {
       await api.delete(`/admin/questions/${id}`);
       if (editingId === id) resetForm();
       setQuestions((prev) => prev.filter((q) => q.id !== id));
+      setConfirmDelete(null);
     } catch (err) {
       alert(extractApiErrorMessage(err));
     }
@@ -324,7 +326,6 @@ function AdminQuestionsContent() {
 
   const handleBulkDelete = async () => {
     if (selectedQuestionIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedQuestionIds.length} selected questions?`)) return;
     setError("");
     try {
       await Promise.all(selectedQuestionIds.map(id => api.delete(`/admin/questions/${id}`)));
@@ -332,6 +333,7 @@ function AdminQuestionsContent() {
       setEditingId(null);
       if (editId) router.replace('/admin/questions');
       fetchQuestions();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -513,6 +515,21 @@ function AdminQuestionsContent() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10 text-slate-200">
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="Confirm Deletion"
+        message={confirmDelete?.bulk ? `Are you sure you want to delete ${confirmDelete.count} selected questions? This action cannot be undone.` : "Are you sure you want to delete this question? This action cannot be undone."}
+        onConfirm={() => {
+          if (confirmDelete?.bulk) {
+            handleBulkDelete();
+          } else if (confirmDelete?.id) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        confirmText="Delete"
+        isDestructive={true}
+      />
       <div>
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -1051,17 +1068,15 @@ function AdminQuestionsContent() {
                 Cancel
               </button>
             )}
-            <button
-              onClick={handleBulkDelete}
-              disabled={selectedQuestionIds.length === 0}
-              className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
-                selectedQuestionIds.length > 0 
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                  : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
-              }`}
-            >
-              Delete Selected
-            </button>
+            {selectedQuestionIds.length > 0 && (
+              <button
+                onClick={() => setConfirmDelete({ bulk: true, count: selectedQuestionIds.length })}
+                className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected ({selectedQuestionIds.length})
+              </button>
+            )}
           </div>
         </div>
 
@@ -1152,7 +1167,7 @@ function AdminQuestionsContent() {
                           Edit
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: q.id }); }}
                           className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                         >
                           Delete

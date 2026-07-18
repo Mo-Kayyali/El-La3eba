@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft, Search, X } from "lucide-react";
+import { ArrowLeft, Search, X, Trash2 } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
 import { Modal } from "@/components/modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 type Club = {
   id: string;
@@ -47,6 +48,7 @@ export default function AdminClubsPage() {
   const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterCountryCode, setFilterCountryCode] = useState<string>("");
   const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string, bulk?: boolean, count?: number } | null>(null);
   
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
@@ -144,11 +146,11 @@ export default function AdminClubsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
     setError("");
     try {
       await api.delete(`/admin/clubs/${id}`);
       fetchClubs();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -156,12 +158,12 @@ export default function AdminClubsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedClubIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedClubIds.length} selected clubs?`)) return;
     setError("");
     try {
       await Promise.all(selectedClubIds.map(id => api.delete(`/admin/clubs/${id}`)));
       setSelectedClubIds([]);
       fetchClubs();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -292,17 +294,15 @@ export default function AdminClubsPage() {
               Cancel
             </button>
           )}
-          <button
-            onClick={handleBulkDelete}
-            disabled={selectedClubIds.length === 0}
-            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
-              selectedClubIds.length > 0 
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
-            }`}
-          >
-            Delete Selected
-          </button>
+          {selectedClubIds.length > 0 && (
+            <button
+              onClick={() => setConfirmDelete({ bulk: true, count: selectedClubIds.length })}
+              className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Selected ({selectedClubIds.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -454,17 +454,6 @@ export default function AdminClubsPage() {
         </Modal>
       )}
 
-      {clubs.length > 0 && (
-        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
-          <Pagination 
-            currentPage={meta.page}
-            totalPages={meta.totalPages}
-            totalItems={meta.total}
-            onPageChange={setPage}
-          />
-        </div>
-      )}
-
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -509,7 +498,10 @@ export default function AdminClubsPage() {
                       Edit
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(club.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({ id: club.id });
+                      }}
                       className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
@@ -535,6 +527,22 @@ export default function AdminClubsPage() {
           onPageChange={setPage}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="Confirm Deletion"
+        message={confirmDelete?.bulk ? `Are you sure you want to delete ${confirmDelete.count} selected clubs? This action cannot be undone.` : "Are you sure you want to delete this club? This action cannot be undone."}
+        onConfirm={() => {
+          if (confirmDelete?.bulk) {
+            handleBulkDelete();
+          } else if (confirmDelete?.id) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 }

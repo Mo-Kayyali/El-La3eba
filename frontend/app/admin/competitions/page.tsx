@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search, X, Trash2 } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
-import { Search, X } from "lucide-react";
 import { SortHeader } from "@/components/sort-header";
 import { Modal } from "@/components/modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 type Competition = {
   id: string;
@@ -33,6 +33,7 @@ export default function AdminCompetitionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedCompetitionIds, setSelectedCompetitionIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string, bulk?: boolean, count?: number } | null>(null);
 
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -136,11 +137,11 @@ export default function AdminCompetitionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
     setError("");
     try {
       await api.delete(`/admin/competitions/${id}`);
       fetchCompetitions();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -148,12 +149,12 @@ export default function AdminCompetitionsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedCompetitionIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedCompetitionIds.length} selected competitions?`)) return;
     setError("");
     try {
       await Promise.all(selectedCompetitionIds.map(id => api.delete(`/admin/competitions/${id}`)));
       setSelectedCompetitionIds([]);
       fetchCompetitions();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -335,47 +336,6 @@ export default function AdminCompetitionsPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-400 pl-2">
-            <span className="font-bold text-white">{selectedCompetitionIds.length}</span> selected
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {selectedCompetitionIds.length > 0 && (
-            <button
-              onClick={() => setSelectedCompetitionIds([])}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition"
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            onClick={handleBulkDelete}
-            disabled={selectedCompetitionIds.length === 0}
-            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
-              selectedCompetitionIds.length > 0 
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
-            }`}
-          >
-            Delete Selected
-          </button>
-        </div>
-      </div>
-
-      {competitions.length > 0 && (
-        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
-          <Pagination 
-            currentPage={meta.page}
-            totalPages={meta.totalPages}
-            totalItems={meta.total}
-            onPageChange={setPage}
-          />
-        </div>
-      )}
-
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -427,7 +387,7 @@ export default function AdminCompetitionsPage() {
                       Edit
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(comp.id); }}
+                      onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: comp.id }); }}
                       className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
@@ -445,13 +405,40 @@ export default function AdminCompetitionsPage() {
             </tbody>
           </table>
         </div>
-        <Pagination 
-          currentPage={meta.page}
-          totalPages={meta.totalPages}
-          totalItems={meta.total}
-          onPageChange={setPage}
-        />
+        <div className="flex items-center justify-between p-4 border-t border-white/[0.06]">
+          {selectedCompetitionIds.length > 0 && (
+            <button
+              onClick={() => setConfirmDelete({ bulk: true, count: selectedCompetitionIds.length })}
+              className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Selected ({selectedCompetitionIds.length})
+            </button>
+          )}
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="Confirm Deletion"
+        message={confirmDelete?.bulk ? `Are you sure you want to delete ${confirmDelete.count} selected competitions? This action cannot be undone.` : "Are you sure you want to delete this competition? This action cannot be undone."}
+        onConfirm={() => {
+          if (confirmDelete?.bulk) {
+            handleBulkDelete();
+          } else if (confirmDelete?.id) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Swords, Users, UserRound } from "lucide-react";
+import { BadgeAlert, BellOff, MessageSquarePlus, RefreshCw, Trophy, UserCheck, UserMinus, UserPlus, X, Gamepad2, Search, Plus, Swords, Users, UserRound } from "lucide-react";
+import { ConfirmModal } from "@/components/confirm-modal";
 import {
   acceptFriendRequest,
   cancelOutgoingRequest,
@@ -569,45 +570,16 @@ export default function FriendsPage() {
         </div>
       </main>
 
-      {pendingRemovalFriend && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="remove-friend-title"
-            className="w-full max-w-md rounded-3xl border border-red-400/30 bg-[#071021] p-6 shadow-[0_24px_80px_rgba(239,68,68,0.2)]"
-          >
-            <h2
-              id="remove-friend-title"
-              className="text-lg font-extrabold text-white"
-            >
-              Remove friend?
-            </h2>
-            <p className="mt-3 text-sm text-slate-300">
-              Are you sure you want to remove {pendingRemovalFriend.username}{" "}
-              from your friends list?
-            </p>
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setPendingRemovalFriend(null)}
-                disabled={isRemovingFriend}
-                className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void confirmRemoveFriend()}
-                disabled={isRemovingFriend}
-                className="rounded-xl border border-red-400/30 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isRemovingFriend ? "Removing..." : "Remove"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!pendingRemovalFriend}
+        onClose={() => setPendingRemovalFriend(null)}
+        title="Remove friend?"
+        message={`Are you sure you want to remove ${pendingRemovalFriend?.username} from your friends list?`}
+        onConfirm={() => void confirmRemoveFriend()}
+        confirmText="Remove"
+        isDestructive={true}
+        isLoading={isRemovingFriend}
+      />
     </div>
   );
 }
