@@ -190,6 +190,7 @@ export function PlayerFormModal({ isOpen, onClose, onSuccess, initialData }: Pla
   };
 
   const formClubOptions = getGroupedClubOptions(selectedCompId);
+  const allClubOptions = getGroupedClubOptions();
 
   const togglePosition = (pos: string) => {
     let newPositions: string[];
@@ -531,8 +532,9 @@ export function PlayerFormModal({ isOpen, onClose, onSuccess, initialData }: Pla
                     <FilterSelect
                       value={history.clubId}
                       onChange={(val) => updateClubHistory(idx, 'clubId', val)}
-                      options={formClubOptions}
+                      options={allClubOptions}
                       placeholder="Select Club..."
+                      menuPlacement="top"
                     />
                   </div>
                   <input

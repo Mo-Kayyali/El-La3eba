@@ -14,6 +14,7 @@ interface FilterSelectProps {
   options: FilterOption[];
   placeholder: string;
   className?: string;
+  menuPlacement?: "bottom" | "top";
 }
 
 export function FilterSelect({
@@ -21,7 +22,8 @@ export function FilterSelect({
   onChange,
   options,
   placeholder,
-  className = ""
+  className = "",
+  menuPlacement = "bottom"
 }: FilterSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -116,7 +118,7 @@ export function FilterSelect({
         </div>
         
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0f172a] shadow-2xl py-2">
+          <div className={`absolute left-0 right-0 z-50 max-h-80 overflow-y-auto rounded-xl border border-white/[0.08] bg-[#0f172a] shadow-2xl py-2 ${menuPlacement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
             <div className="sticky top-0 z-10 px-3 pb-2 pt-1 bg-[#0f172a] border-b border-white/5 mb-2 flex items-center">
               <Search className="absolute left-6 h-4 w-4 text-slate-500" />
               <input

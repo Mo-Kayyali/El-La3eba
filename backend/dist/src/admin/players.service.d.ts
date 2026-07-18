@@ -80,8 +80,8 @@ export declare class AdminPlayersService {
             name: string;
             clubs: string[];
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
+            createdBy: string | null;
             firstName: string;
             lastName: string;
             nationality: string;
@@ -107,11 +107,11 @@ export declare class AdminPlayersService {
                 createdAt: Date;
                 name: string;
                 competitions: string[];
-                createdBy: string | null;
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
                 logoUrl: string | null;
+                createdBy: string | null;
             };
         } & {
             id: string;
@@ -126,11 +126,11 @@ export declare class AdminPlayersService {
             createdAt: Date;
             name: string;
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
+            createdBy: string | null;
         } | null;
     } & {
         id: string;
@@ -138,8 +138,8 @@ export declare class AdminPlayersService {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -158,8 +158,8 @@ export declare class AdminPlayersService {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -179,11 +179,11 @@ export declare class AdminPlayersService {
                 createdAt: Date;
                 name: string;
                 competitions: string[];
-                createdBy: string | null;
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
                 logoUrl: string | null;
+                createdBy: string | null;
             };
         } & {
             id: string;
@@ -198,11 +198,11 @@ export declare class AdminPlayersService {
             createdAt: Date;
             name: string;
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
+            createdBy: string | null;
         } | null;
     } & {
         id: string;
@@ -210,8 +210,8 @@ export declare class AdminPlayersService {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
@@ -230,8 +230,8 @@ export declare class AdminPlayersService {
         name: string;
         clubs: string[];
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         firstName: string;
         lastName: string;
         nationality: string;
