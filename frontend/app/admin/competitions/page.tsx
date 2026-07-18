@@ -188,13 +188,22 @@ export default function AdminCompetitionsPage() {
               </div>
               {[ "DOMESTIC_LEAGUE", "DOMESTIC_CUP", "DOMESTIC_SUPER_CUP" ].includes(selectedType) ? (
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country Code (ISO-3)</label>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-300">Country</label>
                   <input
                     name="countryCode"
+                    list="countries-list"
                     defaultValue={isEditing.countryCode || ""}
-                    placeholder="e.g. ENG"
+                    required
+                    placeholder="Type code or search name..."
                     className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                   />
+                  <datalist id="countries-list">
+                    {countries.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.id})
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
               ) : (
                 <div>
