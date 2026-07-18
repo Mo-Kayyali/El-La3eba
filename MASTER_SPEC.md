@@ -36,11 +36,14 @@ development, targeting eventual public deployment at ~1000 concurrent users.
 
 ```
 Enum Role              PLAYER | ADMIN
+Enum Timeframe         CURRENT | PAST | BOTH
 Enum Region            EUROPE | AFRICA | ASIA | NORTH_AMERICA | SOUTH_AMERICA | OCEANIA | WORLD
 Enum CompetitionType   DOMESTIC_LEAGUE | DOMESTIC_CUP | CONTINENTAL_CLUB_COMPETITION | INTERNATIONAL_TOURNAMENT | GLOBAL_CLUB_CHAMPIONSHIP | DOMESTIC_SUPER_CUP | CONTINENTAL_SUPER_CUP
 Enum Position          GK | RB | CB | LB | RWB | LWB | CDM | CM | CAM | RM | LM | RW | LW | CF | ST
 Enum PreferredFoot     LEFT | RIGHT | BOTH
 Enum GameMode          STRIKES | TOP_10 | PHOTO_GUESS | LINEUP
+Enum LogicOperator     AND | OR
+Enum QuestionScope     NATIONAL | INTERNATIONAL | BOTH
 Enum AnswerType        FILTER | LIST
 Enum FilterType        COMPETITION | NATIONALITY | CLUB | POSITION | POSITION_CATEGORY
 Enum PlayerStatusFilter ANY | CURRENT_ONLY | RETIRED_ONLY
@@ -135,6 +138,7 @@ Question
   text               string
   gameMode           GameMode
   answerType         AnswerType
+  scope              QuestionScope (default BOTH)
   logicOperator      LogicOperator? // AND or OR, populated when >1 clause
   photoPlayerId      uuid? (fk -> Player)  // populated when gameMode = PHOTO_GUESS
   isActive           boolean (default true)
@@ -149,7 +153,7 @@ QuestionFilterClause
   questionId      uuid (fk -> Question, cascade delete)
   filterType      FilterType
   filterValue     string
-  currentClubOnly boolean (default false)
+  timeframe       Timeframe (default BOTH)
   // Indexes: questionId
 
 QuestionAnswer
@@ -189,7 +193,6 @@ AnswerSuggestion
   reviewNote  string?
   createdAt   datetime
   reviewedAt  datetime?
-  // Unique: (questionId, playerId, suggestedBy) [partial unique index where status='PENDING']
   // Indexes: (questionId, status); suggestedBy; playerId
 ```
 
@@ -204,24 +207,24 @@ AnswerSuggestion
 - **Protected-route redirect:** Next.js middleware checks `el_la3eba_token` and redirects unauthenticated requests for protected paths (`/lobby`, `/friends`, `/profile`, `/game`) to `/` with no protected-page flash.
 - **Admin/Role Guards:** Admin REST routes are protected by the `RolesGuard` and `@Roles(Role.ADMIN)` pattern. The user's `role` is included directly in the `JwtStrategy` payload via a fresh DB lookup on each request (to ensure immediate role invalidation/promotion) and is returned from `GET /auth/me` for frontend visibility.
 - **Admin Area (Restricted)**
-Provides comprehensive CRUD operations.
+Provides comprehensive CRUD operations. List (`GET`) endpoints support pagination (`page`, `limit`), sorting (`sort`, `order`), and advanced filtering.
 
 #### Competitions
-- `GET /admin/competitions`
+- `GET /admin/competitions` (supports pagination & sorting)
 - `GET /admin/competitions/:id`
 - `POST /admin/competitions`
 - `PATCH /admin/competitions/:id`
 - `DELETE /admin/competitions/:id`
 
 #### Clubs
-- `GET /admin/clubs`
+- `GET /admin/clubs` (supports pagination, sorting, `competitionId`, `countryCode`)
 - `GET /admin/clubs/:id`
 - `POST /admin/clubs`
 - `PATCH /admin/clubs/:id`
 - `DELETE /admin/clubs/:id`
 
 #### Players
-- `GET /admin/players`
+- `GET /admin/players` (supports pagination, sorting, `competitionId`, `clubId`, `isRetired`, etc.)
 - `GET /admin/players/search?q=`
 - `GET /admin/players/:id`
 - `POST /admin/players`
@@ -229,7 +232,7 @@ Provides comprehensive CRUD operations.
 - `DELETE /admin/players/:id`
 
 #### Questions
-- `GET /admin/questions?gameMode=`
+- `GET /admin/questions` (supports pagination, sorting, `gameMode`)
 - `GET /admin/questions/:id`
 - `POST /admin/questions`
 - `PATCH /admin/questions/:id`
@@ -255,13 +258,13 @@ Provides comprehensive CRUD operations.
   - When `Player.currentClubId` is explicitly set via the Admin UI (create/update), the backend automatically creates a `PlayerClub` row with `isCurrent: true` if it does not already exist, to ensure proper filtering.
   - When `Club.currentCompetitionId` is explicitly set via the Admin UI (create/update), the backend automatically creates a `ClubCompetition` row if it does not already exist, ensuring historical competition arrays are correctly populated.
 - `game.questions.ts` is now a stub (hardcoded question strings removed); real question data lives in the `Question` / `QuestionAnswer` DB tables.
-- **Fuzzy Search:** Scales tolerance by guess length — ≤4 chars (0 typos), ≥5 (1 typo), ≥8 (2 typos). Uses `pg_trgm`, `unaccent`, and `levenshtein` (`fuzzystrmatch`) in Prisma `$queryRaw` targeting the `Player` table. GIN + pg_trgm expression indexes power the prefilter. The fuzzy search returns the **top 5 matches**, and the guess validator steps through them to find the first candidate that hasn't been guessed yet and satisfies the current question's rules. This correctly handles ambiguous names (e.g. "Ronaldo").
+- **Fuzzy Search:** Uses a similarity-threshold approach (e.g., `pg_trgm.word_similarity_threshold = 0.2` in game mode, `0.5` in admin search) via `word_similarity` functions in Prisma `$queryRaw` targeting the `Player` table. The old length-based typo tiers were removed. GIN + pg_trgm expression indexes power the prefilter. The fuzzy search returns the **top 5 matches**, and the guess validator steps through them to find the first candidate that hasn't been guessed yet and satisfies the current question's rules. This correctly handles ambiguous names (e.g. "Ronaldo").
 - **Guess Validation:** Guesses are answer-type-aware. After resolving a player via fuzzy search, the gateway checks the active `Question`:
-  - `FILTER`: Evaluates all associated `QuestionFilterClause` rows against the player's attributes (`COMPETITION` -> `Player.competitions`, `CLUB` -> `Player.clubs` (and `Player.currentClubId` if `currentClubOnly` is true), `NATIONALITY` -> `Player.nationality`, `POSITION` -> `Player.positions`, `POSITION_CATEGORY` -> mapped position categories defined in `position.util.ts` via exact match). The per-clause boolean results are combined using the question's `logicOperator` (`AND` or `OR`). Additional question-level qualifiers such as `playerStatusFilter` (`CURRENT_ONLY` / `RETIRED_ONLY`) are checked first.
+  - `FILTER`: Evaluates all associated `QuestionFilterClause` rows against the player's attributes (`COMPETITION` -> `Player.competitions`, `CLUB` -> `Player.clubs` (scoped by `clause.timeframe` checking `CURRENT` / `PAST`), `NATIONALITY` -> `Player.nationality`, `POSITION` -> `Player.positions`, `POSITION_CATEGORY` -> mapped position categories defined in `position.util.ts` via exact match). The per-clause boolean results are combined using the question's `logicOperator` (`AND` or `OR`). Additional question-level qualifiers such as `playerStatusFilter` (`CURRENT_ONLY` / `RETIRED_ONLY`) are checked first.
   - `LIST`: Checks for an existing `QuestionAnswer` row matching `(questionId, playerId)`.
   - Already-guessed players in the current game session are rejected as "already taken" (strike).
 - **Question Picker & Exclusion Logic:** Replaced the old hardcoded questions stub with a real DB-backed random picker (`GameService.getRandomQuestion(gameMode)`). The game state (`gameSessionId`) tracks `usedQuestionIds` throughout the match. `getRandomQuestion` uses this list to strictly prevent repeating questions in the same match, and filters exclusively for `isActive === true` questions. If the remaining pool is exhausted (0 candidates left), the backend automatically resets the exclusion list *except* for the single most-recently-used question, guaranteeing a match never shows the exact same question twice in a row, even with a small database pool.
-- ⚠️ **CURRENT PLAYABILITY:** The football database is now fully populated with real data (14,472 players, 369 clubs, 18 competitions, and real PlayerClub histories). However, the game is still currently **unplayable end-to-end** because the real `Question` content has been completely wiped/reset to 0 after cleanup. A dedicated question-seeding pass is an open task that must be completed before the DB picker will return actual questions for validation.
+- ⚠️ **CURRENT PLAYABILITY:** The football database is now fully populated with real data (3,298 players [non-Egypt/non-Saudi retired players were cleared on 2026-07-18 pending re-seeding via a curated legends research batch, Egypt and Saudi Arabia retired players were preserved], 369 clubs, 18 competitions, and real PlayerClub histories). However, the game is still currently **unplayable end-to-end** because the real `Question` content has been completely wiped/reset to 0 after cleanup. A dedicated question-seeding pass is an open task that must be completed before the DB picker will return actual questions for validation.
 - **Leaderboard cache:** `LeaderboardService` refreshes the Redis `global_leaderboard` key on a **10-minute** cron (`CronExpression.EVERY_10_MINUTES`). The lobby refetches `GET /auth/me` on each visit so the navbar tier tracks fresh `user.mmr` after matches.
 - **Friends + presence:** Friendship rows are directional `Friendship` records (`PENDING` / `ACCEPTED`) between two `User` rows (see schema above). `GET /friends` returns accepted friends plus incoming/outgoing requests; `POST /friends/request`, `POST /friends/:id/accept`, `POST /friends/:id/reject`, `POST /friends/:id/cancel`, and `POST /friends/:id/remove` power the REST flow. Redis keeps `presence` hash entries per user (`online`, `in-game:{gameSessionId}`), and the WebSocket gateway periodically emits `friendsPresenceUpdated` to each user's personal room. The friends page uses this to render live Online/Offline/In-Game indicators, disables new invites unless a friend is online, and supports Remove Friend / Cancel Request actions.
 - **Private room cleanup:** Cancelling a private room deletes both `user_room:{userId}` and `private_room:{code}`. Joining a private room uses Redis WATCH + MULTI/EXEC around `private_room:{code}` so a stale code is rejected if the host cancels during the join race. Disconnect and in-game transitions aggressively clear user queue state, hosted rooms, outgoing invites, and incoming invites.
