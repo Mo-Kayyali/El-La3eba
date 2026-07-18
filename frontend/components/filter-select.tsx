@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, X, Search } from "lucide-react";
+import { matchSorter } from "match-sorter";
 
 export type FilterOption = {
   value: string;
@@ -53,10 +54,12 @@ export function FilterSelect({
 
   const selectedOpt = options.find((o) => o.value === value);
 
-  const filteredOptions = options.filter(o => 
-    o.label.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (o.group && o.group.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options;
+    return matchSorter(options, searchTerm, {
+      keys: ['label', 'group']
+    });
+  }, [options, searchTerm]);
 
   const selectableItems = useMemo(() => {
     const items: Array<FilterOption & { isPlaceholder?: boolean }> = [];

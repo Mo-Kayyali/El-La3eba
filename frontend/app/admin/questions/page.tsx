@@ -4,11 +4,12 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft, X, Search, Check, AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, Plus, Search, Trash2, X, Check } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
+import { Modal } from "@/components/modal";
 
 type PlayerSearchResult = {
   id: string;
@@ -272,9 +273,14 @@ function AdminQuestionsContent() {
       const q = questions.find(q => q.id === editId);
       if (q) {
         handleEdit(q);
+      } else {
+        // Fetch directly if not in list
+        api.get<Question>(`/admin/questions/${editId}`).then(res => {
+          handleEdit(res.data);
+        }).catch(err => console.error(err));
       }
     }
-  }, [editId, questions]);
+  }, [editId, questions, showForm]);
 
   const handleEdit = async (q: Question) => {
     setEditingId(q.id);
@@ -309,6 +315,7 @@ function AdminQuestionsContent() {
     if (!confirm("Are you sure you want to delete this question?")) return;
     try {
       await api.delete(`/admin/questions/${id}`);
+      if (editingId === id) resetForm();
       setQuestions((prev) => prev.filter((q) => q.id !== id));
     } catch (err) {
       alert(extractApiErrorMessage(err));
@@ -321,7 +328,9 @@ function AdminQuestionsContent() {
     setError("");
     try {
       await Promise.all(selectedQuestionIds.map(id => api.delete(`/admin/questions/${id}`)));
-      setSelectedQuestionIds([]);
+      setShowForm(false);
+      setEditingId(null);
+      if (editId) router.replace('/admin/questions');
       fetchQuestions();
     } catch (err) {
       setError(extractApiErrorMessage(err));
@@ -517,14 +526,12 @@ function AdminQuestionsContent() {
             </Link>
             <h1 className="text-3xl font-bold">Questions</h1>
           </div>
-          {!showForm && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="rounded-xl bg-violet-600 px-6 py-2.5 font-medium text-white transition hover:bg-violet-700"
-            >
-              Add Question
-            </button>
-          )}
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-xl bg-violet-600 px-6 py-2.5 font-medium text-white transition hover:bg-violet-700"
+          >
+            Add Question
+          </button>
         </div>
 
         {error && (
@@ -534,19 +541,14 @@ function AdminQuestionsContent() {
         )}
 
         {/* Form Panel */}
-        {showForm && (
-          <div className="mb-10 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl sm:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                {editingId ? "Edit Question" : "Create New Question"}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <Modal 
+          isOpen={showForm} 
+          onClose={() => {
+            setShowForm(false);
+            if (editId) router.replace('/admin/questions');
+          }} 
+          title={editingId ? "Edit Question" : "Create New Question"}
+        >
 
             {formError && (
               <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-400">
@@ -570,7 +572,7 @@ function AdminQuestionsContent() {
                 />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-300">
                     Game Mode
@@ -601,8 +603,11 @@ function AdminQuestionsContent() {
                     <option value="INTERNATIONAL">International Only</option>
                   </select>
                 </div>
+              </div>
 
-                {gameMode === "STRIKES" && (
+              <div className="grid gap-6 sm:grid-cols-2">
+
+                {gameMode === "STRIKES" ? (
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-300">
                       Answer Type
@@ -616,7 +621,7 @@ function AdminQuestionsContent() {
                       <option value="LIST">LIST (Specific exact players)</option>
                     </select>
                   </div>
-                )}
+                ) : <div />}
                 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-300">
@@ -633,17 +638,18 @@ function AdminQuestionsContent() {
                   </select>
                 </div>
 
-                <div className="flex items-center pt-8">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={(e) => setIsActive(e.target.checked)}
-                      className="h-5 w-5 rounded border-white/10 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900"
-                    />
-                    <span className="text-sm font-medium text-slate-300">Question is Active</span>
-                  </label>
-                </div>
+              </div>
+
+              <div className="flex items-center pt-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-5 w-5 rounded border-white/10 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900"
+                  />
+                  <span className="text-sm font-medium text-slate-300">Question is Active</span>
+                </label>
               </div>
 
               {/* STRIKES + FILTER */}
@@ -654,9 +660,10 @@ function AdminQuestionsContent() {
                     <button
                       type="button"
                       onClick={() => setClauses([...clauses, { filterType: "NATIONALITY", filterValue: "" }])}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300"
+                      className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                     >
-                      + Add Clause
+                      <Plus className="h-3 w-3" />
+                      Add Clause
                     </button>
                   </div>
                   
@@ -973,8 +980,7 @@ function AdminQuestionsContent() {
                 )}
               </div>
             )}
-          </div>
-        )}
+          </Modal>
 
         {/* List Panel */}
         <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">

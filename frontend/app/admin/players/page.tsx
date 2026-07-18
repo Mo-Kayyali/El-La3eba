@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft, Check, Search, X } from "lucide-react";
+import { ArrowLeft, Check, Plus, Search, X } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
+import { Modal } from "@/components/modal";
 
 type Club = {
   id: string;
@@ -90,6 +91,7 @@ function AdminPlayersContent() {
   const [primaryPosition, setPrimaryPosition] = useState<string>("");
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [selectedClubId, setSelectedClubId] = useState<string>("");
+  const [selectedNationality, setSelectedNationality] = useState<string>("");
   const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterClubId, setFilterClubId] = useState<string>("");
   const [filterRetired, setFilterRetired] = useState<string>("");
@@ -130,6 +132,28 @@ function AdminPlayersContent() {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchPlayers();
   }, [page, search, filterNationality, filterCompId, filterClubId, filterRetired, sort, order]);
+
+  const getGroupedCompOptions = useMemo(() => {
+    return competitions
+      .map(c => {
+        let group = "Other";
+        if (c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP") group = "Continental";
+        else if (c.type === "INTERNATIONAL_TOURNAMENT" || c.type === "GLOBAL_CLUB_CHAMPIONSHIP" || c.type === "INTERNATIONAL") group = "International";
+        else if (c.countryCode) {
+          group = countries.find(co => co.id === c.countryCode)?.name || c.countryCode;
+        } else {
+          group = "Domestic";
+        }
+        return { value: c.id, label: c.name, group };
+      })
+      .sort((a, b) => {
+        if (a.group === "Continental") return -1;
+        if (a.group === "International") return -1;
+        if (b.group === "Continental") return 1;
+        if (b.group === "International") return 1;
+        return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
+      });
+  }, [competitions, countries]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -175,6 +199,7 @@ function AdminPlayersContent() {
       setSelectedPositions(data.positions || []);
       setPrimaryPosition(data.primaryPosition || "");
       setSelectedClubId(data.currentClubId || "");
+      setSelectedNationality(data.nationality || "");
       if (data.currentClubId) {
         // Find club in current list (even if clubs isn't updated, handleEdit uses current state scope)
         const club = clubs.find(c => c.id === data.currentClubId);
@@ -202,6 +227,7 @@ function AdminPlayersContent() {
     setPrimaryPosition("");
     setSelectedClubId("");
     setSelectedCompId("");
+    setSelectedNationality("");
     setClubHistory([]);
   };
 
@@ -244,6 +270,7 @@ function AdminPlayersContent() {
         await api.post("/admin/players", payload);
       }
       setIsEditing(null);
+      if (editId) router.replace('/admin/players');
       fetchPlayers();
     } catch (err) {
       setError(extractApiErrorMessage(err));
@@ -301,8 +328,7 @@ function AdminPlayersContent() {
     setSelectedPositions(newPositions);
   };
 
-  const handleClubChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clubId = e.target.value;
+  const handleClubChange = (clubId: string) => {
     setSelectedClubId(clubId);
     if (clubId && !selectedCompId) {
       const club = clubs.find(c => c.id === clubId);
@@ -357,11 +383,38 @@ function AdminPlayersContent() {
         </div>
       )}
 
-      {isEditing && (
-        <div className="mb-8 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-8 backdrop-blur-xl">
-          <h2 className="mb-6 text-xl font-bold text-white">
-            {isEditing.id ? "Edit Player" : "New Player"}
-          </h2>
+      {isEditing && (() => {
+        const getGroupedClubOptions = (compIdToFilterBy?: string) => {
+          return clubs
+            .filter(c => !compIdToFilterBy || c.currentCompetitionId === compIdToFilterBy || c.clubCompetitions?.some(cc => cc.competitionId === compIdToFilterBy))
+            .map(c => {
+              let group = "Other";
+              if (c.currentCompetitionId) {
+                const comp = competitions.find(comp => comp.id === c.currentCompetitionId);
+                if (comp) group = comp.name;
+              } else if (c.countryCode) {
+                const country = countries.find(co => co.id === c.countryCode);
+                if (country) group = country.name;
+              }
+              return { value: c.id, label: c.name, group };
+            })
+            .sort((a, b) => {
+              if (a.group === "Other") return 1;
+              if (b.group === "Other") return -1;
+              return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
+            });
+        };
+        const formClubOptions = getGroupedClubOptions(selectedCompId);
+
+        return (
+          <Modal 
+          isOpen={!!isEditing} 
+          onClose={() => {
+            setIsEditing(null);
+            if (editId) router.replace('/admin/players');
+          }} 
+          title={isEditing.id ? "Edit Player" : "New Player"}
+        >
           <form onSubmit={handleSave} className="space-y-6">
             <div className="grid gap-6 md:grid-cols-3">
               {/* Core Information */}
@@ -436,48 +489,36 @@ function AdminPlayersContent() {
                 
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Nationality</label>
-                  <input
-                    name="nationality"
-                    list="countries-list"
-                    defaultValue={isEditing.nationality || ""}
-                    required
-                    placeholder="Type code or search name..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
+                  <input type="hidden" name="nationality" value={selectedNationality} />
+                  <FilterSelect
+                    value={selectedNationality}
+                    onChange={(val) => setSelectedNationality(val)}
+                    options={countries.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))}
+                    placeholder="Select Nationality..."
                   />
-                  <datalist id="countries-list">
-                    {countries.map(c => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
-                  </datalist>
                 </div>
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Competition Filter</label>
-                  <select
-                    value={selectedCompId}
-                    onChange={e => setSelectedCompId(e.target.value)}
-                    disabled={isRetiredState}
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="" className="bg-slate-900">All Clubs</option>
-                    {competitions.map(c => (
-                      <option key={c.id} value={c.id} className="bg-slate-900">
-                        {c.name} {c.countryCode ? `(${c.countryCode})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <div className={isRetiredState ? "opacity-50 pointer-events-none" : ""}>
+                    <FilterSelect
+                      value={selectedCompId}
+                      onChange={(val) => setSelectedCompId(val)}
+                      options={getGroupedCompOptions}
+                      placeholder="Select Competition"
+                    />
+                  </div>
                 </div>
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-semibold text-slate-300">Current Club</label>
-                  <select
-                    name="currentClubId"
-                    value={selectedClubId}
-                    onChange={handleClubChange}
-                    disabled={isRetiredState}
-                    className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="" className="bg-slate-900">None / Free Agent</option>
-                    {clubs
-                      .filter(c => !selectedCompId || c.currentCompetitionId === selectedCompId || c.clubCompetitions?.some(cc => cc.competitionId === selectedCompId))
-                      .map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}
-                  </select>
+                  <div className={isRetiredState ? "opacity-50 pointer-events-none" : ""}>
+                    <FilterSelect
+                      value={selectedClubId}
+                      onChange={handleClubChange}
+                      options={formClubOptions}
+                      placeholder="None / Free Agent"
+                    />
+                  </div>
+                  <input type="hidden" name="currentClubId" value={selectedClubId} />
                 </div>
 
                 <div className="col-span-2 sm:col-span-1 space-y-1.5">
@@ -552,9 +593,13 @@ function AdminPlayersContent() {
                   </select>
                 </div>
 
-                <div className="pt-4">
-                  <label className={`flex items-center gap-3 cursor-pointer p-4 rounded-xl border transition-all ${isRetiredState ? 'bg-red-500/10 border-red-500/30' : 'bg-black/40 border-white/[0.08] hover:border-white/20'}`}>
-                    <div className={`flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${isRetiredState ? 'bg-red-500 border-red-500 text-white' : 'border-white/20 bg-black/60'}`}>
+              </div>
+
+              {/* Full Width Footer */}
+              <div className="md:col-span-3 space-y-6 pt-2">
+                <div>
+                  <label className={`flex items-center gap-4 cursor-pointer p-4 sm:p-5 rounded-2xl border transition-all ${isRetiredState ? 'bg-red-500/10 border-red-500/30 shadow-[0_0_20px_-5px_rgba(239,68,68,0.2)]' : 'bg-black/40 border-white/[0.08] hover:border-white/20'}`}>
+                    <div className={`flex items-center justify-center w-6 h-6 shrink-0 rounded-md border transition-colors ${isRetiredState ? 'bg-red-500 border-red-500 text-white' : 'border-white/20 bg-black/60'}`}>
                       {isRetiredState && <Check className="w-4 h-4 stroke-[3px]" />}
                     </div>
                     <input
@@ -572,16 +617,14 @@ function AdminPlayersContent() {
                       }}
                       className="hidden"
                     />
-                    <div>
-                      <div className={`font-bold text-sm ${isRetiredState ? 'text-red-400' : 'text-slate-300'}`}>Player is Retired</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Disables current club assignments and marks player as inactive</div>
+                    <div className="flex-1">
+                      <div className={`font-bold text-base ${isRetiredState ? 'text-red-400' : 'text-slate-300'}`}>Player is Retired</div>
+                      <div className="text-xs sm:text-sm text-slate-500 mt-1">Disables current club assignments and marks player as inactive in current team rosters.</div>
                     </div>
                   </label>
                 </div>
-              </div>
 
-              {/* Full Width Footer */}
-              <div className="md:col-span-3 space-y-1.5">
+                <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-300">Image URL</label>
                 <input
                   name="imageUrl"
@@ -589,6 +632,7 @@ function AdminPlayersContent() {
                   placeholder="https://..."
                   className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
                 />
+                </div>
               </div>
 
               {/* Club History Sub-section */}
@@ -598,23 +642,23 @@ function AdminPlayersContent() {
                   <button
                     type="button"
                     onClick={addClubHistory}
-                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition"
+                    className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20"
                   >
-                    + Add Record
+                    <Plus className="h-3 w-3" />
+                    Add Record
                   </button>
                 </div>
                 <div className="space-y-3">
                   {clubHistory.map((history, idx) => (
                     <div key={idx} className="flex flex-wrap items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
-                      <select
-                        required
-                        value={history.clubId}
-                        onChange={(e) => updateClubHistory(idx, 'clubId', e.target.value)}
-                        className="flex-1 min-w-[200px] rounded-lg border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-white outline-none transition focus:border-blue-500/40 focus:ring-2 focus:ring-blue-500/10"
-                      >
-                        <option value="" className="bg-slate-900" disabled>Select Club...</option>
-                        {clubs.map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}
-                      </select>
+                      <div className="flex-1 min-w-[200px]">
+                        <FilterSelect
+                          value={history.clubId}
+                          onChange={(val) => updateClubHistory(idx, 'clubId', val)}
+                          options={formClubOptions}
+                          placeholder="Select Club..."
+                        />
+                      </div>
                       <input
                         type="number"
                         placeholder="Start Year"
@@ -656,24 +700,28 @@ function AdminPlayersContent() {
               </div>
             </div>
             
-            <div className="flex gap-3 pt-6 mt-6 border-t border-white/[0.06]">
-              <button
-                type="submit"
-                className="rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:brightness-110 active:scale-95"
-              >
-                Save Player
-              </button>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
               <button
                 type="button"
-                onClick={() => setIsEditing(null)}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+                onClick={() => {
+                  setIsEditing(null);
+                  if (editId) router.replace('/admin/players');
+                }}
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 transition"
               >
                 Cancel
               </button>
+              <button
+                type="submit"
+                className="flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 transition"
+              >
+                <Check className="h-4 w-4" /> Save Player
+              </button>
             </div>
           </form>
-        </div>
-      )}
+        </Modal>
+        );
+      })()}
 
       <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex-1 flex flex-col gap-3">
@@ -694,37 +742,42 @@ function AdminPlayersContent() {
                   setFilterClubId(""); // Reset club when league changes
                   setPage(1);
                 }}
-                options={competitions
-                  .map(c => {
-                    let group = "Other";
-                    if (c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP") group = "Continental";
-                    else if (c.type === "INTERNATIONAL_TOURNAMENT" || c.type === "GLOBAL_CLUB_CHAMPIONSHIP" || c.type === "INTERNATIONAL") group = "International";
-                    else if (c.countryCode) {
-                      group = countries.find(co => co.id === c.countryCode)?.name || c.countryCode;
-                    } else {
-                      group = "Domestic";
-                    }
-                    return { value: c.id, label: c.name, group };
-                  })
-                  .sort((a, b) => {
-                    if (a.group === "Continental") return -1;
-                    if (a.group === "International") return -1;
-                    if (b.group === "Continental") return 1;
-                    if (b.group === "International") return 1;
-                    return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
-                  })}
+                options={getGroupedCompOptions}
                 placeholder="All Leagues"
               />
             </div>
             <div className="min-w-[12rem] flex-1">
-              <FilterSelect
-                value={filterClubId}
-                onChange={(val) => { setFilterClubId(val); setPage(1); }}
-                options={clubs
-                  .filter(c => !filterCompId || c.currentCompetitionId === filterCompId || c.clubCompetitions?.some(cc => cc.competitionId === filterCompId))
-                  .map(c => ({ value: c.id, label: c.name }))}
-                placeholder="All Clubs"
-              />
+              {(() => {
+                const getGroupedClubOptions = (compIdToFilterBy?: string) => {
+                  return clubs
+                    .filter(c => !compIdToFilterBy || c.currentCompetitionId === compIdToFilterBy || c.clubCompetitions?.some(cc => cc.competitionId === compIdToFilterBy))
+                    .map(c => {
+                      let group = "Other";
+                      if (c.currentCompetitionId) {
+                        const comp = competitions.find(comp => comp.id === c.currentCompetitionId);
+                        if (comp) group = comp.name;
+                      } else if (c.countryCode) {
+                        const country = countries.find(co => co.id === c.countryCode);
+                        if (country) group = country.name;
+                      }
+                      return { value: c.id, label: c.name, group };
+                    })
+                    .sort((a, b) => {
+                      if (a.group === "Other") return 1;
+                      if (b.group === "Other") return -1;
+                      return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
+                    });
+                };
+                const filterClubOptions = getGroupedClubOptions(filterCompId);
+                return (
+                  <FilterSelect
+                    value={filterClubId}
+                    onChange={(val) => { setFilterClubId(val); setPage(1); }}
+                    options={filterClubOptions}
+                    placeholder="All Clubs"
+                  />
+                );
+              })()}
             </div>
             <div className="min-w-[12rem] flex-1">
               <FilterSelect

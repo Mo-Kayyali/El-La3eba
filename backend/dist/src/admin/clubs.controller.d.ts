@@ -8,14 +8,14 @@ export declare class AdminClubsController {
             competitionId: string;
         }[];
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
-        createdAt: Date;
-        createdBy: string | null;
     }>;
     findAll(competitionId?: string, countryCode?: string, search?: string, page?: string, limit?: string, sort?: string, order?: string): Promise<{
         data: ({
@@ -26,14 +26,14 @@ export declare class AdminClubsController {
             }[];
         } & {
             id: string;
+            createdAt: Date;
             name: string;
+            competitions: string[];
+            createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
-            competitions: string[];
             logoUrl: string | null;
-            createdAt: Date;
-            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -47,14 +47,14 @@ export declare class AdminClubsController {
             competitionId: string;
         }[];
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
-        createdAt: Date;
-        createdBy: string | null;
     }>;
     update(id: string, updateDto: UpdateClubDto, req: any): Promise<{
         competitionIds: string[];
@@ -62,24 +62,24 @@ export declare class AdminClubsController {
             competitionId: string;
         }[];
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
-        createdAt: Date;
-        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
-        createdAt: Date;
-        createdBy: string | null;
     }>;
 }

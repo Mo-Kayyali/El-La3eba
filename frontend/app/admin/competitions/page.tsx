@@ -10,6 +10,7 @@ import { FilterSelect } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
 import { Search, X } from "lucide-react";
 import { SortHeader } from "@/components/sort-header";
+import { Modal } from "@/components/modal";
 
 type Competition = {
   id: string;
@@ -194,10 +195,11 @@ export default function AdminCompetitionsPage() {
       )}
 
       {isEditing && (
-        <div className="mb-8 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl">
-          <h2 className="mb-5 text-lg font-bold text-white">
-            {isEditing.id ? "Edit Competition" : "New Competition"}
-          </h2>
+        <Modal 
+          isOpen={!!isEditing} 
+          onClose={() => setIsEditing(null)} 
+          title={isEditing.id ? "Edit Competition" : "New Competition"}
+        >
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -276,23 +278,23 @@ export default function AdminCompetitionsPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-3 pt-4">
-              <button
-                type="submit"
-                className="rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:brightness-110 active:scale-95"
-              >
-                Save
-              </button>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10 mt-6">
               <button
                 type="button"
                 onClick={() => setIsEditing(null)}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 transition"
               >
                 Cancel
               </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 transition"
+              >
+                Save Competition
+              </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
