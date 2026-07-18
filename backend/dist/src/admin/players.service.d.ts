@@ -71,8 +71,9 @@ export declare class AdminPlayersService {
     } & {
         id: string;
         name: string;
-        aliases: string[];
+        clubs: string[];
         competitions: string[];
+        aliases: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -84,17 +85,16 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     })[]>;
     findOne(id: string): Promise<{
         playerClubs: ({
             club: {
                 id: string;
                 name: string;
+                competitions: string[];
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
-                competitions: string[];
                 logoUrl: string | null;
             };
         } & {
@@ -108,17 +108,18 @@ export declare class AdminPlayersService {
         currentClub: {
             id: string;
             name: string;
+            competitions: string[];
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
-            competitions: string[];
             logoUrl: string | null;
         } | null;
     } & {
         id: string;
         name: string;
-        aliases: string[];
+        clubs: string[];
         competitions: string[];
+        aliases: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -130,13 +131,13 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
     create(dto: CreatePlayerDto): Promise<{
         id: string;
         name: string;
-        aliases: string[];
+        clubs: string[];
         competitions: string[];
+        aliases: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -148,17 +149,16 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
     update(id: string, dto: PatchPlayerDto): Promise<{
         playerClubs: ({
             club: {
                 id: string;
                 name: string;
+                competitions: string[];
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
-                competitions: string[];
                 logoUrl: string | null;
             };
         } & {
@@ -172,17 +172,18 @@ export declare class AdminPlayersService {
         currentClub: {
             id: string;
             name: string;
+            competitions: string[];
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
-            competitions: string[];
             logoUrl: string | null;
         } | null;
     } & {
         id: string;
         name: string;
-        aliases: string[];
+        clubs: string[];
         competitions: string[];
+        aliases: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -194,13 +195,13 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
     remove(id: string): Promise<{
         id: string;
         name: string;
-        aliases: string[];
+        clubs: string[];
         competitions: string[];
+        aliases: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -212,6 +213,5 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
 }

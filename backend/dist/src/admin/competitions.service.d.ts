@@ -20,16 +20,16 @@ export declare class AdminCompetitionsService {
     findAll(): Promise<{
         id: string;
         name: string;
-        countryCode: string | null;
         type: import(".prisma/client").$Enums.CompetitionType;
+        countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }[]>;
     findOne(id: string): Promise<{
         id: string;
         name: string;
-        countryCode: string | null;
         type: import(".prisma/client").$Enums.CompetitionType;
+        countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
@@ -37,24 +37,24 @@ export declare class AdminCompetitionsService {
     create(dto: CreateCompetitionDto): Promise<{
         id: string;
         name: string;
-        countryCode: string | null;
         type: import(".prisma/client").$Enums.CompetitionType;
+        countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     update(id: string, dto: UpdateCompetitionDto): Promise<{
         id: string;
         name: string;
-        countryCode: string | null;
         type: import(".prisma/client").$Enums.CompetitionType;
+        countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     remove(id: string): Promise<{
         id: string;
         name: string;
-        countryCode: string | null;
         type: import(".prisma/client").$Enums.CompetitionType;
+        countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;

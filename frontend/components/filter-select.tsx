@@ -100,7 +100,7 @@ export function FilterSelect({
   return (
     <div className={`relative flex items-center gap-2 ${className}`} ref={wrapperRef}>
       <div 
-        className="relative flex-1 cursor-pointer rounded-xl border border-white/[0.08] bg-black/40 hover:bg-black/60 transition-colors"
+        className="relative flex-1 min-w-0 cursor-pointer rounded-xl border border-white/[0.08] bg-black/40 hover:bg-black/60 transition-colors"
       >
         <div 
           className="flex items-center justify-between px-4 py-2.5 outline-none"

@@ -211,6 +211,7 @@ model Club {
   clubCompetitions   ClubCompetition[]
 
   @@index([competitions], type: Gin)
+  @@index([name])
 }
 
 // ─── Club ↔ Competition join table ─────────────────────────────────────────────
@@ -267,6 +268,9 @@ model Player {
   @@index([clubs], type: Gin)
   // GIN index on competitions (denormalised) for fast filter queries
   @@index([competitions], type: Gin)
+  @@index([name])
+  @@index([currentClubId])
+  @@index([nationality])
 }
 
 // ─── Player ↔ Club history ────────────────────────────────────────────────────
@@ -290,11 +294,11 @@ model PlayerClub {
 // ─── Questions ────────────────────────────────────────────────────────────────
 
 model Question {
-  id            String         @id @default(uuid())
-  text          String
-  gameMode      GameMode
-  answerType    AnswerType
-  scope         QuestionScope @default(BOTH)
+  id                 String             @id @default(uuid())
+  text               String
+  gameMode           GameMode
+  answerType         AnswerType
+  scope              QuestionScope      @default(BOTH)
   logicOperator      LogicOperator? // applies when answerType = FILTER and there are >1 clauses
   photoPlayerId      String? // populated when gameMode = PHOTO_GUESS
   isActive           Boolean            @default(true)
@@ -310,14 +314,15 @@ model Question {
 
   @@index([gameMode])
   @@index([answerType])
+  @@index([createdAt])
 }
 
 model QuestionFilterClause {
   id          String     @id @default(uuid())
-  questionId      String
-  filterType      FilterType
-  filterValue     String
-  timeframe       Timeframe  @default(BOTH)
+  questionId  String
+  filterType  FilterType
+  filterValue String
+  timeframe   Timeframe  @default(BOTH)
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

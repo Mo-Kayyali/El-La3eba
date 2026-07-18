@@ -29,11 +29,11 @@ export declare class UsersService {
     updateOwnProfile(userId: string, dto: UpdateProfileDto): Promise<{
         id: string;
         email: string;
-        createdAt: Date;
         username: string;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;
         wins: number;
+        createdAt: Date;
     }>;
 }

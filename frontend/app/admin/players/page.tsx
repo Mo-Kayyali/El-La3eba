@@ -80,7 +80,6 @@ function AdminPlayersContent() {
   const [primaryPosition, setPrimaryPosition] = useState<string>("");
   const [selectedCompId, setSelectedCompId] = useState<string>("");
   const [selectedClubId, setSelectedClubId] = useState<string>("");
-  const [filterCompCountryCode, setFilterCompCountryCode] = useState<string>("");
   const [filterCompId, setFilterCompId] = useState<string>("");
   const [filterClubId, setFilterClubId] = useState<string>("");
   const [filterRetired, setFilterRetired] = useState<string>("");
@@ -120,12 +119,11 @@ function AdminPlayersContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchPlayers();
-  }, [bootstrapped, user, filterCompCountryCode, filterCompId, filterClubId, filterRetired, filterNationality]);
+  }, [bootstrapped, user, filterCompId, filterClubId, filterRetired, filterNationality]);
 
   const fetchPlayers = async () => {
     try {
       const params: any = {};
-      if (filterCompCountryCode) params.compCountryCode = filterCompCountryCode;
       if (filterCompId) params.competitionId = filterCompId;
       if (filterClubId) params.clubId = filterClubId;
       if (filterRetired) params.isRetired = filterRetired;
@@ -656,8 +654,8 @@ function AdminPlayersContent() {
       )}
 
       <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="w-full">
+        <div className="flex-1 flex flex-wrap gap-3">
+          <div className="min-w-[12rem] flex-1">
             <FilterSelect
               value={filterNationality}
               onChange={setFilterNationality}
@@ -665,23 +663,7 @@ function AdminPlayersContent() {
               placeholder="All Nationalities"
             />
           </div>
-          <div className="w-full">
-            <FilterSelect
-              value={filterCompCountryCode}
-              onChange={(val) => {
-                setFilterCompCountryCode(val);
-                setFilterCompId("");
-                setFilterClubId("");
-              }}
-              options={[
-                { value: "_WORLD", label: "World (International)", group: "Global" },
-                { value: "_CONTINENTAL", label: "Continental", group: "Global" },
-                ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
-              ]}
-              placeholder="League Country"
-            />
-          </div>
-          <div className="w-full">
+          <div className="min-w-[12rem] flex-1">
             <FilterSelect
               value={filterCompId}
               onChange={(val) => {
@@ -689,17 +671,28 @@ function AdminPlayersContent() {
                 setFilterClubId(""); // Reset club when league changes
               }}
               options={competitions
-                .filter(c => {
-                  if (!filterCompCountryCode) return true;
-                  if (filterCompCountryCode === "_WORLD") return c.type === "INTERNATIONAL";
-                  if (filterCompCountryCode === "_CONTINENTAL") return c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP";
-                  return c.countryCode === filterCompCountryCode;
+                .map(c => {
+                  let group = "Other";
+                  if (c.type === "CONTINENTAL_CLUB_COMPETITION" || c.type === "CONTINENTAL_SUPER_CUP") group = "Continental";
+                  else if (c.type === "INTERNATIONAL_TOURNAMENT" || c.type === "GLOBAL_CLUB_CHAMPIONSHIP" || c.type === "INTERNATIONAL") group = "International";
+                  else if (c.countryCode) {
+                    group = countries.find(co => co.id === c.countryCode)?.name || c.countryCode;
+                  } else {
+                    group = "Domestic";
+                  }
+                  return { value: c.id, label: c.name, group };
                 })
-                .map(c => ({ value: c.id, label: c.name }))}
+                .sort((a, b) => {
+                  if (a.group === "Continental") return -1;
+                  if (a.group === "International") return -1;
+                  if (b.group === "Continental") return 1;
+                  if (b.group === "International") return 1;
+                  return a.group.localeCompare(b.group) || a.label.localeCompare(b.label);
+                })}
               placeholder="All Leagues"
             />
           </div>
-          <div className="w-full">
+          <div className="min-w-[12rem] flex-1">
             <FilterSelect
               value={filterClubId}
               onChange={setFilterClubId}
@@ -709,7 +702,7 @@ function AdminPlayersContent() {
               placeholder="All Clubs"
             />
           </div>
-          <div className="w-full">
+          <div className="min-w-[12rem] flex-1">
             <FilterSelect
               value={filterRetired}
               onChange={setFilterRetired}

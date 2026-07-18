@@ -69,21 +69,26 @@ export class GameService {
 
   async getRandomQuestion(gameMode: GameMode = 'STRIKES', excludeIds: string[] = []): Promise<Question | null> {
     let effectiveExclude = excludeIds;
+    let availableCount = 0;
 
     if (effectiveExclude.length > 0) {
-      const countWithExclusion = await this.prisma.question.count({
+      availableCount = await this.prisma.question.count({
         where: { gameMode, id: { notIn: effectiveExclude } },
       });
       
-      if (countWithExclusion === 0) {
+      if (availableCount === 0) {
         // Exhaustion rule: keep only the most recently used question excluded
         effectiveExclude = [excludeIds[excludeIds.length - 1]];
+        // Re-count with new exclusion rule
+        availableCount = await this.prisma.question.count({
+          where: { gameMode, id: { notIn: effectiveExclude } },
+        });
       }
+    } else {
+      availableCount = await this.prisma.question.count({
+        where: { gameMode },
+      });
     }
-
-    const availableCount = await this.prisma.question.count({
-      where: { gameMode, id: { notIn: effectiveExclude } },
-    });
 
     if (availableCount === 0) {
       // Fallback if there are literally no questions at all (or only 1 question that is excluded)

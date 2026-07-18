@@ -75,17 +75,23 @@ let GameService = class GameService {
     }
     async getRandomQuestion(gameMode = 'STRIKES', excludeIds = []) {
         let effectiveExclude = excludeIds;
+        let availableCount = 0;
         if (effectiveExclude.length > 0) {
-            const countWithExclusion = await this.prisma.question.count({
+            availableCount = await this.prisma.question.count({
                 where: { gameMode, id: { notIn: effectiveExclude } },
             });
-            if (countWithExclusion === 0) {
+            if (availableCount === 0) {
                 effectiveExclude = [excludeIds[excludeIds.length - 1]];
+                availableCount = await this.prisma.question.count({
+                    where: { gameMode, id: { notIn: effectiveExclude } },
+                });
             }
         }
-        const availableCount = await this.prisma.question.count({
-            where: { gameMode, id: { notIn: effectiveExclude } },
-        });
+        else {
+            availableCount = await this.prisma.question.count({
+                where: { gameMode },
+            });
+        }
         if (availableCount === 0) {
             return this.prisma.question.findFirst({ where: { gameMode }, include: { clauses: true } });
         }
