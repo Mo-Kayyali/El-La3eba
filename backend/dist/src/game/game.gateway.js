@@ -19,6 +19,7 @@ const schedule_1 = require("@nestjs/schedule");
 const socket_io_1 = require("socket.io");
 const jwt_1 = require("@nestjs/jwt");
 const matchmaking_service_1 = require("./matchmaking.service");
+const match_evaluator_util_1 = require("./match-evaluator.util");
 const game_service_1 = require("./game.service");
 const redis_service_1 = require("../redis/redis.service");
 const common_1 = require("@nestjs/common");
@@ -428,9 +429,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     }
                     const outcome = this.resolveStrategy(state.mode).handleTurnTimeout(state, timedOutUserId);
                     isRoundOver = outcome.isRoundOver ?? false;
-                    isMatchOver = outcome.isMatchOver ?? false;
-                    roundWinner = outcome.roundWinner ?? null;
-                    if (isRoundOver && roundWinner) {
+                    roundWinner = 'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
+                    if (isRoundOver) {
+                        const matchOutcome = (0, match_evaluator_util_1.checkBestOfNMatchWin)(state);
+                        isMatchOver = matchOutcome.isMatchOver;
+                        if (isMatchOver) {
+                            state.status = 'match_completed';
+                            state.winner = matchOutcome.winnerId;
+                        }
                         const ms = state.modeState;
                         if (!Array.isArray(ms.roundHistory))
                             ms.roundHistory = [];
@@ -512,10 +518,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         }
                         latest.modeState.currentRound += 1;
                         latest.modeState.roundWinnerId = null;
-                        latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        this.resolveStrategy(latest.mode).setupNextRound(latest);
-                        latest.modeState.guessedPlayers = [];
-                        const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
+                        latest.mode = latest.composition[latest.modeState.currentRound - 1];
+                        this.resolveStrategy(latest.mode).initializeRoundState(latest);
+                        const nextQuestion = await this.gameService.getRandomQuestion(latest.mode, latest.modeState.usedQuestionIds || []);
                         latest.modeState.currentQuestion = nextQuestion;
                         if (nextQuestion) {
                             if (!latest.modeState.usedQuestionIds)
@@ -1103,9 +1108,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         return { status: 'error', message: outcome.error };
                     }
                     isRoundOver = outcome.isRoundOver ?? false;
-                    isMatchOver = outcome.isMatchOver ?? false;
-                    roundWinner = outcome.roundWinner ?? null;
-                    if (isRoundOver && roundWinner) {
+                    roundWinner = 'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
+                    if (isRoundOver) {
+                        const matchOutcome = (0, match_evaluator_util_1.checkBestOfNMatchWin)(state);
+                        isMatchOver = matchOutcome.isMatchOver;
+                        if (isMatchOver) {
+                            state.status = 'match_completed';
+                            state.winner = matchOutcome.winnerId;
+                        }
                         const ms = state.modeState;
                         ms.roundWinnerId = roundWinner;
                         if (!Array.isArray(ms.roundHistory))
@@ -1193,10 +1203,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         }
                         latest.modeState.currentRound += 1;
                         latest.modeState.roundWinnerId = null;
-                        latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        this.resolveStrategy(latest.mode).setupNextRound(latest);
-                        latest.modeState.guessedPlayers = [];
-                        const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
+                        latest.mode = latest.composition[latest.modeState.currentRound - 1];
+                        this.resolveStrategy(latest.mode).initializeRoundState(latest);
+                        const nextQuestion = await this.gameService.getRandomQuestion(latest.mode, latest.modeState.usedQuestionIds || []);
                         latest.modeState.currentQuestion = nextQuestion;
                         if (nextQuestion) {
                             if (!latest.modeState.usedQuestionIds)

@@ -5,7 +5,7 @@ class Top10ModeStrategy {
     getOpponent(state, userId) {
         return state.players.find((p) => p !== userId) || state.players[0];
     }
-    checkMatchWinCondition(state) {
+    checkRoundWinCondition(state) {
         const ms = state.modeState;
         let allRanksClaimed = true;
         for (let i = 1; i <= 10; i++) {
@@ -23,16 +23,16 @@ class Top10ModeStrategy {
             const p1Score = ms.scores?.[p1] ?? 0;
             const p2Score = ms.scores?.[p2] ?? 0;
             if (p1Score > p2Score) {
-                return { isMatchOver: true, winnerId: p1 };
+                return { isRoundOver: true, roundWinnerId: p1 };
             }
             else if (p2Score > p1Score) {
-                return { isMatchOver: true, winnerId: p2 };
+                return { isRoundOver: true, roundWinnerId: p2 };
             }
             else {
-                return { isMatchOver: true, winnerId: null };
+                return { isRoundOver: true, roundWinnerId: null };
             }
         }
-        return { isMatchOver: false, winnerId: null };
+        return { isRoundOver: false, roundWinnerId: null };
     }
     handleDisconnectTimeout(state, disconnectedUserId) {
         const winnerId = this.getOpponent(state, disconnectedUserId);
@@ -53,8 +53,19 @@ class Top10ModeStrategy {
             winnerId,
         };
     }
-    setupNextRound(state) {
-        throw new Error('setupNextRound should never be called for Top10ModeStrategy');
+    initializeRoundState(state) {
+        const ms = state.modeState;
+        ms.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+        ms.wrongGuesses = { [state.players[0]]: 0, [state.players[1]]: 0 };
+        ms.claimedRanks = [];
+        ms.guessedPlayers = [];
+        if (ms.currentRound % 2 === 0) {
+            ms.currentTurn = state.players[1];
+        }
+        else {
+            ms.currentTurn = state.players[0];
+        }
+        ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
     }
     handleTurnTimeout(state, timedOutUserId) {
         const ms = state.modeState;
@@ -62,30 +73,31 @@ class Top10ModeStrategy {
             ms.wrongGuesses = { [state.players[0]]: 0, [state.players[1]]: 0 };
         }
         ms.wrongGuesses[timedOutUserId] += 1;
-        const winCondition = this.checkMatchWinCondition(state);
-        if (winCondition.isMatchOver) {
-            state.status = 'match_completed';
-            state.winner = winCondition.winnerId;
-            if (!ms.overallScores) {
-                ms.overallScores = {};
+        const winCondition = this.checkRoundWinCondition(state);
+        if (winCondition.isRoundOver) {
+            const roundWinner = winCondition.roundWinnerId;
+            if (roundWinner) {
+                ms.overallScores[roundWinner] += 1;
             }
-            ms.overallScores[state.players[0]] = ms.scores[state.players[0]];
-            ms.overallScores[state.players[1]] = ms.scores[state.players[1]];
+            else {
+                ms.overallScores[state.players[0]] += 1;
+                ms.overallScores[state.players[1]] += 1;
+            }
+            ms.currentTurn = null;
             return {
                 updatedState: state,
                 isRoundOver: true,
-                isMatchOver: true,
-                roundWinner: winCondition.winnerId,
+                roundWinner,
             };
         }
         this.advanceTurn(state, timedOutUserId);
-        return { updatedState: state };
+        return { updatedState: state, isRoundOver: false };
     }
     handleGuess(state, userId, guessResult) {
-        if (state.modeState.currentTurn !== userId) {
-            return { error: 'Not your turn' };
-        }
         const ms = state.modeState;
+        if (ms.currentTurn && ms.currentTurn !== userId) {
+            return { error: 'Not your turn', isRoundOver: false };
+        }
         const opponent = this.getOpponent(state, userId);
         if (!ms.wrongGuesses) {
             ms.wrongGuesses = { [state.players[0]]: 0, [state.players[1]]: 0 };
@@ -102,7 +114,7 @@ class Top10ModeStrategy {
         const rank = guessResult.answerDetails?.rank;
         if (guessResult.isCorrect && rank !== undefined && rank !== null) {
             if (ms.claimedRanks.includes(rank)) {
-                return { error: 'Rank already claimed' };
+                return { error: 'Rank already claimed', isRoundOver: false };
             }
             ms.claimedRanks.push(rank);
             ms.guessedPlayers.push({ name: guessResult.matchedPlayer?.name, rank, guessedBy: userId });
@@ -123,24 +135,34 @@ class Top10ModeStrategy {
             ms.wrongGuesses[userId] += 1;
             ms.guessedPlayers.push({ name: guessResult.guessName, isWrong: true, guessedBy: userId });
         }
-        const winCondition = this.checkMatchWinCondition(state);
-        if (winCondition.isMatchOver) {
-            state.status = 'match_completed';
-            state.winner = winCondition.winnerId;
-            if (!ms.overallScores) {
-                ms.overallScores = {};
+        const winCondition = this.checkRoundWinCondition(state);
+        if (winCondition.isRoundOver) {
+            const roundWinner = winCondition.roundWinnerId;
+            if (roundWinner) {
+                ms.overallScores[roundWinner] += 1;
             }
-            ms.overallScores[state.players[0]] = ms.scores[state.players[0]];
-            ms.overallScores[state.players[1]] = ms.scores[state.players[1]];
+            else {
+                ms.overallScores[state.players[0]] += 1;
+                ms.overallScores[state.players[1]] += 1;
+            }
+            ms.currentTurn = null;
             return {
                 updatedState: state,
                 isRoundOver: true,
-                isMatchOver: true,
-                roundWinner: winCondition.winnerId,
+                roundWinner,
             };
         }
-        this.advanceTurn(state, userId);
-        return { updatedState: state };
+        if (ms.wrongGuesses?.[opponent] >= 3) {
+            ms.currentTurn = userId;
+        }
+        else {
+            ms.currentTurn = opponent;
+        }
+        ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+        return {
+            updatedState: state,
+            isRoundOver: false,
+        };
     }
     advanceTurn(state, currentPlayer) {
         const ms = state.modeState;

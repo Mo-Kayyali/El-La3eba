@@ -466,6 +466,7 @@ return selected
     player1Username?: string,
     player2Username?: string,
     isRanked = false,
+    composition: any[] = ['STRIKES', 'STRIKES', 'TOP_10']
   ) {
     // Fetch current MMR for rank badge display on the frontend.
     // Use Promise.allSettled so a missing user doesn't abort game creation.
@@ -490,7 +491,9 @@ return selected
       status: 'in_progress',
       winner: null,
       isRanked,
-      mode: 'STRIKES' as const,
+      composition,
+      turnTimerMs: 10_000,
+      mode: composition[0],
       playerNames: {
         [player1Id]: player1Username ?? String(player1Id),
         [player2Id]: player2Username ?? String(player2Id),
@@ -499,23 +502,24 @@ return selected
         [player1Id]: p1Mmr,
         [player2Id]: p2Mmr,
       },
-      // ── Mode-specific state (owned by StrikesModeStrategy) ────────────────
+      // ── Mode-specific state ────────────────
       modeState: {
-        currentTurn: player1Id,
-        turnDeadlineAt: Date.now() + 10_000,
         currentRound: 1,
         roundWinnerId: null as string | null,
-        scores: { [player1Id]: 0, [player2Id]: 0 },
         overallScores: { [player1Id]: 0, [player2Id]: 0 },
-        strikes: { [player1Id]: 0, [player2Id]: 0 },
-        guessedPlayers: [] as any[],
+        roundHistory: [] as any[],
         usedQuestionIds: [] as string[],
         currentQuestion: null as any,
-        roundHistory: [] as any[],
       },
     };
 
-    const firstQuestion = await this.gameService.getRandomQuestion('STRIKES');
+    const modeClass = gameState.mode === 'TOP_10' 
+      ? require('./top10-mode.strategy').Top10ModeStrategy
+      : require('./strikes-mode.strategy').StrikesModeStrategy;
+    const strategy = new modeClass();
+    strategy.initializeRoundState(gameState);
+
+    const firstQuestion = await this.gameService.getRandomQuestion(gameState.mode);
     gameState.modeState.currentQuestion = firstQuestion;
     if (firstQuestion) {
       gameState.modeState.usedQuestionIds.push(firstQuestion.id);

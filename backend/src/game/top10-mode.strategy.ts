@@ -11,7 +11,7 @@ export class Top10ModeStrategy implements GameModeStrategy {
     return state.players.find((p: string) => p !== userId) || state.players[0];
   }
 
-  checkMatchWinCondition(state: any): { isMatchOver: boolean; winnerId: string | null } {
+  private checkRoundWinCondition(state: any): { isRoundOver: boolean; roundWinnerId: string | null } {
     const ms = state.modeState;
     
     // Check if match is over: all 10 real ranks claimed OR both players capped
@@ -36,17 +36,19 @@ export class Top10ModeStrategy implements GameModeStrategy {
       const p2Score = ms.scores?.[p2] ?? 0;
 
       if (p1Score > p2Score) {
-        return { isMatchOver: true, winnerId: p1 };
+        return { isRoundOver: true, roundWinnerId: p1 };
       } else if (p2Score > p1Score) {
-        return { isMatchOver: true, winnerId: p2 };
+        return { isRoundOver: true, roundWinnerId: p2 };
       } else {
         // Genuine draw
-        return { isMatchOver: true, winnerId: null };
+        return { isRoundOver: true, roundWinnerId: null };
       }
     }
 
-    return { isMatchOver: false, winnerId: null };
+    return { isRoundOver: false, roundWinnerId: null };
   }
+
+
 
   handleDisconnectTimeout(state: any, disconnectedUserId: string): DisconnectOutcome {
     const winnerId = this.getOpponent(state, disconnectedUserId);
@@ -69,9 +71,18 @@ export class Top10ModeStrategy implements GameModeStrategy {
     };
   }
 
-  setupNextRound(state: any): void {
-    // Top 10 mode is a single round.
-    throw new Error('setupNextRound should never be called for Top10ModeStrategy');
+  initializeRoundState(state: any): void {
+    const ms = state.modeState;
+    ms.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+    ms.wrongGuesses = { [state.players[0]]: 0, [state.players[1]]: 0 };
+    ms.claimedRanks = [];
+    ms.guessedPlayers = [];
+    if (ms.currentRound % 2 === 0) {
+      ms.currentTurn = state.players[1];
+    } else {
+      ms.currentTurn = state.players[0];
+    }
+    ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
   }
 
   handleTurnTimeout(state: any, timedOutUserId: string): HandleGuessOutcome {
@@ -82,36 +93,36 @@ export class Top10ModeStrategy implements GameModeStrategy {
 
     ms.wrongGuesses[timedOutUserId] += 1;
 
-    const winCondition = this.checkMatchWinCondition(state);
-    if (winCondition.isMatchOver) {
-      state.status = 'match_completed';
-      state.winner = winCondition.winnerId;
-      // Also copy final scores to overallScores so MMR works correctly
-      if (!ms.overallScores) {
-         ms.overallScores = {};
+    const winCondition = this.checkRoundWinCondition(state);
+    if (winCondition.isRoundOver) {
+      const roundWinner = winCondition.roundWinnerId;
+      if (roundWinner) {
+        ms.overallScores[roundWinner] += 1;
+      } else {
+        ms.overallScores[state.players[0]] += 1;
+        ms.overallScores[state.players[1]] += 1;
       }
-      ms.overallScores[state.players[0]] = ms.scores[state.players[0]];
-      ms.overallScores[state.players[1]] = ms.scores[state.players[1]];
-      
+
+      ms.currentTurn = null;
+
       return {
         updatedState: state,
         isRoundOver: true,
-        isMatchOver: true,
-        roundWinner: winCondition.winnerId,
+        roundWinner,
       };
     }
 
     this.advanceTurn(state, timedOutUserId);
 
-    return { updatedState: state };
+    return { updatedState: state, isRoundOver: false };
   }
 
   handleGuess(state: any, userId: string, guessResult: GuessResult): HandleGuessOutcome {
-    if (state.modeState.currentTurn !== userId) {
-      return { error: 'Not your turn' };
+    const ms = state.modeState;
+    if (ms.currentTurn && ms.currentTurn !== userId) {
+      return { error: 'Not your turn', isRoundOver: false };
     }
 
-    const ms = state.modeState;
     const opponent = this.getOpponent(state, userId);
 
     if (!ms.wrongGuesses) {
@@ -130,10 +141,8 @@ export class Top10ModeStrategy implements GameModeStrategy {
     const rank = guessResult.answerDetails?.rank;
 
     if (guessResult.isCorrect && rank !== undefined && rank !== null) {
-      // Check if rank is already claimed
       if (ms.claimedRanks.includes(rank)) {
-        // Clean reject, no penalty
-        return { error: 'Rank already claimed' };
+        return { error: 'Rank already claimed', isRoundOver: false };
       }
 
       ms.claimedRanks.push(rank);
@@ -153,28 +162,37 @@ export class Top10ModeStrategy implements GameModeStrategy {
       ms.guessedPlayers.push({ name: guessResult.guessName, isWrong: true, guessedBy: userId });
     }
 
-    const winCondition = this.checkMatchWinCondition(state);
-    if (winCondition.isMatchOver) {
-      state.status = 'match_completed';
-      state.winner = winCondition.winnerId;
-      // Also copy final scores to overallScores so MMR works correctly
-      if (!ms.overallScores) {
-         ms.overallScores = {};
+    const winCondition = this.checkRoundWinCondition(state);
+    if (winCondition.isRoundOver) {
+      const roundWinner = winCondition.roundWinnerId;
+      if (roundWinner) {
+        ms.overallScores[roundWinner] += 1;
+      } else {
+        ms.overallScores[state.players[0]] += 1;
+        ms.overallScores[state.players[1]] += 1;
       }
-      ms.overallScores[state.players[0]] = ms.scores[state.players[0]];
-      ms.overallScores[state.players[1]] = ms.scores[state.players[1]];
-      
+
+      ms.currentTurn = null;
+
       return {
         updatedState: state,
         isRoundOver: true,
-        isMatchOver: true,
-        roundWinner: winCondition.winnerId,
+        roundWinner,
       };
     }
 
-    this.advanceTurn(state, userId);
+    // Determine next turn
+    if (ms.wrongGuesses?.[opponent] >= 3) {
+      ms.currentTurn = userId;
+    } else {
+      ms.currentTurn = opponent;
+    }
+    ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
 
-    return { updatedState: state };
+    return {
+      updatedState: state,
+      isRoundOver: false,
+    };
   }
 
   private advanceTurn(state: any, currentPlayer: string) {

@@ -308,7 +308,7 @@ return selected
         this.logger.log(`${isRanked ? 'Ranked' : 'Unrated'} match created: ${gameSessionId} ` +
             `[${p1.userId} vs ${p2.userId}]`);
     }
-    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false) {
+    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false, composition = ['STRIKES', 'STRIKES', 'TOP_10']) {
         const [p1Result, p2Result] = await Promise.allSettled([
             this.prisma.user.findUnique({
                 where: { id: player1Id },
@@ -326,7 +326,9 @@ return selected
             status: 'in_progress',
             winner: null,
             isRanked,
-            mode: 'STRIKES',
+            composition,
+            turnTimerMs: 10_000,
+            mode: composition[0],
             playerNames: {
                 [player1Id]: player1Username ?? String(player1Id),
                 [player2Id]: player2Username ?? String(player2Id),
@@ -336,20 +338,20 @@ return selected
                 [player2Id]: p2Mmr,
             },
             modeState: {
-                currentTurn: player1Id,
-                turnDeadlineAt: Date.now() + 10_000,
                 currentRound: 1,
                 roundWinnerId: null,
-                scores: { [player1Id]: 0, [player2Id]: 0 },
                 overallScores: { [player1Id]: 0, [player2Id]: 0 },
-                strikes: { [player1Id]: 0, [player2Id]: 0 },
-                guessedPlayers: [],
+                roundHistory: [],
                 usedQuestionIds: [],
                 currentQuestion: null,
-                roundHistory: [],
             },
         };
-        const firstQuestion = await this.gameService.getRandomQuestion('STRIKES');
+        const modeClass = gameState.mode === 'TOP_10'
+            ? require('./top10-mode.strategy').Top10ModeStrategy
+            : require('./strikes-mode.strategy').StrikesModeStrategy;
+        const strategy = new modeClass();
+        strategy.initializeRoundState(gameState);
+        const firstQuestion = await this.gameService.getRandomQuestion(gameState.mode);
         gameState.modeState.currentQuestion = firstQuestion;
         if (firstQuestion) {
             gameState.modeState.usedQuestionIds.push(firstQuestion.id);

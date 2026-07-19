@@ -5,18 +5,7 @@ export class StrikesModeStrategy implements GameModeStrategy {
     return state.players.find((p: string) => p !== userId) || state.players[0];
   }
 
-  checkMatchWinCondition(state: any): { isMatchOver: boolean; winnerId: string | null } {
-    const ms = state.modeState;
-    if (ms.overallScores[state.players[0]] >= 2 || ms.currentRound >= 3 || ms.overallScores[state.players[1]] >= 2) {
-      return {
-        isMatchOver: true,
-        winnerId: ms.overallScores[state.players[0]] > ms.overallScores[state.players[1]]
-          ? state.players[0]
-          : state.players[1]
-      };
-    }
-    return { isMatchOver: false, winnerId: null };
-  }
+
 
   handleDisconnectTimeout(state: any, disconnectedUserId: string): DisconnectOutcome {
     const winnerId = this.getOpponent(state, disconnectedUserId);
@@ -56,7 +45,7 @@ export class StrikesModeStrategy implements GameModeStrategy {
   handleGuess(state: any, userId: string, guessResult: GuessResult): HandleGuessOutcome {
     const ms = state.modeState;
     if (ms.currentTurn && ms.currentTurn !== userId) {
-      return { error: 'Not your turn' };
+      return { error: 'Not your turn', isRoundOver: false };
     }
 
     if (guessResult.isCorrect) {
@@ -94,37 +83,40 @@ export class StrikesModeStrategy implements GameModeStrategy {
       roundWinner = opponent;
 
       // Update overall scores
-      ms.overallScores[opponent] += 1;
-
-      const winCondition = this.checkMatchWinCondition(state);
-      if (winCondition.isMatchOver) {
-        isMatchOver = true;
-        state.status = 'match_completed';
-        state.winner = winCondition.winnerId;
+      if (roundWinner !== null) {
+        ms.overallScores[roundWinner] += 1;
       } else {
-        // Round ends, but match continues: transition period.
-        ms.currentTurn = null;
+        ms.overallScores[state.players[0]] += 1;
+        ms.overallScores[state.players[1]] += 1;
       }
+
+      ms.currentTurn = null;
+
+      return {
+        updatedState: state,
+        isRoundOver: true,
+        roundWinner
+      };
     } else {
       ms.currentTurn = opponent;
-      ms.turnDeadlineAt = Date.now() + 10_000;
+      ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+      return {
+        updatedState: state,
+        isRoundOver: false
+      };
     }
-
-    return {
-      updatedState: state,
-      isRoundOver,
-      isMatchOver,
-      roundWinner
-    };
   }
 
-  setupNextRound(state: any): void {
+  initializeRoundState(state: any): void {
     const ms = state.modeState;
     ms.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-    // Alternate round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
-    if (ms.currentRound === 2) ms.currentTurn = state.players[1];
-    else if (ms.currentRound === 3) ms.currentTurn = state.players[0];
-    else ms.currentTurn = state.players[0];
-    ms.turnDeadlineAt = Date.now() + 10_000;
+    ms.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+    ms.guessedPlayers = [];
+    if (ms.currentRound % 2 === 0) {
+      ms.currentTurn = state.players[1];
+    } else {
+      ms.currentTurn = state.players[0];
+    }
+    ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
   }
 }

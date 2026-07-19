@@ -42,12 +42,14 @@ export declare class MatchmakingService {
     }>;
     handleMatchmakingInterval(): Promise<void>;
     private processQueue;
-    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean): Promise<{
+    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean, composition?: any[]): Promise<{
         players: string[];
         status: string;
         winner: null;
         isRanked: boolean;
-        mode: "STRIKES";
+        composition: any[];
+        turnTimerMs: number;
+        mode: any;
         playerNames: {
             [player1Id]: string;
             [player2Id]: string;
@@ -57,26 +59,15 @@ export declare class MatchmakingService {
             [player2Id]: number;
         };
         modeState: {
-            currentTurn: string;
-            turnDeadlineAt: number;
             currentRound: number;
             roundWinnerId: string | null;
-            scores: {
-                [player1Id]: number;
-                [player2Id]: number;
-            };
             overallScores: {
                 [player1Id]: number;
                 [player2Id]: number;
             };
-            strikes: {
-                [player1Id]: number;
-                [player2Id]: number;
-            };
-            guessedPlayers: any[];
+            roundHistory: any[];
             usedQuestionIds: string[];
             currentQuestion: any;
-            roundHistory: any[];
         };
     }>;
     deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;

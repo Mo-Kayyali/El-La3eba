@@ -12,6 +12,7 @@ import { Interval } from '@nestjs/schedule';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { MatchmakingService } from './matchmaking.service';
+import { checkBestOfNMatchWin } from './match-evaluator.util';
 import type { QueueMode } from './matchmaking.service';
 import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
@@ -628,10 +629,16 @@ export class GameGateway
 
           const outcome = this.resolveStrategy(state.mode).handleTurnTimeout(state, timedOutUserId);
           isRoundOver = outcome.isRoundOver ?? false;
-          isMatchOver = outcome.isMatchOver ?? false;
-          roundWinner = outcome.roundWinner ?? null;
+          roundWinner = 'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
 
-          if (isRoundOver && roundWinner) {
+          if (isRoundOver) {
+            const matchOutcome = checkBestOfNMatchWin(state);
+            isMatchOver = matchOutcome.isMatchOver;
+            if (isMatchOver) {
+              state.status = 'match_completed';
+              state.winner = matchOutcome.winnerId;
+            }
+
             // Record the round result snapshot for the Game Over history view
             const ms = state.modeState;
             if (!Array.isArray(ms.roundHistory)) ms.roundHistory = [];
@@ -736,10 +743,9 @@ export class GameGateway
 
             latest.modeState.currentRound += 1;
             latest.modeState.roundWinnerId = null;
-            latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-            this.resolveStrategy(latest.mode).setupNextRound(latest);
-            latest.modeState.guessedPlayers = [];
-            const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
+            latest.mode = latest.composition[latest.modeState.currentRound - 1];
+            this.resolveStrategy(latest.mode).initializeRoundState(latest);
+            const nextQuestion = await this.gameService.getRandomQuestion(latest.mode, latest.modeState.usedQuestionIds || []);
             latest.modeState.currentQuestion = nextQuestion;
             if (nextQuestion) {
               if (!latest.modeState.usedQuestionIds) latest.modeState.usedQuestionIds = [];
@@ -1591,10 +1597,16 @@ export class GameGateway
           }
 
           isRoundOver = outcome.isRoundOver ?? false;
-          isMatchOver = outcome.isMatchOver ?? false;
-          roundWinner = outcome.roundWinner ?? null;
+          roundWinner = 'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
 
-          if (isRoundOver && roundWinner) {
+          if (isRoundOver) {
+            const matchOutcome = checkBestOfNMatchWin(state);
+            isMatchOver = matchOutcome.isMatchOver;
+            if (isMatchOver) {
+              state.status = 'match_completed';
+              state.winner = matchOutcome.winnerId;
+            }
+
             const ms = state.modeState;
             ms.roundWinnerId = roundWinner; // Write the round lock primitive
             if (!Array.isArray(ms.roundHistory)) ms.roundHistory = [];
@@ -1706,10 +1718,9 @@ export class GameGateway
 
             latest.modeState.currentRound += 1;
             latest.modeState.roundWinnerId = null;
-            latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-            this.resolveStrategy(latest.mode).setupNextRound(latest);
-            latest.modeState.guessedPlayers = [];
-            const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
+            latest.mode = latest.composition[latest.modeState.currentRound - 1];
+            this.resolveStrategy(latest.mode).initializeRoundState(latest);
+            const nextQuestion = await this.gameService.getRandomQuestion(latest.mode, latest.modeState.usedQuestionIds || []);
             latest.modeState.currentQuestion = nextQuestion;
             if (nextQuestion) {
               if (!latest.modeState.usedQuestionIds) latest.modeState.usedQuestionIds = [];

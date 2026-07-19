@@ -5,13 +5,13 @@ export interface GuessResult {
   answerDetails?: { rank?: number | null; slotLabel?: string | null } | null;
 }
 
-export interface HandleGuessOutcome {
+export type HandleGuessOutcome = {
   error?: string;
   updatedState?: any;
-  isRoundOver?: boolean;
-  isMatchOver?: boolean;
-  roundWinner?: string | null;
-}
+} & (
+  | { isRoundOver: false; isMatchOver?: false }
+  | { isRoundOver: true; roundWinner: string | null }
+);
 
 export interface DisconnectOutcome {
   updatedState: any;
@@ -36,11 +36,6 @@ export interface GameModeStrategy {
   handleTurnTimeout(state: any, userId: string): HandleGuessOutcome;
 
   /**
-   * Checks if the match has been won based on the current state.
-   */
-  checkMatchWinCondition(state: any): { isMatchOver: boolean; winnerId: string | null };
-
-  /**
    * Applies forfeit/timeout logic when a player disconnects for too long.
    */
   handleDisconnectTimeout(state: any, disconnectedUserId: string): DisconnectOutcome;
@@ -58,7 +53,7 @@ export interface GameModeStrategy {
   getOpponent(state: any, userId: string): string;
 
   /**
-   * Sets up mode-specific state for the next round.
+   * Sets up mode-specific state for the next round (or the first round).
    */
-  setupNextRound(state: any): void;
+  initializeRoundState(state: any): void;
 }

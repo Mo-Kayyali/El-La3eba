@@ -5,18 +5,6 @@ class StrikesModeStrategy {
     getOpponent(state, userId) {
         return state.players.find((p) => p !== userId) || state.players[0];
     }
-    checkMatchWinCondition(state) {
-        const ms = state.modeState;
-        if (ms.overallScores[state.players[0]] >= 2 || ms.currentRound >= 3 || ms.overallScores[state.players[1]] >= 2) {
-            return {
-                isMatchOver: true,
-                winnerId: ms.overallScores[state.players[0]] > ms.overallScores[state.players[1]]
-                    ? state.players[0]
-                    : state.players[1]
-            };
-        }
-        return { isMatchOver: false, winnerId: null };
-    }
     handleDisconnectTimeout(state, disconnectedUserId) {
         const winnerId = this.getOpponent(state, disconnectedUserId);
         state.status = 'match_completed';
@@ -51,7 +39,7 @@ class StrikesModeStrategy {
     handleGuess(state, userId, guessResult) {
         const ms = state.modeState;
         if (ms.currentTurn && ms.currentTurn !== userId) {
-            return { error: 'Not your turn' };
+            return { error: 'Not your turn', isRoundOver: false };
         }
         if (guessResult.isCorrect) {
             ms.guessedPlayers.push({
@@ -84,38 +72,41 @@ class StrikesModeStrategy {
         if (ms.strikes[lastActiveUserId] >= 3) {
             isRoundOver = true;
             roundWinner = opponent;
-            ms.overallScores[opponent] += 1;
-            const winCondition = this.checkMatchWinCondition(state);
-            if (winCondition.isMatchOver) {
-                isMatchOver = true;
-                state.status = 'match_completed';
-                state.winner = winCondition.winnerId;
+            if (roundWinner !== null) {
+                ms.overallScores[roundWinner] += 1;
             }
             else {
-                ms.currentTurn = null;
+                ms.overallScores[state.players[0]] += 1;
+                ms.overallScores[state.players[1]] += 1;
             }
+            ms.currentTurn = null;
+            return {
+                updatedState: state,
+                isRoundOver: true,
+                roundWinner
+            };
         }
         else {
             ms.currentTurn = opponent;
-            ms.turnDeadlineAt = Date.now() + 10_000;
+            ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+            return {
+                updatedState: state,
+                isRoundOver: false
+            };
         }
-        return {
-            updatedState: state,
-            isRoundOver,
-            isMatchOver,
-            roundWinner
-        };
     }
-    setupNextRound(state) {
+    initializeRoundState(state) {
         const ms = state.modeState;
         ms.strikes = { [state.players[0]]: 0, [state.players[1]]: 0 };
-        if (ms.currentRound === 2)
+        ms.scores = { [state.players[0]]: 0, [state.players[1]]: 0 };
+        ms.guessedPlayers = [];
+        if (ms.currentRound % 2 === 0) {
             ms.currentTurn = state.players[1];
-        else if (ms.currentRound === 3)
+        }
+        else {
             ms.currentTurn = state.players[0];
-        else
-            ms.currentTurn = state.players[0];
-        ms.turnDeadlineAt = Date.now() + 10_000;
+        }
+        ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
     }
 }
 exports.StrikesModeStrategy = StrikesModeStrategy;
