@@ -198,4 +198,4 @@ reviewedAt  datetime?
 
 ## 5. Data Seeding & Enrichment
 
-- **Current Player Database:** As of the latest top-5 leagues + top-players enrichment pass, the database contains **4114** total players. The data includes updated clubs, full club histories (`PlayerClub` records), and corrected nationalities. All legacy data scripts used for importing were throwaway and removed after running.
+- **Current Player Database:** As of the latest Egyptian legends/current players enrichment pass, the database contains **4269** total players and **1319** clubs. The data includes updated clubs, full club histories (`PlayerClub` records), and corrected nationalities. All legacy data scripts used for importing were throwaway and removed after running.

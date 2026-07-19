@@ -1,0 +1,5894 @@
+[
+  {
+    "firstName": "Mohamed",
+    "lastName": "El Shenawy",
+    "name": "Mohamed El Shenawy",
+    "nationality": "Egypt",
+    "dateOfBirth": "1988-12-18",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2009-2012"
+      },
+      {
+        "clubName": "Haras El Hodoud",
+        "country": "Egypt",
+        "approxYears": "2013"
+      },
+      {
+        "clubName": "Petrojet",
+        "country": "Egypt",
+        "approxYears": "2013-2016"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2016-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Shobeir",
+    "name": "Mostafa Shobeir",
+    "aliases": "Oufa Shobeir",
+    "nationality": "Egypt",
+    "dateOfBirth": "2000-05-15",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Seha",
+    "name": "Mohamed Seha",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-05-01",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Arab Contractors FC",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Haras El Hodoud",
+        "country": "Egypt",
+        "approxYears": "2024-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hamza",
+    "lastName": "Alaa",
+    "name": "Hamza Alaa",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-03-01",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Yasser",
+    "lastName": "Ibrahim",
+    "name": "Yasser Ibrahim",
+    "nationality": "Egypt",
+    "dateOfBirth": "1993-02-10",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2013-2015"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2015-2019"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Achraf",
+    "lastName": "Dari",
+    "name": "Achraf Dari",
+    "nationality": "Morocco",
+    "dateOfBirth": "1999-05-06",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Wydad AC",
+        "country": "Morocco",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Stade Brestois",
+        "country": "France",
+        "approxYears": "2022-2024"
+      },
+      { "clubName": "Charleroi", "country": "Belgium", "approxYears": "2024" },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Ramadan",
+    "name": "Ahmed Ramadan",
+    "aliases": "Beckham",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-03-23",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2015-2018"
+      },
+      {
+        "clubName": "Haras El Hodoud",
+        "country": "Egypt",
+        "approxYears": "2016"
+      },
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2018-2020"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      { "clubName": "Smouha SC", "country": "Egypt", "approxYears": "2021" },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Yassin",
+    "lastName": "Marei",
+    "name": "Yassin Marei",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-11-07",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Pharco FC",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hady",
+    "lastName": "Reyad",
+    "name": "Hady Reyad",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-06-10",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2018-2021"
+      },
+      {
+        "clubName": "Haras El Hodoud",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Kafr El Sheikh",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "Petrojet",
+        "country": "Egypt",
+        "approxYears": "2021-2026"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "El Aash",
+    "name": "Mostafa El Aash",
+    "nationality": "Egypt",
+    "dateOfBirth": "2000-10-11",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      { "clubName": "ZED FC", "country": "Egypt", "approxYears": "2022-2025" },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Amr",
+    "lastName": "El Gazar",
+    "name": "Amr El Gazar",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-09-20",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Ghazl El Mahalla",
+        "country": "Egypt",
+        "approxYears": "2023-2026"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Youssef",
+    "lastName": "Belammari",
+    "name": "Youssef Belammari",
+    "nationality": "Morocco",
+    "dateOfBirth": "1998-09-20",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "FUS Rabat",
+        "country": "Morocco",
+        "approxYears": "2017-2023"
+      },
+      {
+        "clubName": "Raja CA",
+        "country": "Morocco",
+        "approxYears": "2023-2026"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Shokry",
+    "name": "Mohamed Shokry",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-07-06",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Karim",
+    "lastName": "Fouad",
+    "name": "Karim Fouad",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-10-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Nogoom FC",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Hany",
+    "name": "Mohamed Hany",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-02-02",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2015-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Omar",
+    "lastName": "Kamal",
+    "name": "Omar Kamal",
+    "nationality": "Egypt",
+    "dateOfBirth": "1993-09-29",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Ittihad El Shorta",
+        "country": "Egypt",
+        "approxYears": "2013-2017"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2017-2021"
+      },
+      { "clubName": "Zamalek SC", "country": "Egypt", "approxYears": "2021" },
+      {
+        "clubName": "Future FC",
+        "country": "Egypt",
+        "approxYears": "2021-2024"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Eid",
+    "name": "Ahmed Eid",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-01-02",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2023"
+      },
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "2021" },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-2026"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Marwan",
+    "lastName": "Attia",
+    "name": "Marwan Attia",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-08-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2019-2023"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Aliou",
+    "lastName": "Dieng",
+    "name": "Aliou Dieng",
+    "nationality": "Mali",
+    "dateOfBirth": "1997-10-16",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Djoliba AC",
+        "country": "Mali",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "MC Alger",
+        "country": "Algeria",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Nabil",
+    "name": "Ahmed Nabil",
+    "aliases": "Kouka",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-07-04",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Emam",
+    "lastName": "Ashour",
+    "name": "Emam Ashour",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-02-20",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Ghazl El Mahalla",
+        "country": "Egypt",
+        "approxYears": "2017-2019"
+      },
+      {
+        "clubName": "Haras El Hodoud",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2023"
+      },
+      {
+        "clubName": "FC Midtjylland",
+        "country": "Denmark",
+        "approxYears": "2023"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed Ali",
+    "lastName": "Ben Romdhane",
+    "name": "Mohamed Ali Ben Romdhane",
+    "nationality": "Tunisia",
+    "dateOfBirth": "1999-09-06",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Espérance de Tunis",
+        "country": "Tunisia",
+        "approxYears": "2018-2023"
+      },
+      {
+        "clubName": "Ferencváros",
+        "country": "Hungary",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Reda",
+    "name": "Ahmed Reda",
+    "nationality": "Egypt",
+    "dateOfBirth": "2000-02-19",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2020-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Magdy",
+    "name": "Mohamed Magdy",
+    "aliases": "Afsha",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-03-06",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2013-2018"
+      },
+      { "clubName": "El Raja SC", "country": "Egypt", "approxYears": "2015" },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Hassan",
+    "name": "Mahmoud Hassan",
+    "aliases": "Trézéguet",
+    "nationality": "Egypt",
+    "dateOfBirth": "1994-10-01",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2012-2015"
+      },
+      {
+        "clubName": "Anderlecht",
+        "country": "Belgium",
+        "approxYears": "2015-2017"
+      },
+      {
+        "clubName": "Mouscron",
+        "country": "Belgium",
+        "approxYears": "2016-2017"
+      },
+      {
+        "clubName": "Kasımpaşa",
+        "country": "Turkey",
+        "approxYears": "2017-2019"
+      },
+      {
+        "clubName": "Aston Villa",
+        "country": "England",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "İstanbul Başakşehir",
+        "country": "Turkey",
+        "approxYears": "2022"
+      },
+      {
+        "clubName": "Trabzonspor",
+        "country": "Turkey",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Achraf",
+    "lastName": "Bencharki",
+    "name": "Achraf Bencharki",
+    "nationality": "Morocco",
+    "dateOfBirth": "1994-09-24",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Maghreb de Fès",
+        "country": "Morocco",
+        "approxYears": "2014-2016"
+      },
+      {
+        "clubName": "Wydad AC",
+        "country": "Morocco",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Al Hilal",
+        "country": "Saudi Arabia",
+        "approxYears": "2018-2019"
+      },
+      { "clubName": "Lens", "country": "France", "approxYears": "2018-2019" },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "Al Jazira",
+        "country": "United Arab Emirates",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Al Rayyan",
+        "country": "Qatar",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Abdelkader",
+    "name": "Ahmed Abdelkader",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-05-23",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      }
+    ]
+  },
+  {
+    "firstName": "Hussein",
+    "lastName": "El Shahat",
+    "name": "Hussein El Shahat",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-06-21",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "El Sharqia Dokhan",
+        "country": "Egypt",
+        "approxYears": "2013-2014"
+      },
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2014-2018"
+      },
+      {
+        "clubName": "Al Ain",
+        "country": "United Arab Emirates",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Sayed",
+    "name": "Ahmed Sayed",
+    "aliases": "Zizo",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-01-10",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Lierse",
+        "country": "Belgium",
+        "approxYears": "2014-2017"
+      },
+      { "clubName": "Nacional", "country": "Portugal", "approxYears": "2017" },
+      {
+        "clubName": "Moreirense",
+        "country": "Portugal",
+        "approxYears": "2017-2018"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Taher",
+    "lastName": "Mohamed",
+    "name": "Taher Mohamed",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-03-07",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Arab Contractors",
+        "country": "Egypt",
+        "approxYears": "2014-2020"
+      },
+      {
+        "clubName": "Le Havre",
+        "country": "France",
+        "approxYears": "2016-2017"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Nejc",
+    "lastName": "Gradišar",
+    "name": "Nejc Gradišar",
+    "nationality": "Slovenia",
+    "dateOfBirth": "2002-08-06",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Bravo",
+        "country": "Slovenia",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Rogaška",
+        "country": "Slovenia",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Fehérvár",
+        "country": "Hungary",
+        "approxYears": "2024-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ieltsin",
+    "lastName": "Camões",
+    "name": "Ieltsin Camões",
+    "nationality": "Portugal",
+    "dateOfBirth": "1999-04-16",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Portimonense",
+        "country": "Portugal",
+        "approxYears": "2018-2020"
+      },
+      { "clubName": "Skënderbeu", "country": "Albania", "approxYears": "2022" },
+      { "clubName": "Novi Pazar", "country": "Serbia", "approxYears": "2023" },
+      {
+        "clubName": "Radnički Kragujevac",
+        "country": "Serbia",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Sherif",
+    "name": "Mohamed Sherif",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-02-04",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2015-2018"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2018-2023"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Al-Khaleej",
+        "country": "Saudi Arabia",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Marwan",
+    "lastName": "Hamdi",
+    "name": "Marwan Hamdi",
+    "aliases": "Otaka",
+    "nationality": "Egypt",
+    "dateOfBirth": "2002-07-07",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ahly SC",
+    "clubHistory": [
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2023-2026"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Sobhi",
+    "name": "Mohamed Sobhi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-07-15",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Petrojet",
+        "country": "Egypt",
+        "approxYears": "2017-2019"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "Pharco FC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Awad",
+    "name": "Mohamed Awad",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-07-06",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2012-2019"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2014-2015"
+      },
+      {
+        "clubName": "Al-Wehda",
+        "country": "Saudi Arabia",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "El Mahdi",
+    "lastName": "Soliman",
+    "name": "El Mahdi Soliman",
+    "nationality": "Egypt",
+    "dateOfBirth": "1987-06-08",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2007-2010"
+      },
+      {
+        "clubName": "Petrojet",
+        "country": "Egypt",
+        "approxYears": "2010-2013"
+      },
+      {
+        "clubName": "Ghazl El Mahalla",
+        "country": "Egypt",
+        "approxYears": "2013-2014"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2014-2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "El Shenawy",
+    "name": "Mahmoud El Shenawy",
+    "nationality": "Egypt",
+    "dateOfBirth": "2004-08-29",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hossam",
+    "lastName": "Abdelmaguid",
+    "name": "Hossam Abdelmaguid",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-04-30",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Ismail",
+    "name": "Mohamed Ismail",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-08-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      { "clubName": "ZED FC", "country": "Egypt", "approxYears": "2023-2025" },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Hamdy",
+    "name": "Mahmoud Hamdy",
+    "aliases": "El Wensh",
+    "nationality": "Egypt",
+    "dateOfBirth": "1995-06-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2013-2016"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2016-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Hossam",
+    "name": "Ahmed Hossam",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-10-27",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Bentayg",
+    "name": "Mahmoud Bentayg",
+    "nationality": "Morocco",
+    "dateOfBirth": "1999-10-30",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "TAS Casablanca",
+        "country": "Morocco",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Raja CA",
+        "country": "Morocco",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Saint-Étienne",
+        "country": "France",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Fatouh",
+    "name": "Ahmed Fatouh",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-03-22",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2016-present"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Ibrahim",
+    "name": "Mohamed Ibrahim",
+    "nationality": "Egypt",
+    "dateOfBirth": "2005-08-13",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Omar",
+    "lastName": "Gaber",
+    "name": "Omar Gaber",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-01-30",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2010-2016"
+      },
+      {
+        "clubName": "FC Basel",
+        "country": "Switzerland",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Los Angeles FC",
+        "country": "United States",
+        "approxYears": "2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Baron",
+    "lastName": "Ochieng",
+    "name": "Baron Ochieng",
+    "nationality": "Kenya",
+    "dateOfBirth": "2005-12-29",
+    "primaryPosition": "Defender",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Sofapaka FC",
+        "country": "Kenya",
+        "approxYears": "2024-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Rabie",
+    "name": "Ahmed Rabie",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-01-15",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "El Sayed",
+    "lastName": "Osama",
+    "name": "El Sayed Osama",
+    "nationality": "Egypt",
+    "dateOfBirth": "2006-03-21",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Khodary",
+    "name": "Ahmed Khodary",
+    "nationality": "Egypt",
+    "dateOfBirth": "2005-01-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Gehad",
+    "name": "Mahmoud Gehad",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-08-20",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Pharco FC",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Youssef",
+    "lastName": "Wael",
+    "name": "Youssef Wael",
+    "nationality": "Egypt",
+    "dateOfBirth": "2005-01-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2026-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Shehata",
+    "name": "Mohamed Shehata",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-02-08",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2020-2024"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "El Sayed",
+    "name": "Mohamed El Sayed",
+    "nationality": "Egypt",
+    "dateOfBirth": "2006-05-20",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Adam",
+    "lastName": "Kaied",
+    "name": "Adam Kaied",
+    "nationality": "Sweden",
+    "dateOfBirth": "2002-03-02",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Helsingborgs IF",
+        "country": "Sweden",
+        "approxYears": "2021-2023"
+      },
+      { "clubName": "Stabæk", "country": "Norway", "approxYears": "2022" },
+      {
+        "clubName": "NAC Breda",
+        "country": "Netherlands",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Seif Farouk",
+    "lastName": "Gaafar",
+    "name": "Seif Farouk Gaafar",
+    "aliases": "Seif Gaafar",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-12-05",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2018-2023"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdallah",
+    "lastName": "El Said",
+    "name": "Abdallah El Said",
+    "nationality": "Egypt",
+    "dateOfBirth": "1985-07-13",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2004-2011"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2011-2018"
+      },
+      { "clubName": "KuPS", "country": "Finland", "approxYears": "2018" },
+      {
+        "clubName": "Al-Ahli",
+        "country": "Saudi Arabia",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2019-2024"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Chico",
+    "lastName": "Banza",
+    "name": "Chico Banza",
+    "nationality": "Angola",
+    "dateOfBirth": "1998-12-17",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Nea Salamis",
+        "country": "Cyprus",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Estrela Amadora",
+        "country": "Portugal",
+        "approxYears": "2024-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Sherif",
+    "name": "Ahmed Sherif",
+    "nationality": "Egypt",
+    "dateOfBirth": "2003-02-08",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "Pharco FC",
+        "country": "Egypt",
+        "approxYears": "2021-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Juan",
+    "lastName": "Bezerra",
+    "name": "Juan Bezerra",
+    "nationality": "Brazil",
+    "dateOfBirth": "2003-02-16",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Vasco da Gama",
+        "country": "Brazil",
+        "approxYears": "2023"
+      },
+      {
+        "clubName": "FC Oleksandriya",
+        "country": "Ukraine",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Esho",
+    "name": "Ahmed Esho",
+    "nationality": "Egypt",
+    "dateOfBirth": "2003-03-03",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Oday",
+    "lastName": "Dabbagh",
+    "name": "Oday Dabbagh",
+    "nationality": "Palestine",
+    "dateOfBirth": "1998-12-03",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Hilal Al-Quds",
+        "country": "Palestine",
+        "approxYears": "2015-2019"
+      },
+      {
+        "clubName": "Al-Salmiya",
+        "country": "Kuwait",
+        "approxYears": "2019-2020"
+      },
+      { "clubName": "Qadsia", "country": "Kuwait", "approxYears": "2020" },
+      {
+        "clubName": "Al-Arabi",
+        "country": "Kuwait",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "Arouca",
+        "country": "Portugal",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Charleroi",
+        "country": "Belgium",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Nasser",
+    "lastName": "Mansi",
+    "name": "Nasser Mansi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-11-16",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "El Dakhleya",
+        "country": "Egypt",
+        "approxYears": "2017-2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-2021"
+      },
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Bank El Ahly",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Amr",
+    "lastName": "Nasser",
+    "name": "Amr Nasser",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-03-08",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Pharco FC",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Seifeddine",
+    "lastName": "Jaziri",
+    "name": "Seifeddine Jaziri",
+    "nationality": "Tunisia",
+    "dateOfBirth": "1993-02-11",
+    "primaryPosition": "Forward",
+    "currentClub": "Zamalek SC",
+    "clubHistory": [
+      {
+        "clubName": "Club Africain",
+        "country": "Tunisia",
+        "approxYears": "2011-2017"
+      },
+      {
+        "clubName": "CS Hammam-Lif",
+        "country": "Tunisia",
+        "approxYears": "2013-2014"
+      },
+      {
+        "clubName": "US Ben Guerdane",
+        "country": "Tunisia",
+        "approxYears": "2017"
+      },
+      { "clubName": "Tanta", "country": "Egypt", "approxYears": "2017-2018" },
+      {
+        "clubName": "Stade Gabèsien",
+        "country": "Tunisia",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Al Mokawloon",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "El Shenawy",
+    "name": "Ahmed El Shenawy",
+    "nationality": "Egypt",
+    "dateOfBirth": "1991-05-14",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2009-2012"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2012-2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Sherif",
+    "lastName": "Ekramy",
+    "name": "Sherif Ekramy",
+    "nationality": "Egypt",
+    "dateOfBirth": "1983-07-01",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2003-2005"
+      },
+      {
+        "clubName": "Feyenoord",
+        "country": "Netherlands",
+        "approxYears": "2005-2008"
+      },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2009-2010"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2010-2020"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Gad",
+    "name": "Mahmoud Gad",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-10-01",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2022-2025"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ziad",
+    "lastName": "Haytham",
+    "name": "Ziad Haytham",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "Gabr",
+    "name": "Ali Gabr",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-01-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2009-2012"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2012-2014"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2014-2018"
+      },
+      {
+        "clubName": "West Bromwich Albion",
+        "country": "England",
+        "approxYears": "2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Osama",
+    "lastName": "Galal",
+    "name": "Osama Galal",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-09-17",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      { "clubName": "Petrojet", "country": "Egypt", "approxYears": "2017" },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2017-2021"
+      },
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Samy",
+    "name": "Ahmed Samy",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-04-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Naser El Fekreia",
+        "country": "Egypt",
+        "approxYears": "2013-2014"
+      },
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2014-2020"
+      },
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2018-2020"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Marei",
+    "name": "Mahmoud Marei",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-04-24",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2017-2021"
+      },
+      {
+        "clubName": "Future FC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Chibi",
+    "name": "Mohamed Chibi",
+    "nationality": "Morocco",
+    "dateOfBirth": "1993-01-21",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Raja CA",
+        "country": "Morocco",
+        "approxYears": "2011-2014"
+      },
+      {
+        "clubName": "KAC Kénitra",
+        "country": "Morocco",
+        "approxYears": "2015-2017"
+      },
+      {
+        "clubName": "Ittihad Tanger",
+        "country": "Morocco",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "AS FAR",
+        "country": "Morocco",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Hamdy",
+    "name": "Mohamed Hamdy",
+    "nationality": "Egypt",
+    "dateOfBirth": "1995-03-15",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2014-2016"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Karim",
+    "lastName": "Hafez",
+    "name": "Karim Hafez",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-03-12",
+    "primaryPosition": "Defender",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Lierse",
+        "country": "Belgium",
+        "approxYears": "2014-2018"
+      },
+      { "clubName": "Omonia", "country": "Cyprus", "approxYears": "2015-2016" },
+      { "clubName": "Lens", "country": "France", "approxYears": "2016-2018" },
+      {
+        "clubName": "Kasımpaşa",
+        "country": "Turkey",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Yeni Malatyaspor",
+        "country": "Turkey",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Youssef",
+    "lastName": "Ibrahim",
+    "name": "Youssef Obama",
+    "aliases": "Obama",
+    "nationality": "Egypt",
+    "dateOfBirth": "1995-12-02",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2014-2024"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2015-2016"
+      },
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2016-2017"
+      },
+      {
+        "clubName": "Al-Hazem",
+        "country": "Saudi Arabia",
+        "approxYears": "2023"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Tawfik",
+    "name": "Ahmed Tawfik",
+    "nationality": "Egypt",
+    "dateOfBirth": "1991-10-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2010-2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-present"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohanad",
+    "lastName": "Lasheen",
+    "name": "Mohanad Lasheen",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-05-29",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2016-2019"
+      },
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "Future FC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Walid",
+    "lastName": "El Karti",
+    "name": "Walid El Karti",
+    "nationality": "Morocco",
+    "dateOfBirth": "1994-07-23",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Wydad AC",
+        "country": "Morocco",
+        "approxYears": "2013-2021"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Nasser",
+    "lastName": "Maher",
+    "name": "Nasser Maher",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-02-08",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2016-2021"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2017-2020"
+      },
+      {
+        "clubName": "Future FC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      { "clubName": "Zamalek SC", "country": "Egypt", "approxYears": "2024" },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hamed",
+    "lastName": "Hamdan",
+    "name": "Hamed Hamdan",
+    "nationality": "Palestine",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Atef",
+    "name": "Ahmed Atef",
+    "aliases": "Otta",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Fiston",
+    "lastName": "Mayele",
+    "name": "Fiston Mayele",
+    "nationality": "DR Congo",
+    "dateOfBirth": "1994-06-24",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "AS Vita Club",
+        "country": "DR Congo",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Young Africans",
+        "country": "Tanzania",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ramadan",
+    "lastName": "Sobhi",
+    "name": "Ramadan Sobhi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-01-23",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2014-2016"
+      },
+      {
+        "clubName": "Stoke City",
+        "country": "England",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Huddersfield Town",
+        "country": "England",
+        "approxYears": "2018-2020"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Fathi",
+    "name": "Mostafa Fathi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1994-05-12",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2013-2022"
+      },
+      {
+        "clubName": "Al Taawoun",
+        "country": "Saudi Arabia",
+        "approxYears": "2017-2018"
+      },
+      { "clubName": "Smouha SC", "country": "Egypt", "approxYears": "2021" },
+      {
+        "clubName": "Al Taawoun",
+        "country": "Saudi Arabia",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Zalaka",
+    "name": "Zalaka",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Marwan",
+    "lastName": "Hamdi",
+    "name": "Marwan Hamdi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-11-15",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2022-2024"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Odeh",
+    "lastName": "Fakhouri",
+    "name": "Odeh Fakhouri",
+    "nationality": "Jordan",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "El Gabbas",
+    "name": "Dodo Elgabas",
+    "nationality": "Egypt",
+    "dateOfBirth": "1988-01-01",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2006-2009"
+      },
+      {
+        "clubName": "Lierse",
+        "country": "Belgium",
+        "approxYears": "2009-2013"
+      },
+      {
+        "clubName": "Arles-Avignon",
+        "country": "France",
+        "approxYears": "2014"
+      },
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2014-2016"
+      },
+      {
+        "clubName": "Lierse",
+        "country": "Belgium",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Ziko",
+    "name": "Mostafa Ziko",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      { "clubName": "ZED FC", "country": "Egypt", "approxYears": "2023-2025" },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ewerton",
+    "lastName": "Paixão Da Silva",
+    "name": "Ewerton",
+    "nationality": "Brazil",
+    "dateOfBirth": "1996-12-28",
+    "primaryPosition": "Forward",
+    "currentClub": "Pyramids FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdallah",
+    "lastName": "Gamal",
+    "name": "Abdallah Gamal",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "Mahrous",
+    "name": "Abdelrahman Mahrous",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Hosny",
+    "name": "Mostafa Hosny",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Abdelkarim",
+    "lastName": "Mostafa",
+    "name": "Abdelkarim Mostafa",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Ayman",
+    "name": "Ahmed Ayman",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Abdallah",
+    "lastName": "Hassan",
+    "name": "Abdallah Hassan",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Ehab",
+    "name": "Mohamed Ehab",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Abdallah",
+    "lastName": "Mohamed",
+    "name": "Abdallah Mohamed",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Hassan",
+    "lastName": "Mansour",
+    "name": "Hassan Mansour",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "Katkot",
+    "name": "Abdelrahman Katkot",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Hassan",
+    "name": "Mohamed Hassan",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mohamed Samir",
+    "lastName": "Konta",
+    "name": "Konta",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "El Dah",
+    "name": "Abdelrahman El Dah",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Ibrahim",
+    "lastName": "Abdelaal",
+    "name": "Ibrahim Abdelaal",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Batikha",
+    "name": "Batikha",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Nader",
+    "lastName": "Farag",
+    "name": "Nader Farag",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Khatary",
+    "name": "Mohamed Khatary",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "El Malawany",
+    "name": "Ali El Malawany",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Bashar",
+    "lastName": "Ashraf",
+    "name": "Bashar Ashraf",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Ibrahim",
+    "lastName": "El Nagaawy",
+    "name": "Ibrahim El Nagaawy",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Omar",
+    "lastName": "El Kot",
+    "name": "Omar El Kot",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Anwar",
+    "lastName": "Sakr",
+    "name": "Anwar Sakr",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Hassan",
+    "lastName": "Saber",
+    "name": "Hassan Saber",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Zidan",
+    "name": "Mohamed Zidan",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Ismaily SC",
+    "clubHistory": [
+      { "clubName": "Ismaily SC", "country": "Egypt", "approxYears": "present" }
+    ]
+  },
+  {
+    "firstName": "Sobhy",
+    "lastName": "Soliman",
+    "name": "Sobhy Soliman",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "El Gabry",
+    "name": "Ali El Gabry",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "El Arabi",
+    "name": "Ahmed El Arabi",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Amr",
+    "lastName": "Khalil",
+    "name": "Amr Khalil",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Menshawi",
+    "name": "Ahmed Menshawi",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Ibrahim",
+    "name": "Mostafa Ibrahim",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mido",
+    "lastName": "Mostafa",
+    "name": "Mido Mostafa",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Moataz",
+    "lastName": "Mohamed",
+    "name": "Moataz Mohamed",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Alaa",
+    "name": "Mahmoud Alaa",
+    "nationality": "Egypt",
+    "dateOfBirth": "1990-12-31",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Haras El Hodoud",
+        "country": "Egypt",
+        "approxYears": "2010-2015"
+      },
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2015-2017"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2017-2024"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdo",
+    "lastName": "Hesham",
+    "name": "Abdo Hesham",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Moamen",
+    "lastName": "Sherif",
+    "name": "Moamen Sherif",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Khaled",
+    "lastName": "Mosaad",
+    "name": "Khaled Mosaad",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Momen",
+    "lastName": "Awad",
+    "name": "Momen Awad",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "El Shazly",
+    "name": "Ahmed El Shazly",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Tony",
+    "name": "Mohamed Tony",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Abdul Aati",
+    "name": "Mahmoud Dunga",
+    "aliases": "Dunga",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2016-2019"
+      },
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2022-2024"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Fakhri",
+    "name": "Mohamed Fakhri",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2020-2023"
+      },
+      {
+        "clubName": "Farco FC",
+        "country": "Egypt",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Isaac",
+    "lastName": "Saviour",
+    "name": "Saviour Isaac",
+    "nationality": "Nigeria",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Metwaly",
+    "name": "Canaria",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Hamdi",
+    "name": "Ahmed Hamdi",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Amr",
+    "lastName": "Saleh",
+    "name": "Amr Saleh",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Atef",
+    "name": "Ahmed Atef",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed Eid",
+    "lastName": "Nagy",
+    "name": "Ahmed Nagy",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "El Sayed",
+    "name": "Ahmed El Sayed",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Eid",
+    "name": "Ahmed Eid",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abubakar",
+    "lastName": "Liadi",
+    "name": "Abubakar Liadi",
+    "nationality": "Nigeria",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Islam",
+    "lastName": "Samir",
+    "name": "Islam Samir",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Fady",
+    "lastName": "Farid",
+    "name": "Fady Farid",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hossam",
+    "lastName": "Hassan",
+    "name": "Hossam Hassan",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2016-2021"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "John",
+    "lastName": "Ebuka",
+    "name": "John Ebuka",
+    "nationality": "Nigeria",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2022-2024"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Adham",
+    "lastName": "Alaa",
+    "name": "Adham Alaa",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Ittihad Alexandria",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Essam",
+    "lastName": "Tharwat",
+    "name": "Essam Tharwat",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Hamdy",
+    "name": "Mahmoud Hamdy",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Shehata",
+    "name": "Mohamed Shehata",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Wahp",
+    "name": "Ahmed Wahp",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Baher",
+    "lastName": "El Mohamady",
+    "name": "Baher El Mohamady",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2015-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Ayman Mansour",
+    "name": "Ahmed Ayman Mansour",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2015-2018"
+      },
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Khaled",
+    "lastName": "Sobhi",
+    "name": "Khaled Sobhi",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Karim",
+    "lastName": "El Eraki",
+    "name": "Karim El Eraki",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2017-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Amr",
+    "lastName": "El Saadawy",
+    "name": "Amr El Saadawy",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "El Aash",
+    "name": "Mostafa El Aash",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Hashem",
+    "name": "Mohamed Hashem",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2017-2024"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdel Wahab",
+    "lastName": "Nader",
+    "name": "Abdel Wahab Nader",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Makhlouf",
+    "name": "Mohamed Makhlouf",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hassan",
+    "lastName": "Ali",
+    "name": "Hassan Ali",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Abou El Kheir",
+    "name": "Mostafa Abou El Kheir",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Hamada",
+    "name": "Mahmoud Hamada",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Farco FC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Youssef",
+    "lastName": "El Gohary",
+    "name": "Youssef El Gohary",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ameed",
+    "lastName": "Sawafta",
+    "name": "Ameed Sawafta",
+    "nationality": "Palestine",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Bonheur",
+    "lastName": "Mugisha",
+    "name": "Bonheur Mugisha",
+    "nationality": "Rwanda",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      { "clubName": "APR FC", "country": "Rwanda", "approxYears": "2021-2023" },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Moustafa",
+    "lastName": "Zeidan",
+    "name": "Moustafa Zeidan",
+    "nationality": "Palestine",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Malmö FF",
+        "country": "Sweden",
+        "approxYears": "2022-2024"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Oussama",
+    "lastName": "Zemraoui",
+    "name": "Oussama Zemraoui",
+    "nationality": "Morocco",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "SCC Mohammédia",
+        "country": "Morocco",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ziad",
+    "lastName": "Farag",
+    "name": "Ziad Farag",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Omar",
+    "lastName": "El Saaiy",
+    "name": "Omar El Saaiy",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2021-2024"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Ashraf",
+    "name": "Mahmoud Ashraf",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Ali",
+    "name": "Ahmed Ali",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Salah",
+    "lastName": "Mohsen",
+    "name": "Salah Mohsen",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2018-2024"
+      },
+      { "clubName": "Smouha SC", "country": "Egypt", "approxYears": "2020" },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Karim",
+    "lastName": "Bambo",
+    "name": "Karim Bambo",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2014-2015"
+      },
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2016-2019"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2021-2024"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "El Shami",
+    "name": "Mohamed El Shami",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2016-2017"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2017-2018"
+      },
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2018-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "El Armouty",
+    "name": "Ahmed El Armouty",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Kingsley",
+    "lastName": "Eduwo",
+    "name": "Kingsley Eduwo",
+    "nationality": "Nigeria",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "CS Sfaxien",
+        "country": "Tunisia",
+        "approxYears": "2018-2021"
+      },
+      {
+        "clubName": "Al-Arabi",
+        "country": "Kuwait",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mounder",
+    "lastName": "Temine",
+    "name": "Mounder Temine",
+    "nationality": "Algeria",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "CS Constantine",
+        "country": "Algeria",
+        "approxYears": "2021-2024"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abderrahim",
+    "lastName": "Deghmoum",
+    "name": "Abderrahim Deghmoum",
+    "nationality": "Algeria",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Masry SC",
+    "clubHistory": [
+      {
+        "clubName": "ES Sétif",
+        "country": "Algeria",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Aboul-Saoud",
+    "name": "Mahmoud Aboul-Saoud",
+    "nationality": "Egypt",
+    "dateOfBirth": "1987-11-30",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mansoura",
+        "country": "Egypt",
+        "approxYears": "2008-2010"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2010-2014"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2014-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "El Hadary",
+    "name": "Mahmoud El Hadary",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Fawzi",
+    "name": "Mohamed Fawzi",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2017-2024"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "Tarek Soliman",
+    "name": "Ali Tarek Soliman",
+    "nationality": "Egypt",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hassan",
+    "lastName": "Shakosh",
+    "name": "Hassan Shakosh",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Hamed",
+    "name": "Mohamed Hamed",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Louay",
+    "lastName": "Wael",
+    "name": "Louay Wael",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2014-2015"
+      },
+      {
+        "clubName": "El Entag El Harby",
+        "country": "Egypt",
+        "approxYears": "2015-2018"
+      },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Joseph",
+    "lastName": "Ochaya",
+    "name": "Joseph Ochaya",
+    "nationality": "Uganda",
+    "dateOfBirth": "1993-12-14",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Asante Kotoko",
+        "country": "Ghana",
+        "approxYears": "2013-2014"
+      },
+      {
+        "clubName": "KCCA FC",
+        "country": "Uganda",
+        "approxYears": "2015-2017"
+      },
+      {
+        "clubName": "Lusaka Dynamos",
+        "country": "Zambia",
+        "approxYears": "2017-2018"
+      },
+      {
+        "clubName": "TP Mazembe",
+        "country": "DR Congo",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Nader",
+    "lastName": "Hesham",
+    "name": "Nader Hesham",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Hozian",
+    "name": "Mohamed Hozian",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Sherif",
+    "lastName": "Reda",
+    "name": "Sherif Reda",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2019-2024"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed Magdy",
+    "lastName": "Kahraba",
+    "name": "Kahraba",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Gamal",
+    "name": "Mostafa Gamal",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Youssef",
+    "lastName": "Abou-Hashima",
+    "name": "Youssef Abou-Hashima",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Omar",
+    "lastName": "El Wahsh",
+    "name": "Omar El Wahsh",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2014-2023"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Islam",
+    "lastName": "Gaber",
+    "name": "Islam Gaber",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "Akmal",
+    "name": "Abdelrahman Akmal",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Abdelnasser",
+    "name": "Mohamed Abdelnasser",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Fouad",
+    "name": "Ahmed Fouad",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Sobhi",
+    "name": "Mostafa Sobhi",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Ouled Behi",
+    "name": "Ahmed Ouled Behi",
+    "nationality": "Tunisia",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "ES Métlaoui",
+        "country": "Tunisia",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mido",
+    "lastName": "Gaber",
+    "name": "Mido Gaber",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2016-2019"
+      },
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2023-2025"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Anas",
+    "lastName": "Baniouwda",
+    "name": "Anas Baniouwda",
+    "nationality": "Palestine",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Shady",
+    "lastName": "Hussein",
+    "name": "Shady Hussein",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2014-2022"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      { "clubName": "ZED FC", "country": "Egypt", "approxYears": "2023-2025" },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2025-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Shokry",
+    "lastName": "Naguib",
+    "name": "Shokry Naguib",
+    "nationality": "Egypt",
+    "dateOfBirth": "1994-05-01",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2013-2022"
+      },
+      {
+        "clubName": "Pharco FC",
+        "country": "Egypt",
+        "approxYears": "2022-2024"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Salem",
+    "name": "Mohamed Salem",
+    "nationality": "Egypt",
+    "dateOfBirth": "1994-01-01",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2013-2015"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2015-2016"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Joackiam",
+    "lastName": "Ojera",
+    "name": "Joackiam Ojera",
+    "nationality": "Uganda",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      { "clubName": "URA FC", "country": "Uganda", "approxYears": "2018-2022" },
+      {
+        "clubName": "Rayon Sports",
+        "country": "Rwanda",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Abou-Gouda",
+    "name": "Mahmoud Abou-Gouda",
+    "nationality": "Egypt",
+    "primaryPosition": "Forward",
+    "currentClub": "Al Mokawloon Al Arab SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon Al Arab SC",
+        "country": "Egypt",
+        "approxYears": "present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Bassam",
+    "name": "Mohamed Bassam",
+    "nationality": "Egypt",
+    "dateOfBirth": "1990-12-25",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2013-2022"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "El Gabry",
+    "name": "Ali El Gabry",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-02-14",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Saad",
+    "lastName": "Samir",
+    "name": "Saad Samir",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-04-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2009-2021"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2010-2011"
+      },
+      {
+        "clubName": "Future FC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ragab",
+    "lastName": "Nabil",
+    "name": "Ragab Nabil",
+    "nationality": "Egypt",
+    "dateOfBirth": "1993-10-18",
+    "primaryPosition": "Defender",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Wadi Degla FC",
+        "country": "Egypt",
+        "approxYears": "2014-2016"
+      },
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2018-2022"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Hany",
+    "name": "Ahmed Hany",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-03-24",
+    "primaryPosition": "Defender",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2015-2018"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Tala'ea El Gaish SC",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Nabil",
+    "name": "Mahmoud Nabil",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-01-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Adel",
+    "name": "Mohamed Adel",
+    "nationality": "Egypt",
+    "dateOfBirth": "1995-12-11",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Belhadji",
+    "name": "Ahmed Belhadji",
+    "nationality": "Morocco",
+    "dateOfBirth": "1997-11-16",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Orihuela",
+        "country": "Spain",
+        "approxYears": "2018-2019"
+      },
+      { "clubName": "Linense", "country": "Spain", "approxYears": "2019-2020" },
+      {
+        "clubName": "Inter d'Escaldes",
+        "country": "Andorra",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Aswan SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      { "clubName": "Zamalek SC", "country": "Egypt", "approxYears": "2023" },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Sodiq",
+    "lastName": "Awujoola",
+    "name": "Sodiq Awujoola",
+    "nationality": "Nigeria",
+    "dateOfBirth": "2000-11-10",
+    "primaryPosition": "Forward",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Shooting Stars",
+        "country": "Nigeria",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed Yasser",
+    "lastName": "Rayan",
+    "name": "Ahmed Yasser Rayan",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-01-24",
+    "primaryPosition": "Forward",
+    "currentClub": "Ceramica Cleopatra FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2017-2022"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      { "clubName": "Altay", "country": "Turkey", "approxYears": "2021-2022" },
+      {
+        "clubName": "Ceramica Cleopatra FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Masoud",
+    "name": "Ahmed Masoud",
+    "nationality": "Egypt",
+    "dateOfBirth": "1991-12-15",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "El Gouna FC",
+    "clubHistory": [
+      {
+        "clubName": "Telephonat Beni Suef",
+        "country": "Egypt",
+        "approxYears": "2013-2014"
+      },
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2015-2017"
+      },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2017-2023"
+      },
+      {
+        "clubName": "Tala'ea El Gaish SC",
+        "country": "Egypt",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Sabry",
+    "lastName": "Rahil",
+    "name": "Sabry Rahil",
+    "nationality": "Egypt",
+    "dateOfBirth": "1987-10-02",
+    "primaryPosition": "Defender",
+    "currentClub": "El Gouna FC",
+    "clubHistory": [
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2009-2010"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2009-2013"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2013-2019"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2019-2023"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Abdel Naby",
+    "name": "Ahmed Abdel Naby",
+    "nationality": "Egypt",
+    "dateOfBirth": "2000-04-21",
+    "primaryPosition": "Defender",
+    "currentClub": "El Gouna FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "El Dakhleya",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "El Shimi",
+    "name": "Ahmed El Shimi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1995-11-20",
+    "primaryPosition": "Midfielder",
+    "currentClub": "El Gouna FC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2015-2018"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab",
+        "country": "Egypt",
+        "approxYears": "2018-2023"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Hossam",
+    "lastName": "Ghanem",
+    "name": "Hossam Ghanem",
+    "aliases": "Hossam Ivo",
+    "nationality": "Egypt",
+    "dateOfBirth": "1998-05-15",
+    "primaryPosition": "Forward",
+    "currentClub": "El Gouna FC",
+    "clubHistory": [
+      {
+        "clubName": "Pyramids FC",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Arnaud",
+    "lastName": "Randrianantenaina",
+    "name": "Arnaud Randrianantenaina",
+    "nationality": "Madagascar",
+    "dateOfBirth": "2001-01-03",
+    "primaryPosition": "Forward",
+    "currentClub": "El Gouna FC",
+    "clubHistory": [
+      {
+        "clubName": "CNaPS Sport",
+        "country": "Madagascar",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "JS Saint-Pierroise",
+        "country": "Réunion",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "Samir",
+    "name": "Abdelrahman Samir",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-01-16",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "Fawzi",
+    "name": "Ali Fawzi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-03-01",
+    "primaryPosition": "Defender",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "Aluminium Nag Hammadi",
+        "country": "Egypt",
+        "approxYears": "2014-2016"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2016-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Kalosha",
+    "name": "Ahmed Kalosha",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-12-05",
+    "primaryPosition": "Defender",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "El Nasr SC",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Sebiha",
+    "name": "Ahmed Sebiha",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-01-01",
+    "primaryPosition": "Defender",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "Misr Lel Makkasa",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Youssef",
+    "name": "Ahmed Youssef",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-04-12",
+    "primaryPosition": "Midfielder",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      },
+      { "clubName": "ZED FC", "country": "Egypt", "approxYears": "2020-2021" }
+    ]
+  },
+  {
+    "firstName": "Moustafa",
+    "lastName": "Shakshak",
+    "name": "Moustafa Shakshak",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-08-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Rafik",
+    "lastName": "Kabou",
+    "name": "Rafik Kabou",
+    "nationality": "Tunisia",
+    "dateOfBirth": "1992-10-28",
+    "primaryPosition": "Forward",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "CS Sfaxien",
+        "country": "Tunisia",
+        "approxYears": "2011-2015"
+      },
+      {
+        "clubName": "US Monastir",
+        "country": "Tunisia",
+        "approxYears": "2017-2019"
+      },
+      {
+        "clubName": "Wadi Degla FC",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ahmed",
+    "lastName": "Amin",
+    "name": "Ahmed Amin Aoufa",
+    "aliases": "Aoufa",
+    "nationality": "Egypt",
+    "dateOfBirth": "1996-10-06",
+    "primaryPosition": "Forward",
+    "currentClub": "ENPPI SC",
+    "clubHistory": [
+      {
+        "clubName": "Eastern Company SC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Amer",
+    "lastName": "Amer",
+    "name": "Amer Amer",
+    "nationality": "Egypt",
+    "dateOfBirth": "1987-02-14",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Ghazl El Mahalla SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2009-2012"
+      },
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2012-2015"
+      },
+      {
+        "clubName": "El Entag El Harby",
+        "country": "Egypt",
+        "approxYears": "2015-2021"
+      },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab",
+        "country": "Egypt",
+        "approxYears": "2023-2024"
+      },
+      {
+        "clubName": "Ghazl El Mahalla SC",
+        "country": "Egypt",
+        "approxYears": "2024-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdo",
+    "lastName": "Yehia",
+    "name": "Abdo Yehia",
+    "nationality": "Egypt",
+    "dateOfBirth": "1999-03-01",
+    "primaryPosition": "Forward",
+    "currentClub": "Ghazl El Mahalla SC",
+    "clubHistory": [
+      {
+        "clubName": "Ghazl El Mahalla SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      },
+      { "clubName": "Al Masry SC", "country": "Egypt", "approxYears": "2023" }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Gaber",
+    "name": "Mohamed Gaber",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-10-31",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Ghazl El Mahalla SC",
+    "clubHistory": [
+      { "clubName": "Tanta", "country": "Egypt", "approxYears": "2016-2018" },
+      {
+        "clubName": "Al Masry SC",
+        "country": "Egypt",
+        "approxYears": "2018-2021"
+      },
+      {
+        "clubName": "El Tala'ea",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Ghazl El Mahalla SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Abdelrehim",
+    "name": "Mahmoud Genesh",
+    "aliases": "Genesh",
+    "nationality": "Egypt",
+    "dateOfBirth": "1987-05-25",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Modern Sport Club",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2011-2021"
+      },
+      {
+        "clubName": "Modern Sport Club",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Basem",
+    "lastName": "Ali",
+    "name": "Basem Ali",
+    "nationality": "Egypt",
+    "dateOfBirth": "1988-10-27",
+    "primaryPosition": "Defender",
+    "currentClub": "Modern Sport Club",
+    "clubHistory": [
+      {
+        "clubName": "Al Mokawloon",
+        "country": "Egypt",
+        "approxYears": "2009-2014"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2014-2020"
+      },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "Al Mokawloon",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Modern Sport Club",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Joseph",
+    "lastName": "Ngwem",
+    "name": "Joseph Ngwem",
+    "nationality": "Cameroon",
+    "dateOfBirth": "1991-08-09",
+    "primaryPosition": "Defender",
+    "currentClub": "Modern Sport Club",
+    "clubHistory": [
+      {
+        "clubName": "Unisport Bafang",
+        "country": "Cameroon",
+        "approxYears": "2015-2016"
+      },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2018-2021"
+      },
+      {
+        "clubName": "Modern Sport Club",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ghanam",
+    "lastName": "Mohamed",
+    "name": "Ghanam Mohamed",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-03-12",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Modern Sport Club",
+    "clubHistory": [
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "El Entag El Harby",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Modern Sport Club",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "Zaazaa",
+    "name": "Ali Zaazaa",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Modern Sport Club",
+    "clubHistory": [
+      {
+        "clubName": "El Gouna FC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Modern Sport Club",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Marwan",
+    "lastName": "Mohsen",
+    "name": "Marwan Mohsen",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-02-26",
+    "primaryPosition": "Forward",
+    "currentClub": "Modern Sport Club",
+    "clubHistory": [
+      {
+        "clubName": "Petrojet",
+        "country": "Egypt",
+        "approxYears": "2010-2014"
+      },
+      {
+        "clubName": "Gil Vicente",
+        "country": "Portugal",
+        "approxYears": "2014-2015"
+      },
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2015-2016"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2016-2021"
+      },
+      {
+        "clubName": "Modern Sport Club",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Abou Gabal",
+    "name": "Mohamed Abou Gabal",
+    "aliases": "Gabaski",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-01-29",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "National Bank of Egypt SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2010-2013"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2013-2016"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2016-2019"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ayman",
+    "lastName": "Ashraf",
+    "name": "Ayman Ashraf",
+    "nationality": "Egypt",
+    "dateOfBirth": "1991-04-09",
+    "primaryPosition": "Defender",
+    "currentClub": "National Bank of Egypt SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2009-2013"
+      },
+      {
+        "clubName": "Telephonat Beni Suef",
+        "country": "Egypt",
+        "approxYears": "2012"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2013-2017"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2017-2023"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Issahaku",
+    "lastName": "Yakubu",
+    "name": "Isaac Yakubu",
+    "nationality": "Ghana",
+    "dateOfBirth": "1994-05-18",
+    "primaryPosition": "Defender",
+    "currentClub": "National Bank of Egypt SC",
+    "clubHistory": [
+      {
+        "clubName": "Lierse",
+        "country": "Belgium",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "Ergotelis",
+        "country": "Greece",
+        "approxYears": "2018-2019"
+      },
+      {
+        "clubName": "Wadi Degla",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Osama",
+    "lastName": "Faisal",
+    "name": "Osama Faisal",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-01-01",
+    "primaryPosition": "Forward",
+    "currentClub": "National Bank of Egypt SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2020-2023"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Kaoud",
+    "name": "Mahmoud Kaoud",
+    "nationality": "Egypt",
+    "dateOfBirth": "1988-08-27",
+    "primaryPosition": "Forward",
+    "currentClub": "National Bank of Egypt SC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2014-2020"
+      },
+      {
+        "clubName": "National Bank of Egypt SC",
+        "country": "Egypt",
+        "approxYears": "2020-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ismail",
+    "lastName": "Bamba",
+    "name": "Ismail Bamba",
+    "nationality": "Ivory Coast",
+    "primaryPosition": "Forward",
+    "currentClub": "Petrojet SC",
+    "clubHistory": [
+      {
+        "clubName": "El Dakhleya",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Petrojet SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "El Hany",
+    "lastName": "Soliman",
+    "name": "El Hany Soliman",
+    "nationality": "Egypt",
+    "dateOfBirth": "1984-11-20",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Smouha SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2006-2019"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2019-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mahmoud",
+    "lastName": "Shabana",
+    "name": "Mahmoud Shabana",
+    "nationality": "Egypt",
+    "dateOfBirth": "1995-04-06",
+    "primaryPosition": "Defender",
+    "currentClub": "Smouha SC",
+    "clubHistory": [
+      { "clubName": "FC Masr", "country": "Egypt", "approxYears": "2019-2020" },
+      {
+        "clubName": "Ghazl El Mahalla",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2021-2023"
+      },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2022"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Barakat",
+    "lastName": "Haggag",
+    "name": "Barakat Haggag",
+    "nationality": "Egypt",
+    "primaryPosition": "Defender",
+    "currentClub": "Smouha SC",
+    "clubHistory": [
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Tarek",
+    "lastName": "Alaa",
+    "name": "Tarek Alaa",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Smouha SC",
+    "clubHistory": [
+      {
+        "clubName": "Zamalek SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Junior",
+    "lastName": "Ajayi",
+    "name": "Junior Ajayi",
+    "nationality": "Nigeria",
+    "dateOfBirth": "1996-01-29",
+    "primaryPosition": "Forward",
+    "currentClub": "Smouha SC",
+    "clubHistory": [
+      {
+        "clubName": "CS Sfaxien",
+        "country": "Tunisia",
+        "approxYears": "2015-2016"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2016-2021"
+      },
+      {
+        "clubName": "Al Nasr Benghazi",
+        "country": "Libya",
+        "approxYears": "2022"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Omar",
+    "lastName": "Radwan",
+    "name": "Omar Radwan",
+    "nationality": "Egypt",
+    "dateOfBirth": "1997-07-31",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "Tala'ea El Gaish SC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2016-2018"
+      },
+      {
+        "clubName": "El Sharkia",
+        "country": "Egypt",
+        "approxYears": "2016-2017"
+      },
+      { "clubName": "El Raja", "country": "Egypt", "approxYears": "2017-2018" },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2018-2021"
+      },
+      { "clubName": "Aswan", "country": "Egypt", "approxYears": "2021" },
+      {
+        "clubName": "Ismaily SC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Tala'ea El Gaish SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Khaled",
+    "lastName": "Stouhi",
+    "name": "Khaled Stouhi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-01-01",
+    "primaryPosition": "Defender",
+    "currentClub": "Tala'ea El Gaish SC",
+    "clubHistory": [
+      {
+        "clubName": "Ittihad El Shorta",
+        "country": "Egypt",
+        "approxYears": "2012-2016"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2016-2017"
+      },
+      {
+        "clubName": "Tala'ea El Gaish SC",
+        "country": "Egypt",
+        "approxYears": "2017-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Islam",
+    "lastName": "Mohareb",
+    "name": "Islam Mohareb",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-01-01",
+    "primaryPosition": "Midfielder",
+    "currentClub": "Tala'ea El Gaish SC",
+    "clubHistory": [
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2013-2015"
+      },
+      {
+        "clubName": "Smouha SC",
+        "country": "Egypt",
+        "approxYears": "2015-2017"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2017-2019"
+      },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2019-2021"
+      },
+      {
+        "clubName": "Tala'ea El Gaish SC",
+        "country": "Egypt",
+        "approxYears": "2021-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Karim",
+    "lastName": "Tarek",
+    "name": "Karim Tarek",
+    "nationality": "Egypt",
+    "dateOfBirth": "1992-01-23",
+    "primaryPosition": "Forward",
+    "currentClub": "Tala'ea El Gaish SC",
+    "clubHistory": [
+      {
+        "clubName": "Petrojet",
+        "country": "Egypt",
+        "approxYears": "2015-2019"
+      },
+      {
+        "clubName": "Tala'ea El Gaish",
+        "country": "Egypt",
+        "approxYears": "2019-2020"
+      },
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2020-2021"
+      },
+      {
+        "clubName": "El Gouna",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Tala'ea El Gaish SC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ali",
+    "lastName": "Lotfi",
+    "name": "Ali Lotfi",
+    "nationality": "Egypt",
+    "dateOfBirth": "1989-10-14",
+    "primaryPosition": "Goalkeeper",
+    "currentClub": "ZED FC",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2009-2018"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2018-2023"
+      },
+      {
+        "clubName": "ZED FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mohamed",
+    "lastName": "Samir",
+    "name": "Mohamed Samir",
+    "nationality": "Egypt",
+    "dateOfBirth": "1987-11-05",
+    "primaryPosition": "Defender",
+    "currentClub": "ZED FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2007-2012"
+      },
+      { "clubName": "Smouha SC", "country": "Egypt", "approxYears": "2012" },
+      {
+        "clubName": "Al Ittihad Alexandria",
+        "country": "Egypt",
+        "approxYears": "2013-2015"
+      },
+      {
+        "clubName": "Al Mokawloon Al Arab",
+        "country": "Egypt",
+        "approxYears": "2015-2022"
+      },
+      {
+        "clubName": "ZED FC",
+        "country": "Egypt",
+        "approxYears": "2022-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Mostafa",
+    "lastName": "Saad",
+    "name": "Mostafa Saad",
+    "aliases": "Messi",
+    "nationality": "Egypt",
+    "dateOfBirth": "2001-08-22",
+    "primaryPosition": "Midfielder",
+    "currentClub": "ZED FC",
+    "clubHistory": [
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2020-2022"
+      },
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      { "clubName": "Smouha SC", "country": "Egypt", "approxYears": "2023" },
+      {
+        "clubName": "ZED FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Abdelrahman",
+    "lastName": "El Banouby",
+    "name": "Abdelrahman El Banouby",
+    "nationality": "Egypt",
+    "primaryPosition": "Midfielder",
+    "currentClub": "ZED FC",
+    "clubHistory": [
+      {
+        "clubName": "Al Ahly SC",
+        "country": "Egypt",
+        "approxYears": "2021-2022"
+      },
+      {
+        "clubName": "Ceramica Cleopatra",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "ZED FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Peter",
+    "lastName": "Mutumosi",
+    "name": "Peter Mutumosi",
+    "nationality": "DR Congo",
+    "dateOfBirth": "1998-05-25",
+    "primaryPosition": "Midfielder",
+    "currentClub": "ZED FC",
+    "clubHistory": [
+      {
+        "clubName": "AS Vita Club",
+        "country": "DR Congo",
+        "approxYears": "2020-2023"
+      },
+      {
+        "clubName": "ZED FC",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  },
+  {
+    "firstName": "Ibrahim",
+    "lastName": "Galal",
+    "name": "Ibrahim Galal",
+    "nationality": "Egypt",
+    "dateOfBirth": "1990-03-24",
+    "primaryPosition": "Forward",
+    "currentClub": "Abou Qir",
+    "clubHistory": [
+      {
+        "clubName": "ENPPI SC",
+        "country": "Egypt",
+        "approxYears": "2019-2022"
+      },
+      {
+        "clubName": "El Dakhleya",
+        "country": "Egypt",
+        "approxYears": "2022-2023"
+      },
+      {
+        "clubName": "Abou Qir",
+        "country": "Egypt",
+        "approxYears": "2023-present"
+      }
+    ]
+  }
+]
