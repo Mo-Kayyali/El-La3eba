@@ -40,17 +40,17 @@ export declare class AuthService {
             gameSessionId: string;
             createdAt: string;
         } | null;
+        role: import(".prisma/client").$Enums.Role;
+        id: string;
         email: string;
         username: string;
-        id: string;
-        createdAt: Date;
         isVerified: boolean;
         mmr: number;
         gamesPlayed: number;
         wins: number;
         offlineDisconnectCount: number;
         lastDisconnectAt: Date | null;
-        role: import(".prisma/client").$Enums.Role;
+        createdAt: Date;
     }>;
     acknowledgeOfflinePenalty(userId: string): Promise<{
         success: boolean;

@@ -3,10 +3,10 @@ export declare class AdminCompetitionsController {
     private readonly competitionsService;
     constructor(competitionsService: AdminCompetitionsService);
     create(createDto: CreateCompetitionDto, req: any): Promise<{
-        type: import(".prisma/client").$Enums.CompetitionType;
         id: string;
         createdAt: Date;
         name: string;
+        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
@@ -14,10 +14,10 @@ export declare class AdminCompetitionsController {
     }>;
     findAll(countryCode?: string, search?: string, page?: string, limit?: string, sort?: string, order?: string): Promise<{
         data: {
-            type: import(".prisma/client").$Enums.CompetitionType;
             id: string;
             createdAt: Date;
             name: string;
+            type: import(".prisma/client").$Enums.CompetitionType;
             createdBy: string | null;
             countryCode: string | null;
             region: import(".prisma/client").$Enums.Region | null;
@@ -30,30 +30,30 @@ export declare class AdminCompetitionsController {
         };
     }>;
     findOne(id: string): Promise<{
-        type: import(".prisma/client").$Enums.CompetitionType;
         id: string;
         createdAt: Date;
         name: string;
+        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     update(id: string, updateDto: UpdateCompetitionDto, req: any): Promise<{
-        type: import(".prisma/client").$Enums.CompetitionType;
         id: string;
         createdAt: Date;
         name: string;
+        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
     remove(id: string): Promise<{
-        type: import(".prisma/client").$Enums.CompetitionType;
         id: string;
         createdAt: Date;
         name: string;
+        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
         region: import(".prisma/client").$Enums.Region | null;

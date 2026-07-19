@@ -80,9 +80,10 @@ export declare class AdminPlayersService {
             id: string;
             createdAt: Date;
             name: string;
+            clubs: string[];
+            competitions: string[];
             createdBy: string | null;
             aliases: string[];
-            competitions: string[];
             firstName: string;
             lastName: string;
             nationality: string;
@@ -95,7 +96,6 @@ export declare class AdminPlayersService {
             isRetired: boolean;
             currentClubId: string | null;
             imageUrl: string | null;
-            clubs: string[];
         })[];
         meta: {
             total: number;
@@ -109,11 +109,11 @@ export declare class AdminPlayersService {
                 id: string;
                 createdAt: Date;
                 name: string;
+                competitions: string[];
                 createdBy: string | null;
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
-                competitions: string[];
                 logoUrl: string | null;
             };
         } & {
@@ -128,20 +128,21 @@ export declare class AdminPlayersService {
             id: string;
             createdAt: Date;
             name: string;
+            competitions: string[];
             createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
-            competitions: string[];
             logoUrl: string | null;
         } | null;
     } & {
         id: string;
         createdAt: Date;
         name: string;
+        clubs: string[];
+        competitions: string[];
         createdBy: string | null;
         aliases: string[];
-        competitions: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -154,15 +155,15 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
     create(dto: CreatePlayerDto, adminUserId: string): Promise<{
         id: string;
         createdAt: Date;
         name: string;
+        clubs: string[];
+        competitions: string[];
         createdBy: string | null;
         aliases: string[];
-        competitions: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -175,7 +176,6 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
     update(id: string, dto: PatchPlayerDto, adminUserId: string): Promise<{
         playerClubs: ({
@@ -183,11 +183,11 @@ export declare class AdminPlayersService {
                 id: string;
                 createdAt: Date;
                 name: string;
+                competitions: string[];
                 createdBy: string | null;
                 aliases: string[];
                 countryCode: string;
                 currentCompetitionId: string | null;
-                competitions: string[];
                 logoUrl: string | null;
             };
         } & {
@@ -202,20 +202,21 @@ export declare class AdminPlayersService {
             id: string;
             createdAt: Date;
             name: string;
+            competitions: string[];
             createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
-            competitions: string[];
             logoUrl: string | null;
         } | null;
     } & {
         id: string;
         createdAt: Date;
         name: string;
+        clubs: string[];
+        competitions: string[];
         createdBy: string | null;
         aliases: string[];
-        competitions: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -228,15 +229,15 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
     remove(id: string): Promise<{
         id: string;
         createdAt: Date;
         name: string;
+        clubs: string[];
+        competitions: string[];
         createdBy: string | null;
         aliases: string[];
-        competitions: string[];
         firstName: string;
         lastName: string;
         nationality: string;
@@ -249,6 +250,5 @@ export declare class AdminPlayersService {
         isRetired: boolean;
         currentClubId: string | null;
         imageUrl: string | null;
-        clubs: string[];
     }>;
 }

@@ -195,3 +195,7 @@ reviewedAt  datetime?
 - **Strikes Mode:** Best-of-3 rounds, turn-based. Players alternate guesses; wrong guesses award a strike. 3 strikes lose the round.
 - **Top 10 Mode:** Single-round, turn-based. Players alternate claiming Top 10 ranks. Correct guesses award `+rank` (1-10). Guesses on 'trap' ranks (11-13) subtract 3, 2, 1 point respectively. Turn timer timeout counts as a wrong guess. A player is skipped on their turn if they reach 3 wrong guesses. The match ends when all 10 real ranks are claimed or both players reach 3 wrong guesses. In case of a tie on score, the player with fewer wrong guesses wins; if still tied, the match ends in a genuine draw (`winnerId: null`, resulting in no MMR change).
 - **Admin UI Extensions:** The Admin Dashboard Question editor allows rank values up to `13` for `TOP_10` mode, and visually highlights answers with rank > 10 as `Trap` to ensure editors understand they are penalized positions.
+
+## 5. Data Seeding & Enrichment
+
+- **Current Player Database:** As of the latest top-5 leagues + top-players enrichment pass, the database contains **4114** total players. The data includes updated clubs, full club histories (`PlayerClub` records), and corrected nationalities. All legacy data scripts used for importing were throwaway and removed after running.
