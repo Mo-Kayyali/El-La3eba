@@ -23,7 +23,6 @@ const game_service_1 = require("./game.service");
 const redis_service_1 = require("../redis/redis.service");
 const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
-const game_questions_1 = require("./game.questions");
 const elo_util_1 = require("./elo.util");
 const friends_service_1 = require("../friends/friends.service");
 const users_service_1 = require("../users/users.service");
@@ -518,7 +517,13 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.guessedPlayers = [];
-                        latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                        const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.usedQuestionIds || []);
+                        latest.currentQuestion = nextQuestion;
+                        if (nextQuestion) {
+                            if (!latest.usedQuestionIds)
+                                latest.usedQuestionIds = [];
+                            latest.usedQuestionIds.push(nextQuestion.id);
+                        }
                         if (latest.currentRound === 2)
                             latest.currentTurn = latest.players[1];
                         else if (latest.currentRound === 3)
@@ -1025,9 +1030,41 @@ let GameGateway = GameGateway_1 = class GameGateway {
             const key = `game:${gameSessionId}`;
             this.clearTurnTimer(gameSessionId);
             this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
-            const matchedPlayer = await this.gameService.guessPlayer(guessName);
-            this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
-            const initialIsCorrect = !!matchedPlayer;
+            const matchedPlayers = await this.gameService.guessPlayer(guessName);
+            this.logger.log(`Fuzzy search complete. Matches found: ${matchedPlayers.length}`);
+            let matchedPlayer = null;
+            let initialIsCorrect = false;
+            if (matchedPlayers.length > 0) {
+                const currentStateStr = await this.redisClient.get(key);
+                if (currentStateStr) {
+                    try {
+                        const currentState = JSON.parse(currentStateStr);
+                        if (currentState.currentQuestion) {
+                            for (const p of matchedPlayers) {
+                                const alreadyGuessed = currentState.guessedPlayers?.some((g) => (typeof g === 'string' ? g : g?.name) === p.name);
+                                if (alreadyGuessed)
+                                    continue;
+                                const isCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, p);
+                                if (isCorrect) {
+                                    matchedPlayer = p;
+                                    initialIsCorrect = true;
+                                    break;
+                                }
+                            }
+                            if (!matchedPlayer) {
+                                if (matchedPlayers[0].isAmbiguous) {
+                                    matchedPlayer = null;
+                                }
+                                else {
+                                    matchedPlayer = matchedPlayers[0];
+                                }
+                                initialIsCorrect = false;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
             let attempt = 0;
             let success = false;
             let state = null;
@@ -1057,21 +1094,32 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         return { status: 'error', message: 'Not your turn' };
                     }
                     finalIsCorrect = initialIsCorrect;
-                    if (finalIsCorrect) {
-                        if (state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
-                            finalIsCorrect = false;
-                            state.strikes[userId] += 1;
-                        }
-                        else {
+                    if (matchedPlayer &&
+                        state.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
+                        finalIsCorrect = false;
+                        state.strikes[userId] += 1;
+                    }
+                    else {
+                        if (finalIsCorrect) {
                             state.guessedPlayers.push({
                                 name: matchedPlayer.name,
+                                guessText: guessName,
                                 guessedBy: userId,
+                                isCorrect: true,
+                                playerId: matchedPlayer.id,
                             });
                             state.scores[userId] += 1;
                         }
-                    }
-                    else {
-                        state.strikes[userId] += 1;
+                        else {
+                            state.strikes[userId] += 1;
+                            state.guessedPlayers.push({
+                                name: matchedPlayer ? matchedPlayer.name : guessName,
+                                guessText: guessName,
+                                guessedBy: userId,
+                                isCorrect: false,
+                                playerId: matchedPlayer ? matchedPlayer.id : null,
+                            });
+                        }
                     }
                     isRoundOver = false;
                     isMatchOver = false;
@@ -1186,7 +1234,13 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
                         latest.guessedPlayers = [];
-                        latest.currentQuestion = (0, game_questions_1.pickRandomFootballQuestion)();
+                        const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.usedQuestionIds || []);
+                        latest.currentQuestion = nextQuestion;
+                        if (nextQuestion) {
+                            if (!latest.usedQuestionIds)
+                                latest.usedQuestionIds = [];
+                            latest.usedQuestionIds.push(nextQuestion.id);
+                        }
                         if (latest.currentRound === 2)
                             latest.currentTurn = latest.players[1];
                         else if (latest.currentRound === 3)

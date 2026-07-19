@@ -5,8 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { X, Crown, Swords, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/auth-store";
-import { refreshAuthProfile } from "@/lib/api";
+import { api, refreshAuthProfile } from "@/lib/api";
 import { useSocketStore } from "@/src/store/socketStore";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { getRank } from "@/lib/rank";
 import type { Socket } from "socket.io-client";
 
@@ -17,8 +18,20 @@ type Player = {
   [key: string]: unknown;
 };
 
+type Question = {
+  id: string;
+  text: string;
+  gameMode: string;
+  answerType: string;
+  filterType?: string | null;
+  filterValue?: string | null;
+  photoPlayerId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 /** A guess entry in the activity feed. Backend now sends objects with guessedBy. */
-type GuessEntry = { name: string; guessedBy: string } | string;
+type GuessEntry = { name: string; guessedBy: string; isCorrect?: boolean; playerId?: string | null; guessText?: string } | string;
 
 type GameState = {
   players?: Array<string | number | Player>;
@@ -26,7 +39,7 @@ type GameState = {
   scores?: Record<string, number> | number[];
   strikes?: Record<string, number> | number[];
   guessedPlayers?: GuessEntry[];
-  currentQuestion?: string;
+  currentQuestion?: Question;
   currentRound?: number;
   overallScores?: Record<string, number> | number[];
   status?: "in_progress" | "match_completed" | string;
@@ -35,7 +48,7 @@ type GameState = {
   playerMmr?: Record<string, number>;
   roundHistory?: Array<{
     round: number;
-    winner: string | number;
+    winner: string | null;
     scores: Record<string, number>;
   }>;
   turnDeadlineAt?: number;
@@ -63,9 +76,9 @@ function playerEntryToId(entry: unknown) {
   return undefined;
 }
 
-function coerceString(v: unknown) {
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
+function coerceString(val: unknown): string {
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
   return "";
 }
 
@@ -84,9 +97,18 @@ function getByKeyOrIndex(
 function parseGuessEntry(entry: GuessEntry): {
   name: string;
   guessedBy: string | null;
+  isCorrect: boolean;
+  playerId?: string | null;
+  guessText?: string;
 } {
-  if (typeof entry === "string") return { name: entry, guessedBy: null };
-  return { name: entry.name, guessedBy: entry.guessedBy };
+  if (typeof entry === "string") return { name: entry, guessedBy: null, isCorrect: true, guessText: entry };
+  return { 
+    name: entry.name, 
+    guessedBy: entry.guessedBy, 
+    isCorrect: entry.isCorrect ?? true,
+    playerId: entry.playerId,
+    guessText: entry.guessText || entry.name
+  };
 }
 
 function Logo() {
@@ -199,6 +221,17 @@ export default function GamePage() {
   const [rematchSecondsLeft, setRematchSecondsLeft] = useState(30);
   const [hasRequestedRematch, setHasRequestedRematch] = useState(false);
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
+
+  // Report Guess state
+  const [reportModalData, setReportModalData] = useState<{ 
+    playerId: string | null; 
+    guessText: string; 
+    matchedName: string | null;
+  } | null>(null);
+  const [reportIntent, setReportIntent] = useState<"matched" | "unmatched">("matched");
+  const [reportComment, setReportComment] = useState("");
+  const [reportedGuesses, setReportedGuesses] = useState<Set<string>>(new Set());
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   /** Populated from `matchOver` payload (ranked). */
   const [mmrDeltas, setMmrDeltas] = useState<Record<string, number> | null>(
@@ -611,7 +644,7 @@ export default function GamePage() {
   }, [isMatchOver]);
 
   const currentRound = gameState?.currentRound ?? 1;
-  const question = gameState?.currentQuestion ?? "Waiting for question...";
+  const question = gameState?.currentQuestion?.text ?? "Waiting for question...";
   const guessedPlayers = (gameState?.guessedPlayers ?? []) as GuessEntry[];
 
   const leftRoundScore = getByKeyOrIndex(gameState?.scores, leftId, 0);
@@ -657,6 +690,31 @@ export default function GamePage() {
     if (!trimmed || !canSubmit) return;
     socket?.emit("submitGuess", { gameSessionId, guessName: trimmed });
     setGuess("");
+  };
+
+  const submitReport = async () => {
+    if (!reportModalData || !gameState?.currentQuestion?.id || isSubmittingReport) return;
+    setIsSubmittingReport(true);
+    try {
+      const finalPlayerId = (reportModalData.playerId && reportIntent === "matched") 
+        ? reportModalData.playerId 
+        : null;
+
+      await api.post("/game/suggestions", {
+        questionId: gameState.currentQuestion.id,
+        playerId: finalPlayerId,
+        guessText: reportModalData.guessText,
+        comment: reportComment.trim() || undefined,
+      });
+      toast.success("Suggestion reported to admins!");
+      setReportedGuesses((prev) => new Set(prev).add(reportModalData.playerId || reportModalData.guessText));
+      setReportModalData(null);
+      setReportComment("");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to submit report.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   const displayName = (id: string | number | undefined, fallback: string) => {
@@ -1069,56 +1127,115 @@ export default function GamePage() {
           </div>
         </header>
 
-        {showForfeitModal && (
+        {reportModalData && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
             <div
               role="dialog"
               aria-modal="true"
-              aria-labelledby="forfeit-title"
-              className="w-full max-w-md rounded-3xl border border-red-500/25 bg-[#030712] p-8 shadow-[0_0_60px_rgba(239,68,68,0.12)]"
+              className="w-full max-w-md rounded-3xl border border-blue-500/25 bg-[#030712] p-8 shadow-[0_0_60px_rgba(59,130,246,0.12)]"
             >
-              <h3
-                id="forfeit-title"
-                className="text-lg font-extrabold text-white"
-              >
-                Forfeit this match?
+              <h3 className="text-lg font-extrabold text-white">
+                Report Suggestion
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                Are you sure? This counts as a loss and will drop your MMR in
-                ranked games.
-              </p>
+              
+              {reportModalData.playerId ? (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm leading-relaxed text-slate-400">
+                    You guessed <strong className="text-white">"{reportModalData.guessText}"</strong>, which matched <strong className="text-white">{reportModalData.matchedName}</strong>.
+                  </p>
+                  
+                  <div className="mt-2 space-y-2">
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.02] p-4 cursor-pointer hover:bg-white/[0.05] transition">
+                      <input
+                        type="radio"
+                        checked={reportIntent === "matched"}
+                        onChange={() => setReportIntent("matched")}
+                        className="h-4 w-4 shrink-0 text-blue-500 focus:ring-blue-500 bg-black border-slate-600"
+                      />
+                      <span className="text-sm font-medium text-slate-200">
+                        I meant <strong className="text-white">{reportModalData.matchedName}</strong> and they should be correct.
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.02] p-4 cursor-pointer hover:bg-white/[0.05] transition">
+                      <input
+                        type="radio"
+                        checked={reportIntent === "unmatched"}
+                        onChange={() => setReportIntent("unmatched")}
+                        className="h-4 w-4 shrink-0 text-blue-500 focus:ring-blue-500 bg-black border-slate-600"
+                      />
+                      <span className="text-sm font-medium text-slate-200">
+                        I meant someone else named <strong className="text-white">"{reportModalData.guessText}"</strong>.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <p className="text-sm leading-relaxed text-slate-400">
+                    We couldn't find a player matching <strong className="text-white">"{reportModalData.guessText}"</strong>. Do you want to suggest this player to the admins?
+                  </p>
+                </div>
+              )}
+              
+              <div className="mt-6">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Optional comment
+                </label>
+                <textarea
+                  value={reportComment}
+                  onChange={(e) => setReportComment(e.target.value)}
+                  placeholder="Why is this correct?"
+                  className="w-full rounded-2xl border border-white/[0.08] bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/8 transition resize-none h-24"
+                />
+              </div>
+
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowForfeitModal(false)}
+                  onClick={() => {
+                    setReportModalData(null);
+                    setReportComment("");
+                  }}
                   className="rounded-2xl border border-white/[0.1] bg-white/[0.05] px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/[0.08] transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!socket?.connected || !gameSessionId) return;
-                    socket.emit(
-                      "forfeitMatch",
-                      { gameSessionId },
-                      (res: { status?: string; message?: string }) => {
-                        if (res?.status === "ok") {
-                          setShowForfeitModal(false);
-                        } else {
-                          toast.error(res?.message ?? "Could not forfeit.");
-                        }
-                      },
-                    );
-                  }}
-                  className="rounded-2xl bg-gradient-to-r from-red-600 to-red-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(239,68,68,0.25)] hover:brightness-110 transition"
+                  onClick={submitReport}
+                  disabled={isSubmittingReport}
+                  className="rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(59,130,246,0.25)] hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Yes, forfeit
+                  {isSubmittingReport ? "Submitting..." : "Submit Report"}
                 </button>
               </div>
             </div>
           </div>
         )}
+
+      <ConfirmModal
+        isOpen={showForfeitModal}
+        onClose={() => setShowForfeitModal(false)}
+        title="Forfeit this match?"
+        message="Are you sure? This counts as a loss and will drop your MMR in ranked games."
+        onConfirm={() => {
+          if (!socket?.connected || !gameSessionId) return;
+          socket.emit(
+            "forfeitMatch",
+            { gameSessionId },
+            (res: { status?: string; message?: string }) => {
+              if (res?.status === "ok") {
+                setShowForfeitModal(false);
+              } else {
+                toast.error(res?.message ?? "Could not forfeit.");
+              }
+            },
+          );
+        }}
+        confirmText="Yes, forfeit"
+        isDestructive={true}
+      />
 
         {disconnectedUserId && !isMatchOver && (
           <div className="mt-5 flex justify-center">
@@ -1310,7 +1427,7 @@ export default function GamePage() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {guessedPlayers.map((entry, idx) => {
-                        const { name, guessedBy } = parseGuessEntry(entry);
+                        const { name, guessedBy, isCorrect, playerId, guessText } = parseGuessEntry(entry);
                         const isMine =
                           guessedBy !== null &&
                           String(guessedBy) === String(userId);
@@ -1318,18 +1435,36 @@ export default function GamePage() {
                           guessedBy !== null &&
                           String(guessedBy) !== String(userId);
 
+                        const isRejected = isCorrect === false;
+                        const reportKey = playerId || guessText || name;
+                        const hasReported = reportedGuesses.has(reportKey);
+
                         return (
                           <span
                             key={`${name}-${idx}`}
+                            onClick={() => {
+                              if (isRejected && !hasReported) {
+                                setReportModalData({ 
+                                  playerId: playerId || null, 
+                                  guessText: guessText || name,
+                                  matchedName: playerId ? name : null
+                                });
+                                setReportIntent("matched");
+                              }
+                            }}
                             className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                              isMine
-                                ? "border-blue-500/30 bg-blue-600/20 text-blue-100"
-                                : isOpponent
-                                  ? "border-red-500/30 bg-red-600/20 text-red-100"
-                                  : "border-white/[0.08] bg-white/[0.05] text-slate-300"
+                              isRejected
+                                ? hasReported
+                                  ? "border-amber-500/30 bg-amber-600/10 text-amber-200 opacity-50 cursor-not-allowed"
+                                  : "border-slate-500/30 bg-slate-600/10 text-slate-400 opacity-60 cursor-pointer hover:border-slate-400/50 hover:bg-slate-500/20"
+                                : isMine
+                                  ? "border-blue-500/30 bg-blue-600/20 text-blue-100"
+                                  : isOpponent
+                                    ? "border-red-500/30 bg-red-600/20 text-red-100"
+                                    : "border-white/[0.08] bg-white/[0.05] text-slate-300"
                             }`}
                           >
-                            {name}
+                            {name} {isRejected && hasReported && " (Reported)"}
                           </span>
                         );
                       })}

@@ -145,6 +145,7 @@ export class AuthService {
           createdAt: true,
           offlineDisconnectCount: true,
           lastDisconnectAt: true,
+          role: true,
         },
       }),
       this.prisma.friendship.count({

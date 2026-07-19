@@ -17,13 +17,16 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const leaderboard_service_1 = require("./leaderboard.service");
 const matchmaking_service_1 = require("./matchmaking.service");
+const game_service_1 = require("./game.service");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let GameController = class GameController {
     leaderboardService;
     matchmakingService;
-    constructor(leaderboardService, matchmakingService) {
+    gameService;
+    constructor(leaderboardService, matchmakingService, gameService) {
         this.leaderboardService = leaderboardService;
         this.matchmakingService = matchmakingService;
+        this.gameService = gameService;
     }
     async getLeaderboard() {
         return this.leaderboardService.getLeaderboard();
@@ -31,6 +34,12 @@ let GameController = class GameController {
     async getActiveGame(req) {
         const gameSessionId = await this.matchmakingService.getActiveGameSessionIdForUser(req.user.userId);
         return { gameSessionId };
+    }
+    async createSuggestion(req, body) {
+        if (!body.questionId || !body.guessText) {
+            return { status: 'error', message: 'Missing required fields' };
+        }
+        return this.gameService.createSuggestion(req.user.userId, body.questionId, body.playerId || null, body.guessText, body.comment);
     }
 };
 exports.GameController = GameController;
@@ -52,10 +61,22 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "getActiveGame", null);
+__decorate([
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Submit an answer suggestion for a rejected guess' }),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('suggestions'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "createSuggestion", null);
 exports.GameController = GameController = __decorate([
     (0, swagger_1.ApiTags)('Game'),
     (0, common_1.Controller)('game'),
     __metadata("design:paramtypes", [leaderboard_service_1.LeaderboardService,
-        matchmaking_service_1.MatchmakingService])
+        matchmaking_service_1.MatchmakingService,
+        game_service_1.GameService])
 ], GameController);
 //# sourceMappingURL=game.controller.js.map

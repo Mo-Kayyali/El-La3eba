@@ -17,7 +17,6 @@ import { GameService } from './game.service';
 import { RedisService } from '../redis/redis.service';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { pickRandomFootballQuestion } from './game.questions';
 import { scoreMarginMultiplier } from './elo.util';
 import { FriendsService } from '../friends/friends.service';
 import { UsersService } from '../users/users.service';
@@ -747,7 +746,12 @@ export class GameGateway
             latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.guessedPlayers = [];
-            latest.currentQuestion = pickRandomFootballQuestion();
+            const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.usedQuestionIds || []);
+            latest.currentQuestion = nextQuestion;
+            if (nextQuestion) {
+              if (!latest.usedQuestionIds) latest.usedQuestionIds = [];
+              latest.usedQuestionIds.push(nextQuestion.id);
+            }
             // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
             if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
             else if (latest.currentRound === 3)
@@ -1491,9 +1495,46 @@ export class GameGateway
 
       // 1. Database check (outside the retry loop)
       this.logger.log(`Performing fuzzy search for guess: "${guessName}"`);
-      const matchedPlayer = await this.gameService.guessPlayer(guessName);
-      this.logger.log(`Fuzzy search complete. Match found: ${!!matchedPlayer}`);
-      const initialIsCorrect = !!matchedPlayer;
+      const matchedPlayers = await this.gameService.guessPlayer(guessName);
+      this.logger.log(`Fuzzy search complete. Matches found: ${matchedPlayers.length}`);
+
+      let matchedPlayer: any = null;
+      let initialIsCorrect = false;
+
+      if (matchedPlayers.length > 0) {
+        const currentStateStr = await this.redisClient.get(key);
+        if (currentStateStr) {
+          try {
+            const currentState = JSON.parse(currentStateStr);
+            if (currentState.currentQuestion) {
+              for (const p of matchedPlayers) {
+                // Check if already guessed
+                const alreadyGuessed = currentState.guessedPlayers?.some(
+                  (g: any) => (typeof g === 'string' ? g : g?.name) === p.name
+                );
+                if (alreadyGuessed) continue; // Skip already taken candidates
+
+                const isCorrect = await this.gameService.validateAnswer(currentState.currentQuestion, p);
+                if (isCorrect) {
+                  matchedPlayer = p;
+                  initialIsCorrect = true;
+                  break;
+                }
+              }
+              // If no candidate is both un-guessed and correct, fallback to the top match
+              // so the logic below registers it as either a wrong guess or an already-taken strike.
+              if (!matchedPlayer) {
+                if (matchedPlayers[0].isAmbiguous) {
+                  matchedPlayer = null;
+                } else {
+                  matchedPlayer = matchedPlayers[0];
+                }
+                initialIsCorrect = false;
+              }
+            }
+          } catch {}
+        }
+      }
 
       let attempt = 0;
       let success = false;
@@ -1530,25 +1571,37 @@ export class GameGateway
           }
 
           finalIsCorrect = initialIsCorrect;
-          if (finalIsCorrect) {
-            if (
-              state.guessedPlayers.some(
-                (g: any) =>
-                  (typeof g === 'string' ? g : g?.name) === matchedPlayer.name,
-              )
-            ) {
-              // Penalty: treat already-guessed as a WRONG answer (strike)
-              finalIsCorrect = false;
-              state.strikes[userId] += 1;
-            } else {
+          if (
+            matchedPlayer &&
+            state.guessedPlayers.some(
+              (g: any) =>
+                (typeof g === 'string' ? g : g?.name) === matchedPlayer.name,
+            )
+          ) {
+            // Penalty: treat already-guessed as a WRONG answer (strike)
+            finalIsCorrect = false;
+            state.strikes[userId] += 1;
+            // We optionally could push this back to feed, but currently we just add a strike
+          } else {
+            if (finalIsCorrect) {
               state.guessedPlayers.push({
                 name: matchedPlayer.name,
+                guessText: guessName,
                 guessedBy: userId,
+                isCorrect: true,
+                playerId: matchedPlayer.id,
               });
               state.scores[userId] += 1;
+            } else {
+              state.strikes[userId] += 1;
+              state.guessedPlayers.push({
+                name: matchedPlayer ? matchedPlayer.name : guessName,
+                guessText: guessName,
+                guessedBy: userId,
+                isCorrect: false,
+                playerId: matchedPlayer ? matchedPlayer.id : null,
+              });
             }
-          } else {
-            state.strikes[userId] += 1;
           }
 
           isRoundOver = false;
@@ -1697,7 +1750,12 @@ export class GameGateway
             latest.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.strikes = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
             latest.guessedPlayers = [];
-            latest.currentQuestion = pickRandomFootballQuestion();
+            const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.usedQuestionIds || []);
+            latest.currentQuestion = nextQuestion;
+            if (nextQuestion) {
+              if (!latest.usedQuestionIds) latest.usedQuestionIds = [];
+              latest.usedQuestionIds.push(nextQuestion.id);
+            }
             // Alternate Round starters (BO3): R1 players[0], R2 players[1], R3 players[0]
             if (latest.currentRound === 2) latest.currentTurn = latest.players[1];
             else if (latest.currentRound === 3)

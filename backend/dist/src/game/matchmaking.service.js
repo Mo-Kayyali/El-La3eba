@@ -16,11 +16,12 @@ const schedule_1 = require("@nestjs/schedule");
 const redis_service_1 = require("../redis/redis.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 const crypto_1 = require("crypto");
-const game_questions_1 = require("./game.questions");
 const elo_util_1 = require("./elo.util");
+const game_service_1 = require("./game.service");
 let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     redisClient;
     prisma;
+    gameService;
     logger = new common_1.Logger(MatchmakingService_1.name);
     server;
     startTurnTimerFn;
@@ -32,9 +33,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         ranked: { zset: 'ranked_queue', members: 'ranked_queue_members' },
         unrated: { zset: 'unrated_queue', members: 'unrated_queue_members' },
     };
-    constructor(redisClient, prisma) {
+    constructor(redisClient, prisma, gameService) {
         this.redisClient = redisClient;
         this.prisma = prisma;
+        this.gameService = gameService;
     }
     setServer(server) {
         this.server = server;
@@ -338,9 +340,15 @@ return selected
             currentRound: 1,
             strikes: { [player1Id]: 0, [player2Id]: 0 },
             guessedPlayers: [],
-            currentQuestion: (0, game_questions_1.pickRandomFootballQuestion)(),
+            usedQuestionIds: [],
+            currentQuestion: null,
             isRanked,
         };
+        const firstQuestion = await this.gameService.getRandomQuestion('STRIKES');
+        gameState.currentQuestion = firstQuestion;
+        if (firstQuestion) {
+            gameState.usedQuestionIds.push(firstQuestion.id);
+        }
         const gameKey = `game:${gameSessionId}`;
         const stateJson = JSON.stringify(gameState);
         const multi = this.redisClient.multi();
@@ -468,6 +476,7 @@ __decorate([
 exports.MatchmakingService = MatchmakingService = MatchmakingService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [redis_service_1.RedisService,
-        prisma_service_1.PrismaService])
+        prisma_service_1.PrismaService,
+        game_service_1.GameService])
 ], MatchmakingService);
 //# sourceMappingURL=matchmaking.service.js.map

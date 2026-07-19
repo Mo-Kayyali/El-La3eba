@@ -31,79 +31,156 @@ development, targeting eventual public deployment at ~1000 concurrent users.
 
 ## 3. Database Schema (Prisma — Current)
 
+> **Migration applied:** `20260716000000_structured_schema_v2` — FootballPlayer dropped,
+> full structured schema in place. Prisma client regenerated.
+
 ```
+Enum Role              PLAYER | ADMIN
+Enum Timeframe         CURRENT | PAST | BOTH
+Enum Region            EUROPE | AFRICA | ASIA | NORTH_AMERICA | SOUTH_AMERICA | OCEANIA | WORLD
+Enum CompetitionType   DOMESTIC_LEAGUE | DOMESTIC_CUP | CONTINENTAL_CLUB_COMPETITION | INTERNATIONAL_TOURNAMENT | GLOBAL_CLUB_CHAMPIONSHIP | DOMESTIC_SUPER_CUP | CONTINENTAL_SUPER_CUP
+Enum Position          GK | RB | CB | LB | RWB | LWB | CDM | CM | CAM | RM | LM | RW | LW | CF | ST
+Enum PreferredFoot     LEFT | RIGHT | BOTH
+Enum GameMode          STRIKES | TOP_10 | PHOTO_GUESS | LINEUP
+Enum LogicOperator     AND | OR
+Enum QuestionScope     NATIONAL | INTERNATIONAL | BOTH
+Enum AnswerType        FILTER | LIST
+Enum FilterType        COMPETITION | NATIONALITY | CLUB | POSITION | POSITION_CATEGORY
+Enum PositionCategory  GOALKEEPER | DEFENDER | MIDFIELDER | FORWARD
+Enum PlayerStatusFilter ANY | CURRENT_ONLY | RETIRED_ONLY
+Enum SuggestionStatus  PENDING | APPROVED | REJECTED
 User
-  id                     uuid (pk)
-  email                  string (unique)
-  username               string (unique)
-  passwordHash           string
-  isVerified             boolean (default false)
-  mmr                    int (default 1000)
-  wins                   int
-  gamesPlayed            int
-  offlineDisconnectCount int (default 0)
-  lastDisconnectAt       datetime?
-  createdAt              datetime
-  updatedAt              datetime
-  // Indexes: B-tree on mmr (leaderboard reads)
-
-FootballPlayer
-  id                uuid (pk)
-  name              string
-  aliases           string[]
-  clubs             string[]
-  activeYear        int
-  // Indexes: GIN + pg_trgm (gin_trgm_ops) on `name` and on
-  //           array_to_string(aliases, ' ') for fuzzy name/alias search
-
+id                     uuid (pk)
+email                  string (unique)
+username               string (unique)
+passwordHash           string
+isVerified              boolean (default false)
+mmr                    int (default 1000)
+wins                   int
+gamesPlayed            int
+offlineDisconnectCount int (default 0)
+lastDisconnectAt       datetime?
+createdAt              datetime
+updatedAt              datetime
+role                   Role (default PLAYER)          ← NEW
+// Indexes: B-tree on mmr (leaderboard reads)
+Country
+id    string (pk, ISO 3166-1 alpha-3 code e.g. "ENG")
+name  string
+Competition
+id           uuid (pk)
+name         string
+type         CompetitionType
+countryCode  string? (fk -> Country)
+region       Region?
+tier         int?
+createdAt    datetime
+createdBy    string?
+Club
+id                   uuid (pk)
+name                 string
+aliases              string[]
+countryCode          string (fk -> Country)
+currentCompetitionId uuid? (fk -> Competition)
+competitions         string[]  // denormalised historical list; GIN indexed (derived from ClubCompetition)
+logoUrl              string?
+createdAt            datetime
+createdBy            string?
+// Indexes: GIN on competitions[]
+ClubCompetition
+id            uuid (pk)
+clubId        uuid (fk -> Club, cascade delete)
+competitionId uuid (fk -> Competition, cascade delete)
+// Unique: (clubId, competitionId)
+// Indexes: B-tree on clubId, competitionId
+Player  (replaces FootballPlayer — clean slate, no data migration)
+id              uuid (pk)
+firstName       string
+lastName        string
+name            string  // canonical display name
+aliases         string[]
+nationality     string  // Country.id (ISO alpha-3)
+dateOfBirth     datetime?
+heightCm        int?
+preferredFoot   PreferredFoot?
+positionCategories PositionCategory[]
+positions       Position[]
+primaryPosition Position?
+isRetired       boolean (default false)
+currentClubId   uuid? (fk -> Club)
+imageUrl        string?
+clubs           string[]       // denormalised — set by PlayerDenormService only
+competitions    string[]       // denormalised — set by PlayerDenormService only
+createdAt       datetime
+createdBy       string?
+// Indexes:
+//   GIN + pg_trgm (gin_trgm_ops) on name
+//   GIN + pg_trgm on array_to_string_immutable(aliases,' ') — same strategy
+//     as old FootballPlayer; uses an IMMUTABLE SQL wrapper because
+//     array_to_string() is STABLE in Postgres 15
+//   GIN on positionCategories[], positions[], clubs[], competitions[]
+PlayerClub
+id        uuid (pk)
+playerId  uuid (fk -> Player, cascade delete)
+clubId    uuid (fk -> Club, cascade delete)
+startYear int?
+endYear   int?   // null = ongoing
+isCurrent boolean (default false)
+// Indexes: B-tree on playerId, clubId
+Question
+id                 uuid (pk)
+text               string
+gameMode           GameMode
+answerType         AnswerType
+scope              QuestionScope (default BOTH)
+logicOperator      LogicOperator? // AND or OR, populated when >1 clause
+photoPlayerId      uuid? (fk -> Player)  // populated when gameMode = PHOTO_GUESS
+isActive           boolean (default true)
+playerStatusFilter PlayerStatusFilter (default ANY)
+createdAt          datetime
+updatedAt          datetime
+createdBy          string?
+// Indexes: gameMode; answerType
+QuestionFilterClause
+id              uuid (pk)
+questionId      uuid (fk -> Question, cascade delete)
+filterType      FilterType
+filterValue     string
+timeframe       Timeframe (default BOTH)
+// Indexes: questionId
+QuestionAnswer
+id         uuid (pk)
+questionId uuid (fk -> Question, cascade delete)
+playerId   uuid (fk -> Player, cascade delete)
+rank       int?     // TOP_10 only (1-based)
+slotLabel  string?  // LINEUP only (e.g. "GK", "LB")
+// Unique: (questionId, playerId)
+// Indexes: questionId, playerId
 Friendship
-  id                uuid (pk)
-  userId            uuid (fk -> User)
-  friendId          uuid (fk -> User)
-  status            enum (PENDING | ACCEPTED)
-  createdAt         datetime
-  updatedAt         datetime
-  // Directional: userId -> friendId. Both accepted and pending
-  // (incoming/outgoing) rows are read from this one table.
-
+id        uuid (pk)
+userId    uuid (fk -> User)
+friendId  uuid (fk -> User)
+status    FriendshipStatus (PENDING | ACCEPTED)
+createdAt datetime
+updatedAt datetime
+// Directional: userId -> friendId.
 OfflinePenalty
-  id                uuid (pk)
-  userId            uuid (fk -> User)
-  gameSessionId     string
-  mmrLost           int          // 0 for unrated disconnect-forfeits
-  acknowledgedAt    datetime?
-  createdAt         datetime
-  // Durable record of a disconnect-forfeit. Mirrored to Redis
-  // `penalty:{userId}` for fast login hydration; acknowledged via
-  // POST /auth/acknowledge-offline-penalty which also clears the Redis cache.
+id             uuid (pk)
+userId         uuid (fk -> User)
+gameSessionId  string
+mmrLost        int      // 0 for unrated disconnect-forfeits
+acknowledgedAt datetime?
+createdAt      datetime
+AnswerSuggestion
+id          uuid (pk)
+questionId  uuid (fk -> Question, cascade delete)
+playerId    uuid? (fk -> Player, cascade delete)
+guessText   string
+suggestedBy uuid (fk -> User, cascade delete)
+comment     string?
+status      SuggestionStatus (default PENDING)
+reviewNote  string?
+createdAt   datetime
+reviewedAt  datetime?
+// Indexes: (questionId, status); suggestedBy; playerId
 ```
-
-> **Known gap:** there is no `Question` model documented here yet, nor is there
-> one in the database. Questions are currently hardcoded strings in
-> `game.questions.ts`. Next time the question schema is touched (e.g. when adding per-question
-> answer sets or the planned `game_mode` column — see `GAME_DESIGN_ROADMAP.md`),
-> add the real model here so this file stays authoritative.
-
-## 4. Current Architecture State
-
-- **Matchmaking:** Public queues are Redis **ZSETs** keyed by mode (`ranked_queue`, `unrated_queue`) with `score = joinTimestampMs` and `member = userId`, plus companion membership sets (`*_queue_members`) and per-user metadata key `queue_search:{userId}`. Every tick runs purge-before-match (`ZREMRANGEBYSCORE ... -inf now-60000`) then atomically claims the two oldest valid users via a Lua script to avoid ghost matches and stale pops. New matches initialize through `MatchmakingService.initializeGameState`, which embeds current player `mmr` as `playerMmr` for in-game rank badges.
-- **Matchmaking timeouts:** Queue searches and private rooms are **strictly 60s**. On each purge tick the server first fetches expiring userIds via `ZRANGEBYSCORE ... -inf cutoff`, emits `searchExpired` to those users, then purges queue records (`ZREMRANGEBYSCORE` + membership/meta cleanup) so the lobby spinner always resolves without per-user `setTimeout` races. Private rooms (`private_room:{code}` + `user_room:{userId}`) use EX 60; host expiry cleanup emits `roomExpired`.
-- **Rank badges (MMR → tier):** Shared helper `frontend/lib/rank.ts` — Bronze 0–999, Silver 1000–1499, Gold 1500–1999, Diamond 2000+ (Tailwind text/border/glow classes). Used on the lobby navbar, leaderboard, and left/right player cards on the game page. The lobby sidebar includes a **Rank Tiers** legend (`RankTierLegend`).
-- **Auth / session hydration:** Zustand `persist` uses `skipHydration: true` plus a `bootstrapped` flag in `frontend/lib/auth-store.ts`. `AuthSessionProvider` rehydrates from `localStorage`, syncs `axios` default `Authorization`, then calls `GET /auth/me` when a token exists before marking `bootstrapped` true. `/auth/me` also includes `activeGameSessionId` (from Redis `user_active_game:{userId}` with legacy fallback), `pendingIncomingFriendRequests` (hydrated into `notificationStore` at bootstrap), and `pendingOfflinePenalty` (rendered as an explicit acknowledge modal). The frontend enforces a global Active Game Lock via `router.replace('/game/{id}')` whenever `activeGameSessionId` exists, and authenticated visits to `/` route to `/lobby` when no active match lock applies. The frontend also mirrors JWT presence into cookie `el_la3eba_token` so server-side route protection can redirect before protected UI renders.
-- **WebSocket / game gateway:** **30s reconnection resilience** — active matches are tracked explicitly via Redis mapping `user_active_game:{userId}` (authoritative lookup on disconnect, since Socket.io room membership is not reliable during disconnect teardown). On disconnect, the gateway reads that mapping and starts a per `(gameSessionId, userId)` grace timer while turn timers keep running; the room receives `playerDisconnected` until `joinGameRoom` clears the timer and emits `playerReconnected` for still-active matches. `joinGameRoom` fetches Redis state first, rejects reconnect attempts when `status === 'match_completed'`, and preserves the active-game mapping for resumed sessions. If grace expires, match state is finalized (`status: 'match_completed'`), the opponent is awarded the win, `matchOver` is broadcast, and an offline penalty record is persisted exactly once. The game UI shows this as a non-blocking top-center disconnect banner with a live 30-second countdown so the active player can keep playing while waiting for reconnection. Active-game mappings are deleted on normal match completion, manual forfeit, disconnect-forfeit, and end-of-match leave acknowledgement to prevent stale penalties. **Guess rate limit:** sliding window (5 guesses / 1s per user) on `submitGuess`. **Turn timers & Concurrency:** The game state stores an absolute `turnDeadlineAt` timestamp. On reconnect, the exact remaining time is computed from this deadline and included in the payload so the frontend clock reflects the true remaining time. When Redis `WATCH` transaction conflicts occur, the transaction itself retries (up to 3 attempts, ~50ms apart) without restarting the turn deadline. The timer only resets when a turn genuinely advances to the next player. **CORS configuration:** WebSocket CORS is securely driven by the `WS_ALLOWED_ORIGINS` environment variable. **Invites:** Invite lifecycle has strict 60s rollback behavior; `inviteCancelledBySystem` is emitted for `invite_expired`, inviter offline/in-game, and invitee offline/in-game transitions. Invite cleanup relies on O(1) tracking sets (e.g., `invites_sent:{userId}`) per user instead of expensive keyspace scans.
-- **Offline penalty system:** Offline forfeits write durable records to Postgres (`OfflinePenalty`, see schema above) and cache the latest pending payload in Redis (`penalty:{userId}`) for fast login hydration. Ranked disconnect-forfeits persist actual MMR loss; unrated disconnect-forfeits persist `mmrLost: 0`. `GET /auth/me` surfaces `pendingOfflinePenalty` (mmrLost, gameSessionId, createdAt), and the modal copy is mode-aware (no MMR wording when `mmrLost === 0`). `POST /auth/acknowledge-offline-penalty` marks pending penalties acknowledged and clears the Redis cache.
-- **Protected-route redirect:** Next.js middleware checks `el_la3eba_token` and redirects unauthenticated requests for protected paths (`/lobby`, `/friends`, `/profile`, `/game`) to `/` with no protected-page flash.
-- **Post-match UX & Rematch:** `matchOver` always includes an explicit boolean `forfeit` (`true` for manual disconnect-forfeit or `forfeitMatch`; `false` for normal endings). Manual forfeits also send `forfeitedByUserId`; disconnect-forfeit sends `disconnectedUserId` and `forfeitedByUserId`. After `status === 'match_completed'`, clients may emit `leaveEndedMatch` with `{ gameSessionId }`; the server broadcasts `opponentLeft` to the room and performs defensive active-game key cleanup for the leaving user. Players can request a rematch **after any match ending (including manual forfeits)**. If the match ended via disconnect-forfeit, the frontend intercepts `disconnectedUserId` to immediately flag the opponent as having left and disable the rematch button. When both accept, the server initializes a fresh game session and synchronously updates `user_active_game:{userId}` for both players to instantly secure the active-game lock. The gateway explicitly emits a `rematchStarting` event to the *new* `gameSessionId` room, which the frontend handles by triggering a full navigation to explicitly join the new room identically to a fresh match.
-- **Profile Management:** The `PATCH /users/profile` endpoint requires the `currentPassword` (validated securely via bcrypt) whenever a user attempts to change their password. The frontend profile edit UI surfaces this field unconditionally to prevent ambiguous conditional rendering.
-- **State Management:** Redis JSON structures locked by `gameSessionId`.
-- **Fuzzy Search:** Scales tolerance by guess length — ≤4 chars (0 typos), ≥5 (1 typo), ≥8 (2 typos). Uses `pg_trgm`, `unaccent`, and `levenshtein` (`fuzzystrmatch`) in Prisma `$queryRaw` against `FootballPlayer` rows. A generous `word_similarity` (>= 0.15) prefilter acts purely to hit the GIN indexes on `name` and flattened `aliases` without accidentally filtering out valid typos. The final accept/reject uses `levenshtein` distance strictly against the full name and any full aliases, explicitly rejecting inputs if the length difference vs. the target matched string is >3 characters.
-- **Leaderboard cache:** `LeaderboardService` refreshes the Redis `global_leaderboard` key on a **10-minute** cron (`CronExpression.EVERY_10_MINUTES`). The lobby refetches `GET /auth/me` on each visit so the navbar tier tracks fresh `user.mmr` after matches.
-- **Friends + presence:** Friendship rows are directional `Friendship` records (`PENDING` / `ACCEPTED`) between two `User` rows (see schema above). `GET /friends` returns accepted friends plus incoming/outgoing requests; `POST /friends/request`, `POST /friends/:id/accept`, `POST /friends/:id/reject`, `POST /friends/:id/cancel`, and `POST /friends/:id/remove` power the REST flow. Redis keeps `presence` hash entries per user (`online`, `in-game:{gameSessionId}`), and the WebSocket gateway periodically emits `friendsPresenceUpdated` to each user's personal room. The friends page uses this to render live Online/Offline/In-Game indicators, disables new invites unless a friend is online, and supports Remove Friend / Cancel Request actions.
-- **Private room cleanup:** Cancelling a private room deletes both `user_room:{userId}` and `private_room:{code}`. Joining a private room uses Redis WATCH + MULTI/EXEC around `private_room:{code}` so a stale code is rejected if the host cancels during the join race. Disconnect and in-game transitions aggressively clear user queue state, hosted rooms, outgoing invites, and incoming invites.
-
-## 5. Upgrading This Spec
-
-Whenever a new major feature is completed, summarize it and add it to Section 4
-(and the schema in Section 3 if it touches the DB) so future AI sessions have
-full, current context. Don't let this file go stale — if you notice it's
-already stale while working, fix it in the same session rather than leaving it.

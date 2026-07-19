@@ -1,96 +1,240 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { evaluateMatch } from './guess-matcher.util';
+import { POSITION_CATEGORY_MAP } from './position.util';
+import { GameMode, AnswerType, FilterType, Position, Question } from '@prisma/client';
 
 // AI REFEREE BLUEPRINT — uncomment when activating:
 // import axios from 'axios';
-// (also move `axios` from devDependencies to dependencies in package.json)
+// (also move \`axios\` from devDependencies to dependencies in package.json)
 
 @Injectable()
 export class GameService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async guessPlayer(guessName: string) {
-    const normalizedGuess = guessName.trim();
+  async guessPlayer(guessName: string): Promise<any[]> {
+    const normalizedGuess = guessName.trim().replace(/-/g, ' ');
     const guessLen = normalizedGuess.length;
-    if (guessLen < 3) return null;
+    if (guessLen < 3) return [];
 
-    let allowedTypos = 0;
-    if (guessLen >= 8) allowedTypos = 2;
-    else if (guessLen >= 5) allowedTypos = 1;
+    const [_, candidates] = await this.prisma.$transaction([
+      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.2;`),
+      this.prisma.$queryRaw<any[]>`
+        WITH guess AS (
+          SELECT lower(unaccent(${normalizedGuess})) AS val
+        ),
+        player_metrics AS (
+          SELECT 
+            p.*,
+            c.name as "currentClubName",
+            c.competitions as "currentClubCompetitions",
+            g.val,
+            GREATEST(
+              word_similarity(g.val, replace(lower(unaccent_immutable(p.name)), '-', ' ')),
+              word_similarity(g.val, replace(lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))), '-', ' '))
+            ) as w_sim
+          FROM "Player" p
+          LEFT JOIN "Club" c ON p."currentClubId" = c.id
+          CROSS JOIN guess g
+          WHERE
+            -- Generous prefilter to narrow candidates via GIN index
+            (
+              lower(unaccent_immutable(p.name)) %> g.val OR
+              lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> g.val
+            )
+        )
+        SELECT *
+        FROM player_metrics
+        ORDER BY w_sim DESC
+        LIMIT 20;
+      `
+    ]);
 
-    const matches = await this.prisma.$queryRaw<any[]>`
-      WITH guess AS (
-        SELECT lower(unaccent(${normalizedGuess})) AS val
-      ),
-      player_metrics AS (
-        SELECT 
-          p.*,
-          g.val,
-          -- Best edit distance to the FULL name or any FULL alias within length tolerance
-          (
-            SELECT min(levenshtein(lower(unaccent(alias)), g.val))
-            FROM unnest(array_append(p.aliases, p.name)) as alias
-            WHERE abs(char_length(g.val) - char_length(alias)) <= 3
-          ) as best_dist,
-          -- Trigram similarity against both name and aliases for sorting (and pre-filtering)
-          GREATEST(
-            word_similarity(g.val, lower(unaccent(p.name))),
-            word_similarity(g.val, lower(unaccent(array_to_string(p.aliases, ' '))))
-          ) as w_sim
-        FROM "FootballPlayer" p, guess g
-        WHERE
-          -- Generous prefilter to narrow candidates via GIN index (if configured) or fast discard
-          (
-            word_similarity(g.val, lower(unaccent(p.name))) >= 0.15 OR
-            word_similarity(g.val, lower(unaccent(array_to_string(p.aliases, ' ')))) >= 0.15
-          )
-      )
-      SELECT *
-      FROM player_metrics
-      WHERE 
-        best_dist <= ${allowedTypos}
-      ORDER BY 
-        w_sim DESC,
-        best_dist ASC
-      LIMIT 1;
-    `;
+    // Apply TS Token-Level Matcher
+    const scoredCandidates = candidates.map(c => {
+      let bestConfidence = 0;
+      const targets = [c.name, ...(c.aliases || [])];
+      for (const target of targets) {
+        const result = evaluateMatch(normalizedGuess, target);
+        if (result.confidence > bestConfidence) {
+          bestConfidence = result.confidence;
+        }
+      }
+      return { ...c, matchConfidence: bestConfidence };
+    });
 
-    return matches.length > 0 ? matches[0] : null;
+    // Filter out completely irrelevant matches (e.g., confidence < 0.3)
+    const validCandidates = scoredCandidates
+      .filter(c => c.matchConfidence >= 0.3)
+      .sort((a, b) => b.matchConfidence - a.matchConfidence)
+      .slice(0, 10);
+
+    if (validCandidates.length > 0) {
+      const topScore = validCandidates[0].matchConfidence;
+      
+      // Ambiguity detection
+      let isAmbiguous = false;
+      if (topScore < 0.95 && validCandidates.length > 1) {
+        const gap = topScore - validCandidates[1].matchConfidence;
+        if (gap <= 0.05) {
+          isAmbiguous = true;
+        }
+      }
+
+      // We attach it to the first candidate, as the gateway checks matchedPlayers[0].isAmbiguous
+      validCandidates[0].isAmbiguous = isAmbiguous;
+    }
+
+    return validCandidates;
+  }
+
+  async getRandomQuestion(gameMode: GameMode = 'STRIKES', excludeIds: string[] = []): Promise<Question | null> {
+    let effectiveExclude = excludeIds;
+    let availableCount = 0;
+
+    if (effectiveExclude.length > 0) {
+      availableCount = await this.prisma.question.count({
+        where: { gameMode, id: { notIn: effectiveExclude } },
+      });
+      
+      if (availableCount === 0) {
+        // Exhaustion rule: keep only the most recently used question excluded
+        effectiveExclude = [excludeIds[excludeIds.length - 1]];
+        // Re-count with new exclusion rule
+        availableCount = await this.prisma.question.count({
+          where: { gameMode, id: { notIn: effectiveExclude } },
+        });
+      }
+    } else {
+      availableCount = await this.prisma.question.count({
+        where: { gameMode },
+      });
+    }
+
+    if (availableCount === 0) {
+      // Fallback if there are literally no questions at all (or only 1 question that is excluded)
+      return this.prisma.question.findFirst({ where: { gameMode }, include: { clauses: true } });
+    }
+
+    const skip = Math.floor(Math.random() * availableCount);
+    const questions = await this.prisma.question.findMany({
+      where: { gameMode, id: { notIn: effectiveExclude } },
+      skip,
+      take: 1,
+      include: { clauses: true },
+    });
+    
+    return questions[0] || null;
+  }
+
+  async validateAnswer(question: Question & { playerStatusFilter?: string }, player: any): Promise<boolean> {
+    if (!question || !player) return false;
+
+    if (question.playerStatusFilter === 'CURRENT_ONLY' && player.isRetired) return false;
+    if (question.playerStatusFilter === 'RETIRED_ONLY' && !player.isRetired) return false;
+
+    if (question.answerType === 'FILTER') {
+      const clauses = (question as any).clauses || [];
+      if (clauses.length === 0) return false;
+
+      const evaluateClause = (clause: any) => {
+        if (clause.filterType === 'COMPETITION') {
+          if (clause.timeframe === 'CURRENT') {
+            return player.currentClubCompetitions?.includes(clause.filterValue) ?? false;
+          } else if (clause.timeframe === 'PAST') {
+            return (player.competitions?.includes(clause.filterValue) && !player.currentClubCompetitions?.includes(clause.filterValue)) ?? false;
+          } else {
+            return player.competitions?.includes(clause.filterValue) ?? false;
+          }
+        } else if (clause.filterType === 'CLUB') {
+          if (clause.timeframe === 'CURRENT') {
+            return player.currentClubName === clause.filterValue;
+          } else if (clause.timeframe === 'PAST') {
+            return (player.clubs?.includes(clause.filterValue) && player.currentClubName !== clause.filterValue) ?? false;
+          } else {
+            return player.clubs?.includes(clause.filterValue) ?? false;
+          }
+        } else if (clause.filterType === 'NATIONALITY') {
+          return player.nationality === clause.filterValue;
+        } else if (clause.filterType === 'POSITION') {
+          return player.positions?.includes(clause.filterValue) ?? false;
+        } else if (clause.filterType === 'POSITION_CATEGORY') {
+          return player.positionCategories?.includes(clause.filterValue) ?? false;
+        }
+        return false;
+      };
+
+      if (question.logicOperator === 'OR') {
+        return clauses.some(evaluateClause);
+      } else {
+        return clauses.every(evaluateClause);
+      }
+    } else if (question.answerType === 'LIST') {
+      const qa = await this.prisma.questionAnswer.findUnique({
+        where: {
+          questionId_playerId: {
+            questionId: question.id,
+            playerId: player.id,
+          },
+        },
+      });
+      return !!qa;
+    }
+
+    return false;
   }
 
   // ─── AI Referee Blueprint ─────────────────────────────────────────────────
   //
   // When the Python microservice at http://localhost:8000 is ready:
-  //   1. Move `axios` from devDependencies → dependencies in package.json.
-  //   2. Uncomment the import at the top of this file.
-  //   3. Uncomment this method.
-  //   4. In game.gateway.ts replace every:
-  //        this.gameService.guessPlayer(guessName)
-  //      with:
-  //        this.gameService.verifyGuessWithAI(state.currentQuestion, guessName)
   //
-  // The Python service must accept:
-  //   POST /evaluate
-  //   Body: { question: { clue: string; answer: string }, guess: string }
-  //   Response: { correct: boolean; canonical_name: string | null }
-  //
-  // async verifyGuessWithAI(
-  //   question: { clue: string; answer: string },
-  //   guessName: string,
-  // ): Promise<{ name: string } | null> {
+  // async checkSuggestionWithAI(questionId: string, guessText: string): Promise<boolean> {
   //   try {
-  //     const response = await axios.post<{
-  //       correct: boolean;
-  //       canonical_name: string | null;
-  //     }>('http://localhost:8000/evaluate', { question, guess: guessName }, { timeout: 3000 });
-  //
-  //     if (response.data.correct && response.data.canonical_name) {
-  //       return { name: response.data.canonical_name };
-  //     }
-  //     return null;
-  //   } catch {
-  //     // AI service unavailable — fall back to local fuzzy match so the game never breaks.
-  //     return this.guessPlayer(guessName);
+  //     const response = await axios.post('http://localhost:8000/referee/check', {
+  //       question_id: questionId,
+  //       guess_text: guessText
+  //     });
+  //     return response.data.is_correct === true;
+  //   } catch (error) {
+  //     console.error('AI Referee error:', error.message);
+  //     return false; // Fallback to rejected if AI is unreachable
   //   }
   // }
+
+  async createSuggestion(
+    userId: string,
+    questionId: string,
+    playerId: string | null,
+    guessText: string,
+    comment?: string,
+  ) {
+    const existing = await this.prisma.answerSuggestion.findFirst({
+      where: {
+        suggestedBy: userId,
+        questionId,
+        ...(playerId ? { playerId } : { guessText }),
+        status: 'PENDING',
+      },
+    });
+
+    if (existing) {
+      return {
+        status: 'error',
+        message: 'You have already suggested this answer for this question.',
+      };
+    }
+
+    const suggestion = await this.prisma.answerSuggestion.create({
+      data: {
+        questionId,
+        playerId: playerId as any,
+        guessText,
+        suggestedBy: userId,
+        comment,
+        status: 'PENDING',
+      },
+    });
+
+    return { status: 'ok', suggestion };
+  }
 }

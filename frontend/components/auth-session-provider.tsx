@@ -271,7 +271,8 @@ export function AuthSessionProvider({
           isAuthenticated &&
           (pathname === "/lobby" ||
             pathname === "/friends" ||
-            pathname.startsWith("/profile"))
+            pathname.startsWith("/profile") ||
+            pathname.startsWith("/admin"))
             ? "pt-16"
             : undefined
         }
