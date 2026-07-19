@@ -11,6 +11,7 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { Pagination } from "@/components/pagination";
 import { SortHeader } from "@/components/sort-header";
 import { Modal } from "@/components/modal";
+import { PlayerFormModal, Player } from "@/components/admin/player-form-modal";
 
 type PlayerSearchResult = {
   id: string;
@@ -54,10 +55,12 @@ type Question = {
 
 function PlayerSearch({ 
   onSelect, 
+  onEdit,
   placeholder = "Search player by name...",
   autoClear = true
 }: { 
   onSelect: (p: PlayerSearchResult) => void;
+  onEdit?: (playerId: string) => void;
   placeholder?: string;
   autoClear?: boolean;
 }) {
@@ -125,24 +128,34 @@ function PlayerSearch({
             {results.map((p) => (
               <li
                 key={p.id}
-                onClick={() => {
-                  onSelect(p);
-                  if (autoClear) {
-                    setQuery("");
-                    setResults([]);
-                  } else {
-                    setQuery(p.name);
-                  }
-                  setShowDropdown(false);
-                }}
-                className="flex cursor-pointer items-center justify-between px-4 py-2 hover:bg-slate-700 text-white"
+                className="flex items-center justify-between px-4 py-2 hover:bg-slate-700 text-white"
               >
-                <div>
+                <div 
+                  className="flex-1 cursor-pointer"
+                  onClick={() => {
+                    onSelect(p);
+                    if (autoClear) {
+                      setQuery("");
+                      setResults([]);
+                    } else {
+                      setQuery(p.name);
+                    }
+                    setShowDropdown(false);
+                  }}
+                >
                   <div className="font-medium">{p.name}</div>
                   <div className="text-xs text-slate-400">
                     {p.nationality} • {p.currentClub?.name || (p.isRetired ? "Retired" : "Free Agent")}
                   </div>
                 </div>
+                {onEdit && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(p.id); setShowDropdown(false); }}
+                    className="ml-2 rounded-lg border border-slate-600/50 bg-slate-700/30 p-1.5 text-slate-400 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400 transition"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -204,6 +217,19 @@ function AdminQuestionsContent() {
   const [testGuessResult, setTestGuessResult] = useState<any>(null);
   const [isTestingGuess, setIsTestingGuess] = useState(false);
 
+  // New states for Part 2
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [playerModalContext, setPlayerModalContext] = useState<{ mode: 'edit', player: Partial<Player> } | { mode: 'create' } | null>(null);
+
+  const openPlayerEditModal = async (playerId: string) => {
+    try {
+      const { data } = await api.get<Player>(`/admin/players/${playerId}`);
+      setPlayerModalContext({ mode: 'edit', player: data });
+    } catch (err) {
+      alert("Failed to load player details");
+    }
+  };
+
   useEffect(() => {
     if (!bootstrapped) return;
     if (!user || user.role !== "ADMIN") {
@@ -240,7 +266,7 @@ function AdminQuestionsContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchQuestions();
-  }, [page, search, filterGameMode, filterIsActive, sort, order]);
+  }, [bootstrapped, user, page, search, filterGameMode, filterIsActive, sort, order]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -469,7 +495,8 @@ function AdminQuestionsContent() {
 
   const addAnswer = (p: PlayerSearchResult) => {
     if (answers.some(a => a.playerId === p.id)) {
-      alert("Player already in list");
+      setDuplicateError("Already in list");
+      setTimeout(() => setDuplicateError(null), 2000);
       return;
     }
     setAnswers(prev => [...prev, {
@@ -543,12 +570,20 @@ function AdminQuestionsContent() {
             </Link>
             <h1 className="text-3xl font-bold">Questions</h1>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="rounded-xl bg-violet-600 px-6 py-2.5 font-medium text-white transition hover:bg-violet-700"
-          >
-            Add Question
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchQuestions()}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-white hover:bg-white/10 transition"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="rounded-xl bg-violet-600 px-6 py-2.5 font-medium text-white transition hover:bg-violet-700"
+            >
+              Add Question
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -871,11 +906,27 @@ function AdminQuestionsContent() {
               {/* LIST based answers (STRIKES-LIST, TOP_10, LINEUP) */}
               {gameMode !== "PHOTO_GUESS" && (gameMode !== "STRIKES" || answerType === "LIST") && (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-4">
-                  <label className="block text-sm font-medium text-slate-300">
-                    Answers List
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-slate-300">
+                      Answers List
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerModalContext({ mode: 'create' })}
+                      className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1"
+                    >
+                      + Add New Player
+                    </button>
+                  </div>
                   
-                  <PlayerSearch onSelect={addAnswer} />
+                  <div className="relative">
+                    <PlayerSearch onSelect={addAnswer} onEdit={openPlayerEditModal} />
+                    {duplicateError && (
+                      <div className="absolute right-0 top-0 -mt-8 text-xs font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded">
+                        {duplicateError}
+                      </div>
+                    )}
+                  </div>
 
                   {answers.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-slate-900/50">
@@ -917,13 +968,20 @@ function AdminQuestionsContent() {
                                   />
                                 </td>
                               )}
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); openPlayerEditModal(ans.playerId); }}
+                                  className="text-slate-400 hover:text-blue-400 transition mr-3"
+                                >
+                                  <svg className="h-5 w-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => removeAnswer(idx)}
                                   className="text-slate-400 hover:text-red-400 transition"
                                 >
-                                  <X className="h-5 w-5" />
+                                  <X className="h-5 w-5 inline" />
                                 </button>
                               </td>
                             </tr>
@@ -1188,6 +1246,42 @@ function AdminQuestionsContent() {
           onPageChange={setPage}
         />
       </div>
+
+      <PlayerFormModal
+        isOpen={!!playerModalContext}
+        initialData={playerModalContext?.mode === 'edit' ? playerModalContext.player : {}}
+        onClose={() => setPlayerModalContext(null)}
+        onSuccess={async (savedPlayer: any) => {
+          setPlayerModalContext(null);
+          if (playerModalContext?.mode === 'create' && savedPlayer?.id) {
+            try {
+              const { data } = await api.get<Player>(`/admin/players/${savedPlayer.id}`);
+              addAnswer({
+                id: data.id,
+                name: data.name,
+                firstName: data.firstName || "",
+                lastName: data.lastName || "",
+                nationality: data.nationality || "",
+                isRetired: data.isRetired,
+                currentClub: data.currentClub ? { name: data.currentClub.name } : null
+              });
+            } catch (e) {
+              console.error("Failed to auto-add newly created player", e);
+            }
+          } else if (playerModalContext?.mode === 'edit' && savedPlayer?.id) {
+            try {
+              const { data } = await api.get<Player>(`/admin/players/${savedPlayer.id}`);
+              setAnswers(prev => prev.map(a => 
+                a.playerId === data.id 
+                  ? { ...a, player: { name: data.name, aliases: a.player?.aliases || [] } }
+                  : a
+              ));
+            } catch (e) {
+              console.error("Failed to refresh edited player", e);
+            }
+          }
+        }}
+      />
     </div>
   );
 }

@@ -181,12 +181,20 @@ export default function AdminCompetitionsPage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Competitions</h1>
           <p className="mt-1 text-sm text-slate-400">Manage domestic and international competitions.</p>
         </div>
-        <button
-          onClick={() => setIsEditing({})}
-          className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20 transition"
-        >
-          Add Competition
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchCompetitions()}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 transition"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={() => setIsEditing({})}
+            className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20 transition"
+          >
+            Add Competition
+          </button>
+        </div>
       </div>
 
       {error && (

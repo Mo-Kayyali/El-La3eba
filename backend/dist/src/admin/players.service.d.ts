@@ -49,9 +49,9 @@ export declare class AdminPlayersService {
     private validateFks;
     search(query: string): Promise<{
         id: string;
-        name: string;
         firstName: string;
         lastName: string;
+        name: string;
         nationality: string;
         isRetired: boolean;
         currentClub: {
@@ -78,14 +78,10 @@ export declare class AdminPlayersService {
             } | null;
         } & {
             id: string;
-            createdAt: Date;
-            name: string;
-            clubs: string[];
-            competitions: string[];
-            aliases: string[];
-            createdBy: string | null;
             firstName: string;
             lastName: string;
+            name: string;
+            aliases: string[];
             nationality: string;
             dateOfBirth: Date | null;
             heightCm: number | null;
@@ -94,8 +90,12 @@ export declare class AdminPlayersService {
             positions: import(".prisma/client").$Enums.Position[];
             primaryPosition: import(".prisma/client").$Enums.Position | null;
             isRetired: boolean;
-            imageUrl: string | null;
             currentClubId: string | null;
+            imageUrl: string | null;
+            clubs: string[];
+            competitions: string[];
+            createdAt: Date;
+            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -104,47 +104,43 @@ export declare class AdminPlayersService {
         };
     }>;
     findOne(id: string): Promise<{
-        playerClubs: ({
-            club: {
-                id: string;
-                createdAt: Date;
-                name: string;
-                competitions: string[];
-                aliases: string[];
-                countryCode: string;
-                currentCompetitionId: string | null;
-                logoUrl: string | null;
-                createdBy: string | null;
-            };
-        } & {
-            id: string;
-            clubId: string;
-            startYear: number | null;
-            endYear: number | null;
-            isCurrent: boolean;
-            playerId: string;
-        })[];
         currentClub: {
             id: string;
-            createdAt: Date;
             name: string;
-            competitions: string[];
             aliases: string[];
+            competitions: string[];
+            createdAt: Date;
+            createdBy: string | null;
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
-            createdBy: string | null;
         } | null;
+        playerClubs: ({
+            club: {
+                id: string;
+                name: string;
+                aliases: string[];
+                competitions: string[];
+                createdAt: Date;
+                createdBy: string | null;
+                countryCode: string;
+                currentCompetitionId: string | null;
+                logoUrl: string | null;
+            };
+        } & {
+            id: string;
+            startYear: number | null;
+            isCurrent: boolean;
+            playerId: string;
+            clubId: string;
+            endYear: number | null;
+        })[];
     } & {
         id: string;
-        createdAt: Date;
-        name: string;
-        clubs: string[];
-        competitions: string[];
-        aliases: string[];
-        createdBy: string | null;
         firstName: string;
         lastName: string;
+        name: string;
+        aliases: string[];
         nationality: string;
         dateOfBirth: Date | null;
         heightCm: number | null;
@@ -153,19 +149,19 @@ export declare class AdminPlayersService {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        imageUrl: string | null;
         currentClubId: string | null;
+        imageUrl: string | null;
+        clubs: string[];
+        competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     create(dto: CreatePlayerDto, adminUserId: string): Promise<{
         id: string;
-        createdAt: Date;
-        name: string;
-        clubs: string[];
-        competitions: string[];
-        aliases: string[];
-        createdBy: string | null;
         firstName: string;
         lastName: string;
+        name: string;
+        aliases: string[];
         nationality: string;
         dateOfBirth: Date | null;
         heightCm: number | null;
@@ -174,51 +170,51 @@ export declare class AdminPlayersService {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        imageUrl: string | null;
         currentClubId: string | null;
+        imageUrl: string | null;
+        clubs: string[];
+        competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     update(id: string, dto: PatchPlayerDto, adminUserId: string): Promise<{
-        playerClubs: ({
-            club: {
-                id: string;
-                createdAt: Date;
-                name: string;
-                competitions: string[];
-                aliases: string[];
-                countryCode: string;
-                currentCompetitionId: string | null;
-                logoUrl: string | null;
-                createdBy: string | null;
-            };
-        } & {
-            id: string;
-            clubId: string;
-            startYear: number | null;
-            endYear: number | null;
-            isCurrent: boolean;
-            playerId: string;
-        })[];
         currentClub: {
             id: string;
-            createdAt: Date;
             name: string;
-            competitions: string[];
             aliases: string[];
+            competitions: string[];
+            createdAt: Date;
+            createdBy: string | null;
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
-            createdBy: string | null;
         } | null;
+        playerClubs: ({
+            club: {
+                id: string;
+                name: string;
+                aliases: string[];
+                competitions: string[];
+                createdAt: Date;
+                createdBy: string | null;
+                countryCode: string;
+                currentCompetitionId: string | null;
+                logoUrl: string | null;
+            };
+        } & {
+            id: string;
+            startYear: number | null;
+            isCurrent: boolean;
+            playerId: string;
+            clubId: string;
+            endYear: number | null;
+        })[];
     } & {
         id: string;
-        createdAt: Date;
-        name: string;
-        clubs: string[];
-        competitions: string[];
-        aliases: string[];
-        createdBy: string | null;
         firstName: string;
         lastName: string;
+        name: string;
+        aliases: string[];
         nationality: string;
         dateOfBirth: Date | null;
         heightCm: number | null;
@@ -227,19 +223,19 @@ export declare class AdminPlayersService {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        imageUrl: string | null;
         currentClubId: string | null;
+        imageUrl: string | null;
+        clubs: string[];
+        competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
-        createdAt: Date;
-        name: string;
-        clubs: string[];
-        competitions: string[];
-        aliases: string[];
-        createdBy: string | null;
         firstName: string;
         lastName: string;
+        name: string;
+        aliases: string[];
         nationality: string;
         dateOfBirth: Date | null;
         heightCm: number | null;
@@ -248,7 +244,11 @@ export declare class AdminPlayersService {
         positions: import(".prisma/client").$Enums.Position[];
         primaryPosition: import(".prisma/client").$Enums.Position | null;
         isRetired: boolean;
-        imageUrl: string | null;
         currentClubId: string | null;
+        imageUrl: string | null;
+        clubs: string[];
+        competitions: string[];
+        createdAt: Date;
+        createdBy: string | null;
     }>;
 }

@@ -77,7 +77,7 @@ function AdminPlayersContent() {
   useEffect(() => {
     if (!bootstrapped || !user || user.role !== "ADMIN") return;
     fetchPlayers();
-  }, [page, search, filterNationality, filterCompId, filterClubId, filterRetired, sort, order]);
+  }, [bootstrapped, user, page, search, filterNationality, filterCompId, filterClubId, filterRetired, sort, order]);
 
   const getGroupedCompOptions = useMemo(() => {
     return competitions
@@ -197,12 +197,20 @@ function AdminPlayersContent() {
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Players</h1>
           <p className="mt-1 text-sm text-slate-400">Manage player profiles and club history.</p>
         </div>
-        <button
-          onClick={handleCreateNew}
-          className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-300 hover:bg-violet-500/20 transition"
-        >
-          Add Player
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchPlayers()}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 transition"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={handleCreateNew}
+            className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-300 hover:bg-violet-500/20 transition"
+          >
+            Add Player
+          </button>
+        </div>
       </div>
 
       {error && (

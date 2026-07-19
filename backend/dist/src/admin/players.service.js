@@ -256,14 +256,47 @@ let AdminPlayersService = class AdminPlayersService {
     async search(query) {
         if (!query || query.length < 2)
             return [];
-        return this.prisma.player.findMany({
-            where: {
-                OR: [
-                    { name: { contains: query, mode: 'insensitive' } },
-                    { aliases: { hasSome: [query] } },
-                ]
-            },
-            take: 15,
+        const normalizedSearch = query.trim();
+        if (normalizedSearch.length <= 2) {
+            return this.prisma.player.findMany({
+                where: {
+                    name: { contains: normalizedSearch, mode: 'insensitive' }
+                },
+                take: 15,
+                select: {
+                    id: true,
+                    name: true,
+                    firstName: true,
+                    lastName: true,
+                    nationality: true,
+                    isRetired: true,
+                    currentClub: {
+                        select: { name: true }
+                    }
+                },
+                orderBy: { name: 'asc' }
+            });
+        }
+        const [_, matchedIdsObj] = await this.prisma.$transaction([
+            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+            this.prisma.$queryRaw `
+        SELECT p.id
+        FROM "Player" p
+        WHERE 
+          lower(unaccent_immutable(p.name)) %> lower(unaccent(${normalizedSearch})) OR
+          lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+        ORDER BY GREATEST(
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(p.name))),
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+        ) DESC
+        LIMIT 15;
+      `
+        ]);
+        const matchedIds = matchedIdsObj.map(row => row.id);
+        if (matchedIds.length === 0)
+            return [];
+        const players = await this.prisma.player.findMany({
+            where: { id: { in: matchedIds } },
             select: {
                 id: true,
                 name: true,
@@ -274,9 +307,9 @@ let AdminPlayersService = class AdminPlayersService {
                 currentClub: {
                     select: { name: true }
                 }
-            },
-            orderBy: { name: 'asc' }
+            }
         });
+        return players.sort((a, b) => matchedIds.indexOf(a.id) - matchedIds.indexOf(b.id));
     }
     async findAll(filters = {}) {
         const where = {};

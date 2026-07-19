@@ -176,20 +176,50 @@ export class AdminPlayersService {
   async search(query: string) {
     if (!query || query.length < 2) return [];
     
-    return this.prisma.player.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { aliases: { hasSome: [query] } },
-          // A true case-insensitive array element match in Prisma Postgres is tricky.
-          // Since aliases are usually exact names, we can also just rely on name match 
-          // or we can just fetch and let the DB do a simple contains on the stringified array if needed.
-          // Actually `hasSome` is exact match (case-sensitive).
-          // To make it simple and fast, we'll do name contains. If they type part of alias, 
-          // `name` usually covers it. For aliases, we can't easily do `contains` insensitive on string[].
-        ]
-      },
-      take: 15,
+    const normalizedSearch = query.trim();
+
+    if (normalizedSearch.length <= 2) {
+      return this.prisma.player.findMany({
+        where: {
+          name: { contains: normalizedSearch, mode: 'insensitive' }
+        },
+        take: 15,
+        select: {
+          id: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          nationality: true,
+          isRetired: true,
+          currentClub: {
+            select: { name: true }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+    }
+
+    const [_, matchedIdsObj] = await this.prisma.$transaction([
+      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+      this.prisma.$queryRaw<{id: string}[]>`
+        SELECT p.id
+        FROM "Player" p
+        WHERE 
+          lower(unaccent_immutable(p.name)) %> lower(unaccent(${normalizedSearch})) OR
+          lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+        ORDER BY GREATEST(
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(p.name))),
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+        ) DESC
+        LIMIT 15;
+      `
+    ]);
+
+    const matchedIds = matchedIdsObj.map(row => row.id);
+    if (matchedIds.length === 0) return [];
+
+    const players = await this.prisma.player.findMany({
+      where: { id: { in: matchedIds } },
       select: {
         id: true,
         name: true,
@@ -200,9 +230,11 @@ export class AdminPlayersService {
         currentClub: {
           select: { name: true }
         }
-      },
-      orderBy: { name: 'asc' }
+      }
     });
+
+    // Sort to maintain the pg_trgm rank order
+    return players.sort((a, b) => matchedIds.indexOf(a.id) - matchedIds.indexOf(b.id));
   }
 
   async findAll(filters: { competitionId?: string; compCountryCode?: string; clubId?: string; isRetired?: string; nationality?: string; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
