@@ -27,6 +27,7 @@ const elo_util_1 = require("./elo.util");
 const friends_service_1 = require("../friends/friends.service");
 const users_service_1 = require("../users/users.service");
 const strikes_mode_strategy_1 = require("./strikes-mode.strategy");
+const top10_mode_strategy_1 = require("./top10-mode.strategy");
 const GUESS_RATE_LIMIT_MAX = 5;
 const GUESS_RATE_LIMIT_WINDOW_MS = 1000;
 const WS_ALLOWED_ORIGINS = process.env.FRONTEND_URL
@@ -58,7 +59,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
         this.friendsService = friendsService;
         this.usersService = usersService;
     }
-    strategy = new strikes_mode_strategy_1.StrikesModeStrategy();
+    resolveStrategy(mode) {
+        if (mode === 'TOP_10') {
+            return new top10_mode_strategy_1.Top10ModeStrategy();
+        }
+        return new strikes_mode_strategy_1.StrikesModeStrategy();
+    }
     flattenStateForFrontend(state) {
         if (!state)
             return state;
@@ -324,7 +330,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     await this.redisClient.unwatch();
                     return;
                 }
-                const outcome = this.strategy.handleDisconnectTimeout(state, userId);
+                const outcome = this.resolveStrategy(state.mode).handleDisconnectTimeout(state, userId);
                 state = outcome.updatedState;
                 const winnerId = outcome.winnerId;
                 const ms = state.modeState;
@@ -413,7 +419,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         await this.redisClient.unwatch();
                         return;
                     }
-                    const outcome = this.strategy.handleTurnTimeout(state, timedOutUserId);
+                    const outcome = this.resolveStrategy(state.mode).handleTurnTimeout(state, timedOutUserId);
                     isRoundOver = outcome.isRoundOver ?? false;
                     isMatchOver = outcome.isMatchOver ?? false;
                     roundWinner = outcome.roundWinner ?? null;
@@ -501,7 +507,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest.modeState.currentRound += 1;
                         latest.modeState.roundWinnerId = null;
                         latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        this.strategy.setupNextRound(latest);
+                        this.resolveStrategy(latest.mode).setupNextRound(latest);
                         latest.modeState.guessedPlayers = [];
                         const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
                         latest.modeState.currentQuestion = nextQuestion;
@@ -1013,6 +1019,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.logger.log(`Fuzzy search complete. Matches found: ${matchedPlayers.length}`);
             let matchedPlayer = null;
             let initialIsCorrect = false;
+            let answerDetails = null;
             if (matchedPlayers.length > 0) {
                 const currentStateStr = await this.redisClient.get(key);
                 if (currentStateStr) {
@@ -1024,6 +1031,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
                                 if (alreadyGuessed)
                                     continue;
                                 const isCorrect = await this.gameService.validateAnswer(currentState.modeState.currentQuestion, p);
+                                if (isCorrect) {
+                                    answerDetails = await this.gameService.validateAndGetAnswerDetails(currentState.modeState.currentQuestion.id, p.id);
+                                }
                                 if (isCorrect) {
                                     matchedPlayer = p;
                                     initialIsCorrect = true;
@@ -1076,10 +1086,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         state.modeState.guessedPlayers.some((g) => (typeof g === 'string' ? g : g?.name) === matchedPlayer.name)) {
                         finalIsCorrect = false;
                     }
-                    const outcome = this.strategy.handleGuess(state, userId, {
+                    const outcome = this.resolveStrategy(state.mode).handleGuess(state, userId, {
                         isCorrect: finalIsCorrect,
                         matchedPlayer,
                         guessName,
+                        answerDetails,
                     });
                     if (outcome.error) {
                         await this.redisClient.unwatch();
@@ -1178,7 +1189,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest.modeState.currentRound += 1;
                         latest.modeState.roundWinnerId = null;
                         latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-                        this.strategy.setupNextRound(latest);
+                        this.resolveStrategy(latest.mode).setupNextRound(latest);
                         latest.modeState.guessedPlayers = [];
                         const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
                         latest.modeState.currentQuestion = nextQuestion;
@@ -1253,7 +1264,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 await this.redisClient.unwatch();
                 return { status: 'error', message: 'Not a player in this game' };
             }
-            const outcome = this.strategy.handleForfeit(state, userId);
+            const outcome = this.resolveStrategy(state.mode).handleForfeit(state, userId);
             const forfeitedState = outcome.updatedState;
             const winnerId = outcome.winnerId;
             const multi = this.redisClient.multi();

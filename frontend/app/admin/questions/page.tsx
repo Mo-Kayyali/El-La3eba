@@ -934,7 +934,7 @@ function AdminQuestionsContent() {
                         <thead className="bg-slate-800/50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                           <tr>
                             <th className="px-4 py-3">Player</th>
-                            {gameMode === "TOP_10" && <th className="px-4 py-3 w-32">Rank (1-10)</th>}
+                            {gameMode === "TOP_10" && <th className="px-4 py-3 w-32">Rank (1-13)</th>}
                             {gameMode === "LINEUP" && <th className="px-4 py-3 w-40">Slot (e.g. GK)</th>}
                             <th className="px-4 py-3 w-16 text-right"></th>
                           </tr>
@@ -947,14 +947,19 @@ function AdminQuestionsContent() {
                               </td>
                               {gameMode === "TOP_10" && (
                                 <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={ans.rank || ""}
-                                    onChange={(e) => updateAnswer(idx, "rank", parseInt(e.target.value) || "")}
-                                    className="w-full rounded-lg border border-white/10 bg-slate-800 p-2 text-white focus:border-emerald-500 outline-none"
-                                  />
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="13"
+                                      value={ans.rank || ""}
+                                      onChange={(e) => updateAnswer(idx, "rank", parseInt(e.target.value) || "")}
+                                      className="w-full rounded-lg border border-white/10 bg-slate-800 p-2 text-white focus:border-emerald-500 outline-none"
+                                    />
+                                    {ans.rank && ans.rank > 10 ? (
+                                      <span className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 font-bold uppercase tracking-wider">Trap</span>
+                                    ) : null}
+                                  </div>
                                 </td>
                               )}
                               {gameMode === "LINEUP" && (

@@ -20,7 +20,9 @@ import { randomUUID } from 'crypto';
 import { scoreMarginMultiplier } from './elo.util';
 import { FriendsService } from '../friends/friends.service';
 import { UsersService } from '../users/users.service';
+import { GameModeStrategy } from './game-mode.strategy';
 import { StrikesModeStrategy } from './strikes-mode.strategy';
+import { Top10ModeStrategy } from './top10-mode.strategy';
 
 // ─── In-gateway sliding-window rate limiter ────────────────────────────────
 // Limits submitGuess to MAX_GUESSES_PER_WINDOW per user per WINDOW_MS.
@@ -80,7 +82,12 @@ export class GameGateway
     private readonly usersService: UsersService,
   ) {}
 
-  private strategy = new StrikesModeStrategy();
+  private resolveStrategy(mode: string): GameModeStrategy {
+    if (mode === 'TOP_10') {
+      return new Top10ModeStrategy();
+    }
+    return new StrikesModeStrategy();
+  }
 
   private flattenStateForFrontend(state: any) {
     if (!state) return state;
@@ -477,7 +484,7 @@ export class GameGateway
           return;
         }
 
-        const outcome = this.strategy.handleDisconnectTimeout(state, userId);
+        const outcome = this.resolveStrategy(state.mode).handleDisconnectTimeout(state, userId);
         state = outcome.updatedState;
         const winnerId = outcome.winnerId;
 
@@ -605,7 +612,7 @@ export class GameGateway
             return;
           }
 
-          const outcome = this.strategy.handleTurnTimeout(state, timedOutUserId);
+          const outcome = this.resolveStrategy(state.mode).handleTurnTimeout(state, timedOutUserId);
           isRoundOver = outcome.isRoundOver ?? false;
           isMatchOver = outcome.isMatchOver ?? false;
           roundWinner = outcome.roundWinner ?? null;
@@ -718,7 +725,7 @@ export class GameGateway
             latest.modeState.currentRound += 1;
             latest.modeState.roundWinnerId = null;
             latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-            this.strategy.setupNextRound(latest);
+            this.resolveStrategy(latest.mode).setupNextRound(latest);
             latest.modeState.guessedPlayers = [];
             const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
             latest.modeState.currentQuestion = nextQuestion;
@@ -1472,6 +1479,7 @@ export class GameGateway
 
       let matchedPlayer: any = null;
       let initialIsCorrect = false;
+      let answerDetails: { rank?: number | null; slotLabel?: string | null } | null = null;
 
       if (matchedPlayers.length > 0) {
         const currentStateStr = await this.redisClient.get(key);
@@ -1487,6 +1495,9 @@ export class GameGateway
                 if (alreadyGuessed) continue; // Skip already taken candidates
 
                 const isCorrect = await this.gameService.validateAnswer(currentState.modeState.currentQuestion, p);
+                if (isCorrect) {
+                  answerDetails = await this.gameService.validateAndGetAnswerDetails(currentState.modeState.currentQuestion.id, p.id);
+                }
                 if (isCorrect) {
                   matchedPlayer = p;
                   initialIsCorrect = true;
@@ -1555,10 +1566,11 @@ export class GameGateway
             finalIsCorrect = false;
           }
 
-          const outcome = this.strategy.handleGuess(state, userId, {
+          const outcome = this.resolveStrategy(state.mode).handleGuess(state, userId, {
             isCorrect: finalIsCorrect,
             matchedPlayer,
             guessName,
+            answerDetails, // Defined outside the loop if matched correctly
           });
 
           if (outcome.error) {
@@ -1685,7 +1697,7 @@ export class GameGateway
             latest.modeState.currentRound += 1;
             latest.modeState.roundWinnerId = null;
             latest.modeState.scores = { [latest.players[0]]: 0, [latest.players[1]]: 0 };
-            this.strategy.setupNextRound(latest);
+            this.resolveStrategy(latest.mode).setupNextRound(latest);
             latest.modeState.guessedPlayers = [];
             const nextQuestion = await this.gameService.getRandomQuestion('STRIKES', latest.modeState.usedQuestionIds || []);
             latest.modeState.currentQuestion = nextQuestion;
@@ -1778,7 +1790,7 @@ export class GameGateway
         return { status: 'error', message: 'Not a player in this game' };
       }
 
-      const outcome = this.strategy.handleForfeit(state, userId);
+      const outcome = this.resolveStrategy(state.mode).handleForfeit(state, userId);
       const forfeitedState = outcome.updatedState;
       const winnerId = outcome.winnerId;
 

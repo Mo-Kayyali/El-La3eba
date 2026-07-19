@@ -8,11 +8,14 @@ class StrikesModeStrategy {
     checkMatchWinCondition(state) {
         const ms = state.modeState;
         if (ms.overallScores[state.players[0]] >= 2 || ms.currentRound >= 3 || ms.overallScores[state.players[1]] >= 2) {
-            return ms.overallScores[state.players[0]] > ms.overallScores[state.players[1]]
-                ? state.players[0]
-                : state.players[1];
+            return {
+                isMatchOver: true,
+                winnerId: ms.overallScores[state.players[0]] > ms.overallScores[state.players[1]]
+                    ? state.players[0]
+                    : state.players[1]
+            };
         }
-        return null;
+        return { isMatchOver: false, winnerId: null };
     }
     handleDisconnectTimeout(state, disconnectedUserId) {
         const winnerId = this.getOpponent(state, disconnectedUserId);
@@ -82,11 +85,11 @@ class StrikesModeStrategy {
             isRoundOver = true;
             roundWinner = opponent;
             ms.overallScores[opponent] += 1;
-            const matchWinner = this.checkMatchWinCondition(state);
-            if (matchWinner) {
+            const winCondition = this.checkMatchWinCondition(state);
+            if (winCondition.isMatchOver) {
                 isMatchOver = true;
                 state.status = 'match_completed';
-                state.winner = matchWinner;
+                state.winner = winCondition.winnerId;
             }
             else {
                 ms.currentTurn = null;

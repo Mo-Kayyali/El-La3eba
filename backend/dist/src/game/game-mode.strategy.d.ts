@@ -2,6 +2,10 @@ export interface GuessResult {
     isCorrect: boolean;
     matchedPlayer: any | null;
     guessName: string;
+    answerDetails?: {
+        rank?: number | null;
+        slotLabel?: string | null;
+    } | null;
 }
 export interface HandleGuessOutcome {
     error?: string;
@@ -22,7 +26,10 @@ export interface ForfeitOutcome {
 export interface GameModeStrategy {
     handleGuess(state: any, userId: string, guessResult: GuessResult): HandleGuessOutcome;
     handleTurnTimeout(state: any, userId: string): HandleGuessOutcome;
-    checkMatchWinCondition(state: any): string | null;
+    checkMatchWinCondition(state: any): {
+        isMatchOver: boolean;
+        winnerId: string | null;
+    };
     handleDisconnectTimeout(state: any, disconnectedUserId: string): DisconnectOutcome;
     handleForfeit(state: any, forfeitingUserId: string): ForfeitOutcome;
     getOpponent(state: any, userId: string): string;

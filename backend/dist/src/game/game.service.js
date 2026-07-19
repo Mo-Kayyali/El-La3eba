@@ -179,6 +179,22 @@ let GameService = class GameService {
         }
         return false;
     }
+    async validateAndGetAnswerDetails(questionId, playerId) {
+        const qa = await this.prisma.questionAnswer.findUnique({
+            where: {
+                questionId_playerId: {
+                    questionId,
+                    playerId,
+                },
+            },
+        });
+        if (!qa)
+            return null;
+        return {
+            rank: qa.rank,
+            slotLabel: qa.slotLabel,
+        };
+    }
     async createSuggestion(userId, questionId, playerId, guessText, comment) {
         const existing = await this.prisma.answerSuggestion.findFirst({
             where: {

@@ -184,6 +184,22 @@ export class GameService {
     return false;
   }
 
+  async validateAndGetAnswerDetails(questionId: string, playerId: string): Promise<{ rank?: number | null, slotLabel?: string | null } | null> {
+    const qa = await this.prisma.questionAnswer.findUnique({
+      where: {
+        questionId_playerId: {
+          questionId,
+          playerId,
+        },
+      },
+    });
+    if (!qa) return null;
+    return {
+      rank: qa.rank,
+      slotLabel: qa.slotLabel,
+    };
+  }
+
   // ─── AI Referee Blueprint ─────────────────────────────────────────────────
   //
   // When the Python microservice at http://localhost:8000 is ready:

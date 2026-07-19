@@ -2,6 +2,7 @@ export interface GuessResult {
   isCorrect: boolean;
   matchedPlayer: any | null;
   guessName: string;
+  answerDetails?: { rank?: number | null; slotLabel?: string | null } | null;
 }
 
 export interface HandleGuessOutcome {
@@ -37,7 +38,7 @@ export interface GameModeStrategy {
   /**
    * Checks if the match has been won based on the current state.
    */
-  checkMatchWinCondition(state: any): string | null;
+  checkMatchWinCondition(state: any): { isMatchOver: boolean; winnerId: string | null };
 
   /**
    * Applies forfeit/timeout logic when a player disconnects for too long.

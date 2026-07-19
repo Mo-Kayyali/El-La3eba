@@ -26,7 +26,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly INVITE_COOLDOWN_SECONDS;
     private readonly INVITE_TTL_SECONDS;
     constructor(jwtService: JwtService, matchmakingService: MatchmakingService, gameService: GameService, redisClient: RedisService, friendsService: FriendsService, usersService: UsersService);
-    private strategy;
+    private resolveStrategy;
     private flattenStateForFrontend;
     private sleep;
     private inviteCooldownKey;

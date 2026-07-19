@@ -184,3 +184,14 @@ createdAt   datetime
 reviewedAt  datetime?
 // Indexes: (questionId, status); suggestedBy; playerId
 ```
+
+## 4. Game Modes & Strategies
+
+- **GameModeStrategy Interface:** GameGateway no longer contains any mode-specific game logic. Turn handling, strike/round-loss evaluation, match-win conditions, and disconnect-forfeit winner assignment are now owned by a `GameModeStrategy` interface. The `checkMatchWinCondition` method returns `{ isMatchOver: boolean, winnerId: string | null }`. The gateway resolves the active strategy dynamically via `resolveStrategy(state.mode)` (`StrikesModeStrategy` or `Top10ModeStrategy`).
+  - **Round-lock primitive:** `modeState.roundWinnerId` is a mode-controlled field, set atomically inside the same Redis `WATCH`/`MULTI`/`EXEC` transaction that applies a guess result. This supports future simultaneous-guess modes (e.g. Shared Clubs).
+  - **Redis state shape:** The backend manages a mode-agnostic envelope (`players`, `status`, `winner`, `isRanked`, `mode`, etc.) plus a `modeState` object owned entirely by the active strategy.
+  - **`handleForfeit`:** Manual/disconnect forfeit handling goes through the `handleForfeit` method on the strategy.
+
+- **Strikes Mode:** Best-of-3 rounds, turn-based. Players alternate guesses; wrong guesses award a strike. 3 strikes lose the round.
+- **Top 10 Mode:** Single-round, turn-based. Players alternate claiming Top 10 ranks. Correct guesses award `+rank` (1-10). Guesses on 'trap' ranks (11-13) subtract 3, 2, 1 point respectively. Turn timer timeout counts as a wrong guess. A player is skipped on their turn if they reach 3 wrong guesses. The match ends when all 10 real ranks are claimed or both players reach 3 wrong guesses. In case of a tie on score, the player with fewer wrong guesses wins; if still tied, the match ends in a genuine draw (`winnerId: null`, resulting in no MMR change).
+- **Admin UI Extensions:** The Admin Dashboard Question editor allows rank values up to `13` for `TOP_10` mode, and visually highlights answers with rank > 10 as `Trap` to ensure editors understand they are penalized positions.
