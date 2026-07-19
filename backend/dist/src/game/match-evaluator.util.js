@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkBestOfNMatchWin = checkBestOfNMatchWin;
 function checkBestOfNMatchWin(state) {
     const ms = state.modeState;
-    const requiredWins = 2;
+    const requiredWins = Math.ceil((state.composition?.length || 3) / 2);
     if (ms.overallScores[state.players[0]] >= requiredWins ||
         ms.overallScores[state.players[1]] >= requiredWins ||
         ms.currentRound >= (state.composition?.length || 3)) {

@@ -662,7 +662,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, username);
         return { status: 'success', roomCode };
     }
-    async handleSendGameInvite(client, friendId) {
+    async handleSendGameInvite(client, friendId, config) {
         const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
@@ -682,7 +682,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
             await this.friendsService.ensureUsersAreFriends(userId, friendId);
             await this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
-            const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername);
+            const roomCode = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername, config);
             await this.redisClient
                 .multi()
                 .set(this.inviteKey(userId, friendId), JSON.stringify({
@@ -710,8 +710,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
             };
         }
     }
-    async handleInviteFriendToGame(client, friendId) {
-        return this.handleSendGameInvite(client, friendId);
+    async handleInviteFriendToGame(client, friendId, config) {
+        return this.handleSendGameInvite(client, friendId, config);
     }
     async handleCancelGameInvite(client, friendId) {
         const inviterId = String(client.data?.user?.sub || client.data?.user?.userId || '');
@@ -1353,16 +1353,18 @@ __decorate([
     (0, websockets_1.SubscribeMessage)('sendGameInvite'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __param(2, (0, websockets_1.MessageBody)('config')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String, Object]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleSendGameInvite", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('inviteFriendToGame'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)('friendId')),
+    __param(2, (0, websockets_1.MessageBody)('config')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String, Object]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleInviteFriendToGame", null);
 __decorate([

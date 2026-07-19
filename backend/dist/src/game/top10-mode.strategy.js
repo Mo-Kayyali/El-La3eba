@@ -65,7 +65,7 @@ class Top10ModeStrategy {
         else {
             ms.currentTurn = state.players[0];
         }
-        ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+        ms.turnDeadlineAt = Date.now() + (state.timerConfig?.[state.mode] ?? 10_000);
     }
     handleTurnTimeout(state, timedOutUserId) {
         const ms = state.modeState;
@@ -158,7 +158,7 @@ class Top10ModeStrategy {
         else {
             ms.currentTurn = opponent;
         }
-        ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+        ms.turnDeadlineAt = Date.now() + (state.timerConfig?.[state.mode] ?? 10_000);
         return {
             updatedState: state,
             isRoundOver: false,

@@ -88,7 +88,7 @@ class StrikesModeStrategy {
         }
         else {
             ms.currentTurn = opponent;
-            ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+            ms.turnDeadlineAt = Date.now() + (state.timerConfig?.[state.mode] ?? 10_000);
             return {
                 updatedState: state,
                 isRoundOver: false
@@ -106,7 +106,7 @@ class StrikesModeStrategy {
         else {
             ms.currentTurn = state.players[0];
         }
-        ms.turnDeadlineAt = Date.now() + (state.turnTimerMs || 10_000);
+        ms.turnDeadlineAt = Date.now() + (state.timerConfig?.[state.mode] ?? 10_000);
     }
 }
 exports.StrikesModeStrategy = StrikesModeStrategy;

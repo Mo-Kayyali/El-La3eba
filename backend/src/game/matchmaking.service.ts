@@ -268,7 +268,32 @@ return selected
     userId: string,
     socketId: string,
     username?: string,
+    config?: { composition: any[]; timerConfig: Record<string, number> },
   ): Promise<string> {
+    let finalConfig = config;
+    if (finalConfig) {
+      if (!Array.isArray(finalConfig.composition) || finalConfig.composition.length === 0) {
+        throw new Error('Composition must have at least 1 entry');
+      }
+      const validModes = ['STRIKES', 'TOP_10', 'PHOTO_GUESS', 'LINEUP'];
+      for (const mode of finalConfig.composition) {
+        if (!validModes.includes(mode)) {
+          throw new Error('Invalid game mode in composition');
+        }
+      }
+      const validTimers = [10000, 15000, 30000, 60000];
+      for (const val of Object.values(finalConfig.timerConfig || {})) {
+        if (!validTimers.includes(val as number)) {
+          throw new Error('Invalid timer config value');
+        }
+      }
+    } else {
+      finalConfig = {
+        composition: ['STRIKES', 'STRIKES', 'TOP_10'],
+        timerConfig: { STRIKES: 10000, TOP_10: 10000 },
+      };
+    }
+
     // Cannot be in a queue and host a private room simultaneously
     await this.cancelSearch(userId);
 
@@ -281,7 +306,7 @@ return selected
     }
 
     const TTL = this.PRIVATE_ROOM_TTL_SECONDS;
-    const roomData = JSON.stringify({ userId, socketId, username });
+    const roomData = JSON.stringify({ userId, socketId, username, config: finalConfig });
     await Promise.all([
       this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
       this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
@@ -347,7 +372,7 @@ return selected
       return { success: false, error: 'Room not found or expired' };
     }
 
-    const host: QueueEntry = JSON.parse(roomDataStr);
+    const host = JSON.parse(roomDataStr) as any;
 
     if (host.userId === userId) {
       await this.redisClient.unwatch();
@@ -382,6 +407,8 @@ return selected
       host.username,
       username,
       false, // private matches are always unrated
+      host.config?.composition,
+      host.config?.timerConfig
     );
 
     if (this.server) {
@@ -466,7 +493,8 @@ return selected
     player1Username?: string,
     player2Username?: string,
     isRanked = false,
-    composition: any[] = ['STRIKES', 'STRIKES', 'TOP_10']
+    composition: any[] = ['STRIKES', 'STRIKES', 'TOP_10'],
+    timerConfig?: Record<string, number>
   ) {
     // Fetch current MMR for rank badge display on the frontend.
     // Use Promise.allSettled so a missing user doesn't abort game creation.
@@ -492,7 +520,7 @@ return selected
       winner: null,
       isRanked,
       composition,
-      turnTimerMs: 10_000,
+      timerConfig: timerConfig || { STRIKES: 10_000, TOP_10: 10_000 },
       mode: composition[0],
       playerNames: {
         [player1Id]: player1Username ?? String(player1Id),

@@ -93,7 +93,10 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         roomCode: string;
         message?: undefined;
     }>;
-    handleSendGameInvite(client: Socket, friendId: string): Promise<{
+    handleSendGameInvite(client: Socket, friendId: string, config?: {
+        composition: any[];
+        timerConfig: Record<string, number>;
+    }): Promise<{
         status: string;
         message: string;
         roomCode?: undefined;
@@ -102,7 +105,10 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         roomCode: string;
         message?: undefined;
     }>;
-    handleInviteFriendToGame(client: Socket, friendId: string): Promise<{
+    handleInviteFriendToGame(client: Socket, friendId: string, config?: {
+        composition: any[];
+        timerConfig: Record<string, number>;
+    }): Promise<{
         status: string;
         message: string;
         roomCode?: undefined;

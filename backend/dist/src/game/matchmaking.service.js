@@ -191,7 +191,31 @@ return selected
             return null;
         }
     }
-    async createPrivateRoom(userId, socketId, username) {
+    async createPrivateRoom(userId, socketId, username, config) {
+        let finalConfig = config;
+        if (finalConfig) {
+            if (!Array.isArray(finalConfig.composition) || finalConfig.composition.length === 0) {
+                throw new Error('Composition must have at least 1 entry');
+            }
+            const validModes = ['STRIKES', 'TOP_10', 'PHOTO_GUESS', 'LINEUP'];
+            for (const mode of finalConfig.composition) {
+                if (!validModes.includes(mode)) {
+                    throw new Error('Invalid game mode in composition');
+                }
+            }
+            const validTimers = [10000, 15000, 30000, 60000];
+            for (const val of Object.values(finalConfig.timerConfig || {})) {
+                if (!validTimers.includes(val)) {
+                    throw new Error('Invalid timer config value');
+                }
+            }
+        }
+        else {
+            finalConfig = {
+                composition: ['STRIKES', 'STRIKES', 'TOP_10'],
+                timerConfig: { STRIKES: 10000, TOP_10: 10000 },
+            };
+        }
         await this.cancelSearch(userId);
         let roomCode = '';
         let isUnique = false;
@@ -202,7 +226,7 @@ return selected
                 isUnique = true;
         }
         const TTL = this.PRIVATE_ROOM_TTL_SECONDS;
-        const roomData = JSON.stringify({ userId, socketId, username });
+        const roomData = JSON.stringify({ userId, socketId, username, config: finalConfig });
         await Promise.all([
             this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
             this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
@@ -261,7 +285,7 @@ return selected
             this.cancelSearch(userId),
         ]);
         const gameSessionId = (0, crypto_1.randomUUID)();
-        const gameState = await this.initializeGameState(gameSessionId, host.userId, userId, host.username, username, false);
+        const gameState = await this.initializeGameState(gameSessionId, host.userId, userId, host.username, username, false, host.config?.composition, host.config?.timerConfig);
         if (this.server) {
             this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
             this.server.to(host.socketId).emit('matchFound', { gameSessionId });
@@ -308,7 +332,7 @@ return selected
         this.logger.log(`${isRanked ? 'Ranked' : 'Unrated'} match created: ${gameSessionId} ` +
             `[${p1.userId} vs ${p2.userId}]`);
     }
-    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false, composition = ['STRIKES', 'STRIKES', 'TOP_10']) {
+    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false, composition = ['STRIKES', 'STRIKES', 'TOP_10'], timerConfig) {
         const [p1Result, p2Result] = await Promise.allSettled([
             this.prisma.user.findUnique({
                 where: { id: player1Id },
@@ -327,7 +351,7 @@ return selected
             winner: null,
             isRanked,
             composition,
-            turnTimerMs: 10_000,
+            timerConfig: timerConfig || { STRIKES: 10_000, TOP_10: 10_000 },
             mode: composition[0],
             playerNames: {
                 [player1Id]: player1Username ?? String(player1Id),

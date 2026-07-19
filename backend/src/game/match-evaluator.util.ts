@@ -1,8 +1,6 @@
 export function checkBestOfNMatchWin(state: any): { isMatchOver: boolean; winnerId: string | null } {
   const ms = state.modeState;
-  // TODO: Hardcoded majority threshold (2) is only correct for the fixed 3-round Ranked/Unrated composition.
-  // Must generalize to Math.ceil(composition.length / 2) when Private Room variable-length compositions ship.
-  const requiredWins = 2;
+  const requiredWins = Math.ceil((state.composition?.length || 3) / 2);
   if (
     ms.overallScores[state.players[0]] >= requiredWins ||
     ms.overallScores[state.players[1]] >= requiredWins ||

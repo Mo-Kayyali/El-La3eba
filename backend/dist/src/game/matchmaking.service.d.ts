@@ -28,7 +28,10 @@ export declare class MatchmakingService {
     private removeUserFromQueue;
     private purgeExpiredUsers;
     private popValidPlayerPair;
-    createPrivateRoom(userId: string, socketId: string, username?: string): Promise<string>;
+    createPrivateRoom(userId: string, socketId: string, username?: string, config?: {
+        composition: any[];
+        timerConfig: Record<string, number>;
+    }): Promise<string>;
     cancelPrivateRoom(userId: string): Promise<void>;
     private cleanupUserPrivateRoom;
     joinPrivateRoom(code: string, userId: string, socketId: string, username?: string): Promise<{
@@ -42,13 +45,13 @@ export declare class MatchmakingService {
     }>;
     handleMatchmakingInterval(): Promise<void>;
     private processQueue;
-    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean, composition?: any[]): Promise<{
+    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean, composition?: any[], timerConfig?: Record<string, number>): Promise<{
         players: string[];
         status: string;
         winner: null;
         isRanked: boolean;
         composition: any[];
-        turnTimerMs: number;
+        timerConfig: Record<string, number>;
         mode: any;
         playerNames: {
             [player1Id]: string;

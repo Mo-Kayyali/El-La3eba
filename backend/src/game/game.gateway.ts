@@ -949,6 +949,7 @@ export class GameGateway
   async handleSendGameInvite(
     @ConnectedSocket() client: Socket,
     @MessageBody('friendId') friendId: string,
+    @MessageBody('config') config?: { composition: any[]; timerConfig: Record<string, number> },
   ) {
     const userId = String(
       client.data?.user?.sub || client.data?.user?.userId || '',
@@ -985,6 +986,7 @@ export class GameGateway
         userId,
         client.id,
         inviterUsername,
+        config,
       );
 
       await this.redisClient
@@ -1025,8 +1027,9 @@ export class GameGateway
   async handleInviteFriendToGame(
     @ConnectedSocket() client: Socket,
     @MessageBody('friendId') friendId: string,
+    @MessageBody('config') config?: { composition: any[]; timerConfig: Record<string, number> },
   ) {
-    return this.handleSendGameInvite(client, friendId);
+    return this.handleSendGameInvite(client, friendId, config);
   }
 
   @SubscribeMessage('cancelGameInvite')

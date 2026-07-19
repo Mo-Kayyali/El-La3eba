@@ -7,6 +7,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { BadgeAlert, BellOff, MessageSquarePlus, RefreshCw, Trophy, UserCheck, UserMinus, UserPlus, X, Gamepad2, Search, Plus, Swords, Users, UserRound } from "lucide-react";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { RoomConfigModal, RoomConfig } from "@/components/room-config-modal";
 import {
   acceptFriendRequest,
   cancelOutgoingRequest,
@@ -79,6 +80,7 @@ export default function FriendsPage() {
   );
 
   const [friendsData, setFriendsData] = useState<FriendsResponse | null>(null);
+  const [inviteModalFriend, setInviteModalFriend] = useState<FriendEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [identifier, setIdentifier] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -323,19 +325,26 @@ export default function FriendsPage() {
       return;
     }
 
+    setInviteModalFriend(friend);
+  }
+
+  const sendConfiguredInvite = (friend: FriendEntry, config: RoomConfig) => {
+    setInviteModalFriend(null);
+    if (!socket?.connected) return;
+    
     socket.emit(
       "sendGameInvite",
-      { friendId },
+      { friendId: friend.userId, config },
       (response: { status?: string; roomCode?: string; message?: string }) => {
         if (response?.status === "success" && response.roomCode) {
           setOutgoingInvite({
-            friendId,
+            friendId: friend.userId,
             roomCode: response.roomCode,
             status: "pending",
             expiresAt: Date.now() + 60_000,
           });
-          setActionMessage(`Invited ${friendName} to a private room.`);
-          toast.success(`Invite sent to ${friendName}.`);
+          setActionMessage(`Invited ${friend.username} to a private room.`);
+          toast.success(`Invite sent to ${friend.username}.`);
           return;
         }
         const message = response?.message ?? "Could not create invite.";
@@ -343,7 +352,7 @@ export default function FriendsPage() {
         toast.error(message);
       },
     );
-  }
+  };
 
   if (!bootstrapped) {
     return (
@@ -580,6 +589,15 @@ export default function FriendsPage() {
         isDestructive={true}
         isLoading={isRemovingFriend}
       />
+
+      {inviteModalFriend && (
+        <RoomConfigModal
+          isOpen={!!inviteModalFriend}
+          onClose={() => setInviteModalFriend(null)}
+          onConfirm={(config) => sendConfiguredInvite(inviteModalFriend, config)}
+          friendName={inviteModalFriend.username}
+        />
+      )}
     </div>
   );
 }
