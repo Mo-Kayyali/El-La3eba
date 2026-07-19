@@ -1008,11 +1008,14 @@ export class GameGateway
         .exec();
       this.scheduleInviteExpiry(userId, friendId);
 
-      this.server.to(friendId).emit('friendGameInvite', {
+      const payload = {
         inviterId: userId,
         inviterUsername,
         roomCode,
-      });
+        ...(config && { config }),
+      };
+
+      this.server.to(friendId).emit('friendGameInvite', payload);
 
       return { status: 'success', roomCode };
     } catch (error) {
