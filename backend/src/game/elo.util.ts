@@ -51,3 +51,26 @@ export function calculateElo(
     loserDelta,
   };
 }
+
+/**
+ * Calculates standard Elo rating changes for a draw.
+ * Both ratings move toward the expected outcome symmetric to the rating gap.
+ */
+export function calculateEloDraw(
+  mmrA: number,
+  mmrB: number,
+  kFactor = 32,
+): { newMmrA: number; newMmrB: number; deltaA: number; deltaB: number } {
+  const expectedA = 1 / (1 + Math.pow(10, (mmrB - mmrA) / 400));
+  const expectedB = 1 - expectedA;
+
+  const deltaA = Math.round(kFactor * (0.5 - expectedA));
+  const deltaB = Math.round(kFactor * (0.5 - expectedB));
+
+  return {
+    newMmrA: Math.max(100, mmrA + deltaA),
+    newMmrB: Math.max(100, mmrB + deltaB),
+    deltaA,
+    deltaB,
+  };
+}

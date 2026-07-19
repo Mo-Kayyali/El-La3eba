@@ -347,11 +347,24 @@ export class GameGateway
    */
   private async resolveMmrDeltasForMatch(
     state: any,
-    winnerId: string,
-    loserId: string,
+    playerAId: string,
+    playerBId: string,
+    winnerId: string | null,
     forfeited: boolean,
   ): Promise<Record<string, number> | undefined> {
-    if (!state?.isRanked || !winnerId || !loserId) return undefined;
+    if (!state?.isRanked || !playerAId || !playerBId) return undefined;
+    
+    if (winnerId === null) {
+      // Genuine draw
+      const res = await this.matchmakingService.updateMmrAfterDraw(
+        playerAId,
+        playerBId,
+      );
+      if (!res) return undefined;
+      return { [playerAId]: res.deltaA, [playerBId]: res.deltaB };
+    }
+
+    const loserId = winnerId === playerAId ? playerBId : playerAId;
     const w = Number(state.modeState?.overallScores?.[winnerId] ?? 0);
     const l = Number(state.modeState?.overallScores?.[loserId] ?? 0);
     const margin = forfeited ? 1.2 : scoreMarginMultiplier(w, l);
@@ -521,8 +534,9 @@ export class GameGateway
 
         const mmrDeltas = await this.resolveMmrDeltasForMatch(
           state,
+          state.players[0],
+          state.players[1],
           winnerId,
-          userId,
           true,
         );
         const mmrLost = state.isRanked
@@ -677,13 +691,11 @@ export class GameGateway
 
       if (isMatchOver) {
         this.clearTurnTimer(gameSessionId);
-        const loserId = state.players.find(
-          (p: string) => p !== state.winner,
-        ) as string;
         const mmrDeltas = await this.resolveMmrDeltasForMatch(
           state,
+          state.players[0],
+          state.players[1],
           state.winner,
-          loserId,
           false,
         );
         this.server.to(gameSessionId).emit('matchOver', {
@@ -1647,13 +1659,11 @@ export class GameGateway
       if (isMatchOver) {
         this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
         this.clearTurnTimer(gameSessionId);
-        const loserId = state.players.find(
-          (p: string) => p !== state.winner,
-        ) as string;
         const mmrDeltas = await this.resolveMmrDeltasForMatch(
           state,
+          state.players[0],
+          state.players[1],
           state.winner,
-          loserId,
           false,
         );
         this.server.to(gameSessionId).emit('matchOver', {
@@ -1808,8 +1818,9 @@ export class GameGateway
 
       const mmrDeltas = await this.resolveMmrDeltasForMatch(
         forfeitedState,
+        forfeitedState.players[0],
+        forfeitedState.players[1],
         winnerId,
-        userId,
         true,
       );
       this.server.to(gameSessionId).emit('matchOver', {

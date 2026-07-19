@@ -4,7 +4,7 @@ import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Server } from 'socket.io';
 import { randomUUID, randomBytes } from 'crypto';
-import { calculateElo } from './elo.util';
+import { calculateElo, calculateEloDraw } from './elo.util';
 import type { ChainableCommander } from 'ioredis';
 import { GameService } from './game.service';
 
@@ -685,6 +685,69 @@ return selected
     } catch (error: unknown) {
       const err = error as Error;
       this.logger.error(`MMR update failed: ${err?.message}`, err?.stack);
+      return null;
+    }
+  }
+
+  /**
+   * Applies Elo rating changes to both players after a ranked match ends in a draw.
+   * Also increments gamesPlayed for both.
+   */
+  async updateMmrAfterDraw(
+    playerAId: string,
+    playerBId: string,
+  ): Promise<{ deltaA: number; deltaB: number } | null> {
+    try {
+      const [playerA, playerB] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: playerAId },
+          select: { mmr: true },
+        }),
+        this.prisma.user.findUnique({
+          where: { id: playerBId },
+          select: { mmr: true },
+        }),
+      ]);
+
+      if (!playerA || !playerB) {
+        this.logger.warn(
+          `MMR draw update skipped — playerA=${playerAId} found=${!!playerA}, playerB=${playerBId} found=${!!playerB}`,
+        );
+        return null;
+      }
+
+      const { newMmrA, newMmrB, deltaA, deltaB } = calculateEloDraw(
+        playerA.mmr,
+        playerB.mmr,
+        32,
+      );
+
+      await Promise.all([
+        this.prisma.user.update({
+          where: { id: playerAId },
+          data: {
+            mmr: newMmrA,
+            gamesPlayed: { increment: 1 },
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: playerBId },
+          data: {
+            mmr: newMmrB,
+            gamesPlayed: { increment: 1 },
+          },
+        }),
+      ]);
+
+      this.logger.log(
+        `MMR updated (draw) — playerA ${playerAId}: ${playerA.mmr} → ${newMmrA} (${deltaA > 0 ? '+' : ''}${deltaA}), ` +
+          `playerB ${playerBId}: ${playerB.mmr} → ${newMmrB} (${deltaB > 0 ? '+' : ''}${deltaB})`,
+      );
+
+      return { deltaA, deltaB };
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(`MMR draw update failed: ${err?.message}`, err?.stack);
       return null;
     }
   }

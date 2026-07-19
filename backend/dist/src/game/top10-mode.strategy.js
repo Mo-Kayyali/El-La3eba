@@ -29,15 +29,7 @@ class Top10ModeStrategy {
                 return { isMatchOver: true, winnerId: p2 };
             }
             else {
-                if (p1Wrong < p2Wrong) {
-                    return { isMatchOver: true, winnerId: p1 };
-                }
-                else if (p2Wrong < p1Wrong) {
-                    return { isMatchOver: true, winnerId: p2 };
-                }
-                else {
-                    return { isMatchOver: true, winnerId: null };
-                }
+                return { isMatchOver: true, winnerId: null };
             }
         }
         return { isMatchOver: false, winnerId: null };

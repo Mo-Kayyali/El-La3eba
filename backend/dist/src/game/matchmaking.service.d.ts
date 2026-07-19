@@ -89,4 +89,8 @@ export declare class MatchmakingService {
         winnerDelta: number;
         loserDelta: number;
     } | null>;
+    updateMmrAfterDraw(playerAId: string, playerBId: string): Promise<{
+        deltaA: number;
+        deltaB: number;
+    } | null>;
 }

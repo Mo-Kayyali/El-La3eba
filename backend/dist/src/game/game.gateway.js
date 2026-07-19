@@ -237,9 +237,16 @@ let GameGateway = GameGateway_1 = class GameGateway {
             }
         }));
     }
-    async resolveMmrDeltasForMatch(state, winnerId, loserId, forfeited) {
-        if (!state?.isRanked || !winnerId || !loserId)
+    async resolveMmrDeltasForMatch(state, playerAId, playerBId, winnerId, forfeited) {
+        if (!state?.isRanked || !playerAId || !playerBId)
             return undefined;
+        if (winnerId === null) {
+            const res = await this.matchmakingService.updateMmrAfterDraw(playerAId, playerBId);
+            if (!res)
+                return undefined;
+            return { [playerAId]: res.deltaA, [playerBId]: res.deltaB };
+        }
+        const loserId = winnerId === playerAId ? playerBId : playerAId;
         const w = Number(state.modeState?.overallScores?.[winnerId] ?? 0);
         const l = Number(state.modeState?.overallScores?.[loserId] ?? 0);
         const margin = forfeited ? 1.2 : (0, elo_util_1.scoreMarginMultiplier)(w, l);
@@ -353,7 +360,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     return;
                 }
                 this.clearTurnTimer(gameSessionId);
-                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, winnerId, userId, true);
+                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.players[0], state.players[1], winnerId, true);
                 const mmrLost = state.isRanked
                     ? Math.max(0, -(mmrDeltas?.[userId] ?? -15))
                     : 0;
@@ -473,8 +480,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.server.to(gameSessionId).emit('gameStateUpdated', updatePayload);
             if (isMatchOver) {
                 this.clearTurnTimer(gameSessionId);
-                const loserId = state.players.find((p) => p !== state.winner);
-                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.winner, loserId, false);
+                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.players[0], state.players[1], state.winner, false);
                 this.server.to(gameSessionId).emit('matchOver', {
                     ...updatePayload,
                     forfeit: false,
@@ -1153,8 +1159,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             if (isMatchOver) {
                 this.logger.log(`Broadcasting matchOver to room ${gameSessionId}`);
                 this.clearTurnTimer(gameSessionId);
-                const loserId = state.players.find((p) => p !== state.winner);
-                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.winner, loserId, false);
+                const mmrDeltas = await this.resolveMmrDeltasForMatch(state, state.players[0], state.players[1], state.winner, false);
                 this.server.to(gameSessionId).emit('matchOver', {
                     ...updatePayload,
                     forfeit: false,
@@ -1276,7 +1281,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 return { status: 'error', message: 'Concurrent update, try again' };
             }
             this.clearTurnTimer(gameSessionId);
-            const mmrDeltas = await this.resolveMmrDeltasForMatch(forfeitedState, winnerId, userId, true);
+            const mmrDeltas = await this.resolveMmrDeltasForMatch(forfeitedState, forfeitedState.players[0], forfeitedState.players[1], winnerId, true);
             this.server.to(gameSessionId).emit('matchOver', {
                 state: this.flattenStateForFrontend(forfeitedState),
                 forfeit: true,

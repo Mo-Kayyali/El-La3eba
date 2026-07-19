@@ -470,6 +470,49 @@ return selected
             return null;
         }
     }
+    async updateMmrAfterDraw(playerAId, playerBId) {
+        try {
+            const [playerA, playerB] = await Promise.all([
+                this.prisma.user.findUnique({
+                    where: { id: playerAId },
+                    select: { mmr: true },
+                }),
+                this.prisma.user.findUnique({
+                    where: { id: playerBId },
+                    select: { mmr: true },
+                }),
+            ]);
+            if (!playerA || !playerB) {
+                this.logger.warn(`MMR draw update skipped — playerA=${playerAId} found=${!!playerA}, playerB=${playerBId} found=${!!playerB}`);
+                return null;
+            }
+            const { newMmrA, newMmrB, deltaA, deltaB } = (0, elo_util_1.calculateEloDraw)(playerA.mmr, playerB.mmr, 32);
+            await Promise.all([
+                this.prisma.user.update({
+                    where: { id: playerAId },
+                    data: {
+                        mmr: newMmrA,
+                        gamesPlayed: { increment: 1 },
+                    },
+                }),
+                this.prisma.user.update({
+                    where: { id: playerBId },
+                    data: {
+                        mmr: newMmrB,
+                        gamesPlayed: { increment: 1 },
+                    },
+                }),
+            ]);
+            this.logger.log(`MMR updated (draw) — playerA ${playerAId}: ${playerA.mmr} → ${newMmrA} (${deltaA > 0 ? '+' : ''}${deltaA}), ` +
+                `playerB ${playerBId}: ${playerB.mmr} → ${newMmrB} (${deltaB > 0 ? '+' : ''}${deltaB})`);
+            return { deltaA, deltaB };
+        }
+        catch (error) {
+            const err = error;
+            this.logger.error(`MMR draw update failed: ${err?.message}`, err?.stack);
+            return null;
+        }
+    }
 };
 exports.MatchmakingService = MatchmakingService;
 __decorate([

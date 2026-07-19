@@ -40,15 +40,8 @@ export class Top10ModeStrategy implements GameModeStrategy {
       } else if (p2Score > p1Score) {
         return { isMatchOver: true, winnerId: p2 };
       } else {
-        // Tie break by fewer wrong guesses
-        if (p1Wrong < p2Wrong) {
-          return { isMatchOver: true, winnerId: p1 };
-        } else if (p2Wrong < p1Wrong) {
-          return { isMatchOver: true, winnerId: p2 };
-        } else {
-          // Genuine draw
-          return { isMatchOver: true, winnerId: null };
-        }
+        // Genuine draw
+        return { isMatchOver: true, winnerId: null };
       }
     }
 
