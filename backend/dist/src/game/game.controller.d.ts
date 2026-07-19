@@ -28,14 +28,14 @@ export declare class GameController {
         suggestion: {
             id: string;
             createdAt: Date;
+            playerId: string | null;
             status: import(".prisma/client").$Enums.SuggestionStatus;
+            questionId: string;
             guessText: string;
+            suggestedBy: string;
             comment: string | null;
             reviewNote: string | null;
             reviewedAt: Date | null;
-            questionId: string;
-            playerId: string | null;
-            suggestedBy: string;
         };
         message?: undefined;
     } | {

@@ -6,9 +6,9 @@ export declare class AdminCompetitionsController {
         id: string;
         createdAt: Date;
         name: string;
-        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
+        type: import(".prisma/client").$Enums.CompetitionType;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
@@ -17,9 +17,9 @@ export declare class AdminCompetitionsController {
             id: string;
             createdAt: Date;
             name: string;
-            type: import(".prisma/client").$Enums.CompetitionType;
             createdBy: string | null;
             countryCode: string | null;
+            type: import(".prisma/client").$Enums.CompetitionType;
             region: import(".prisma/client").$Enums.Region | null;
             tier: number | null;
         }[];
@@ -33,9 +33,9 @@ export declare class AdminCompetitionsController {
         id: string;
         createdAt: Date;
         name: string;
-        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
+        type: import(".prisma/client").$Enums.CompetitionType;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
@@ -43,9 +43,9 @@ export declare class AdminCompetitionsController {
         id: string;
         createdAt: Date;
         name: string;
-        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
+        type: import(".prisma/client").$Enums.CompetitionType;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;
@@ -53,9 +53,9 @@ export declare class AdminCompetitionsController {
         id: string;
         createdAt: Date;
         name: string;
-        type: import(".prisma/client").$Enums.CompetitionType;
         createdBy: string | null;
         countryCode: string | null;
+        type: import(".prisma/client").$Enums.CompetitionType;
         region: import(".prisma/client").$Enums.Region | null;
         tier: number | null;
     }>;

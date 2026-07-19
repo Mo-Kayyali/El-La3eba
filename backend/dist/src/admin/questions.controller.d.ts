@@ -9,6 +9,7 @@ export declare class AdminQuestionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        createdBy: string | null;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
@@ -17,7 +18,6 @@ export declare class AdminQuestionsController {
         photoPlayerId: string | null;
         isActive: boolean;
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
-        createdBy: string | null;
     }>;
     findAll(gameMode?: GameMode, isActive?: string, search?: string, page?: string, limit?: string, sort?: string, order?: string): Promise<{
         data: ({
@@ -35,6 +35,7 @@ export declare class AdminQuestionsController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            createdBy: string | null;
             text: string;
             gameMode: import(".prisma/client").$Enums.GameMode;
             answerType: import(".prisma/client").$Enums.AnswerType;
@@ -43,7 +44,6 @@ export declare class AdminQuestionsController {
             photoPlayerId: string | null;
             isActive: boolean;
             playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
-            createdBy: string | null;
         })[];
         meta: {
             total: number;
@@ -71,8 +71,8 @@ export declare class AdminQuestionsController {
             };
         } & {
             id: string;
-            questionId: string;
             playerId: string;
+            questionId: string;
             rank: number | null;
             slotLabel: string | null;
         })[];
@@ -80,6 +80,7 @@ export declare class AdminQuestionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        createdBy: string | null;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
@@ -88,12 +89,12 @@ export declare class AdminQuestionsController {
         photoPlayerId: string | null;
         isActive: boolean;
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
-        createdBy: string | null;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
     update(id: string, updateDto: PatchQuestionDto, req: any): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        createdBy: string | null;
         text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
@@ -102,7 +103,6 @@ export declare class AdminQuestionsController {
         photoPlayerId: string | null;
         isActive: boolean;
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
-        createdBy: string | null;
     }>;
     remove(id: string): Promise<{
         success: boolean;

@@ -59,6 +59,19 @@ function InviteCard({ invite }: { invite: IncomingGameInvite }) {
       <p className="mt-1 text-xs text-slate-400">
         Room code: {invite.roomCode}
       </p>
+      {invite.config && (
+        <p className="mt-1 text-xs text-slate-400">
+          {[
+            invite.config.composition.filter((m) => m === "STRIKES").length > 0 &&
+              `${invite.config.composition.filter((m) => m === "STRIKES").length}x Strikes`,
+            invite.config.composition.filter((m) => m === "TOP_10").length > 0 &&
+              `${invite.config.composition.filter((m) => m === "TOP_10").length}x Top 10`,
+          ]
+            .filter(Boolean)
+            .join(", ")}{" "}
+          &middot; {invite.config.timerConfig.STRIKES / 1000}s / {invite.config.timerConfig.TOP_10 / 1000}s timers
+        </p>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           onClick={acceptInvite}

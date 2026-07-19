@@ -11,8 +11,8 @@ export declare class AdminClubsController {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
@@ -29,8 +29,8 @@ export declare class AdminClubsController {
             createdAt: Date;
             name: string;
             competitions: string[];
-            createdBy: string | null;
             aliases: string[];
+            createdBy: string | null;
             countryCode: string;
             currentCompetitionId: string | null;
             logoUrl: string | null;
@@ -50,8 +50,8 @@ export declare class AdminClubsController {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
@@ -65,8 +65,8 @@ export declare class AdminClubsController {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
@@ -76,8 +76,8 @@ export declare class AdminClubsController {
         createdAt: Date;
         name: string;
         competitions: string[];
-        createdBy: string | null;
         aliases: string[];
+        createdBy: string | null;
         countryCode: string;
         currentCompetitionId: string | null;
         logoUrl: string | null;
