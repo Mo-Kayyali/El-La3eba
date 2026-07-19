@@ -27,18 +27,26 @@ let AdminQuestionsController = class AdminQuestionsController {
         this.questionsService = questionsService;
         this.gameService = gameService;
     }
-    create(createDto) {
-        return this.questionsService.create(createDto);
+    create(createDto, req) {
+        return this.questionsService.create(createDto, req.user.userId);
     }
-    findAll(gameMode, isActive) {
+    findAll(gameMode, isActive, search, page, limit, sort, order) {
         const activeFilter = isActive === 'true' ? true : isActive === 'false' ? false : undefined;
-        return this.questionsService.findAll(gameMode, activeFilter);
+        return this.questionsService.findAll({
+            gameMode,
+            isActive: activeFilter,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+            sort,
+            order,
+        });
     }
     findOne(id) {
         return this.questionsService.findOne(id);
     }
-    update(id, updateDto) {
-        return this.questionsService.update(id, updateDto);
+    update(id, updateDto, req) {
+        return this.questionsService.update(id, updateDto, req.user.userId);
     }
     remove(id) {
         return this.questionsService.remove(id);
@@ -72,16 +80,22 @@ exports.AdminQuestionsController = AdminQuestionsController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [questions_service_1.CreateQuestionDto]),
+    __metadata("design:paramtypes", [questions_service_1.CreateQuestionDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminQuestionsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('gameMode')),
     __param(1, (0, common_1.Query)('isActive')),
+    __param(2, (0, common_1.Query)('search')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('limit')),
+    __param(5, (0, common_1.Query)('sort')),
+    __param(6, (0, common_1.Query)('order')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminQuestionsController.prototype, "findAll", null);
 __decorate([
@@ -95,8 +109,9 @@ __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, questions_service_1.PatchQuestionDto]),
+    __metadata("design:paramtypes", [String, questions_service_1.PatchQuestionDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminQuestionsController.prototype, "update", null);
 __decorate([

@@ -51,6 +51,7 @@ class CreatePlayerDto {
     dateOfBirth;
     heightCm;
     preferredFoot;
+    positionCategories;
     positions;
     primaryPosition;
     isRetired;
@@ -96,6 +97,12 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePlayerDto.prototype, "preferredFoot", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(client_1.PositionCategory, { each: true }),
+    __metadata("design:type", Array)
+], CreatePlayerDto.prototype, "positionCategories", void 0);
+__decorate([
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.IsEnum)(client_1.Position, { each: true }),
     __metadata("design:type", Array)
@@ -131,6 +138,7 @@ class PatchPlayerDto {
     dateOfBirth;
     heightCm;
     preferredFoot;
+    positionCategories;
     positions;
     primaryPosition;
     isRetired;
@@ -180,6 +188,12 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.PreferredFoot),
     __metadata("design:type", String)
 ], PatchPlayerDto.prototype, "preferredFoot", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsEnum)(client_1.PositionCategory, { each: true }),
+    __metadata("design:type", Array)
+], PatchPlayerDto.prototype, "positionCategories", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
@@ -242,14 +256,47 @@ let AdminPlayersService = class AdminPlayersService {
     async search(query) {
         if (!query || query.length < 2)
             return [];
-        return this.prisma.player.findMany({
-            where: {
-                OR: [
-                    { name: { contains: query, mode: 'insensitive' } },
-                    { aliases: { hasSome: [query] } },
-                ]
-            },
-            take: 15,
+        const normalizedSearch = query.trim();
+        if (normalizedSearch.length <= 2) {
+            return this.prisma.player.findMany({
+                where: {
+                    name: { contains: normalizedSearch, mode: 'insensitive' }
+                },
+                take: 15,
+                select: {
+                    id: true,
+                    name: true,
+                    firstName: true,
+                    lastName: true,
+                    nationality: true,
+                    isRetired: true,
+                    currentClub: {
+                        select: { name: true }
+                    }
+                },
+                orderBy: { name: 'asc' }
+            });
+        }
+        const [_, matchedIdsObj] = await this.prisma.$transaction([
+            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+            this.prisma.$queryRaw `
+        SELECT p.id
+        FROM "Player" p
+        WHERE 
+          lower(unaccent_immutable(p.name)) %> lower(unaccent(${normalizedSearch})) OR
+          lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+        ORDER BY GREATEST(
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(p.name))),
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+        ) DESC
+        LIMIT 15;
+      `
+        ]);
+        const matchedIds = matchedIdsObj.map(row => row.id);
+        if (matchedIds.length === 0)
+            return [];
+        const players = await this.prisma.player.findMany({
+            where: { id: { in: matchedIds } },
             select: {
                 id: true,
                 name: true,
@@ -260,12 +307,43 @@ let AdminPlayersService = class AdminPlayersService {
                 currentClub: {
                     select: { name: true }
                 }
-            },
-            orderBy: { name: 'asc' }
+            }
         });
+        return players.sort((a, b) => matchedIds.indexOf(a.id) - matchedIds.indexOf(b.id));
     }
     async findAll(filters = {}) {
         const where = {};
+        const page = filters.page || 1;
+        const limit = filters.limit || 50;
+        const skip = (page - 1) * limit;
+        if (filters.search) {
+            const normalizedSearch = filters.search.trim();
+            if (normalizedSearch.length <= 2) {
+                where.name = { contains: normalizedSearch, mode: 'insensitive' };
+            }
+            else {
+                const [_, matchedIdsObj] = await this.prisma.$transaction([
+                    this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+                    this.prisma.$queryRaw `
+            SELECT p.id
+            FROM "Player" p
+            WHERE 
+              lower(unaccent_immutable(p.name)) %> lower(unaccent(${normalizedSearch})) OR
+              lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+            ORDER BY GREATEST(
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(p.name))),
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+            ) DESC
+            LIMIT 500;
+          `
+                ]);
+                const matchedIds = matchedIdsObj.map(row => row.id);
+                if (matchedIds.length === 0) {
+                    return { data: [], meta: { total: 0, page, totalPages: 0 } };
+                }
+                where.id = { in: matchedIds };
+            }
+        }
         if (filters.clubId) {
             where.currentClubId = filters.clubId;
         }
@@ -307,13 +385,34 @@ let AdminPlayersService = class AdminPlayersService {
         if (filters.nationality) {
             where.nationality = filters.nationality;
         }
-        return this.prisma.player.findMany({
+        const total = await this.prisma.player.count({ where });
+        let orderBy = { name: 'asc' };
+        if (filters.sort) {
+            const validSorts = ['name', 'createdAt', 'isRetired', 'nationality'];
+            if (validSorts.includes(filters.sort)) {
+                orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+            }
+            else if (filters.sort === 'currentClub') {
+                orderBy = { currentClub: { name: filters.order === 'desc' ? 'desc' : 'asc' } };
+            }
+        }
+        const data = await this.prisma.player.findMany({
             where,
-            orderBy: { name: 'asc' },
+            skip,
+            take: limit,
+            orderBy,
             include: {
                 currentClub: { select: { id: true, name: true, logoUrl: true } }
             }
         });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     async findOne(id) {
         const player = await this.prisma.player.findUnique({
@@ -330,7 +429,7 @@ let AdminPlayersService = class AdminPlayersService {
             throw new common_1.NotFoundException('Player not found');
         return player;
     }
-    async create(dto) {
+    async create(dto, adminUserId) {
         if (dto.firstName)
             dto.firstName = (0, string_util_1.capitalizeWords)(dto.firstName);
         if (dto.lastName)
@@ -347,6 +446,7 @@ let AdminPlayersService = class AdminPlayersService {
                 ...dto,
                 aliases,
                 dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+                createdBy: adminUserId,
             }
         });
         if (player.currentClubId) {
@@ -361,7 +461,7 @@ let AdminPlayersService = class AdminPlayersService {
         }
         return player;
     }
-    async update(id, dto) {
+    async update(id, dto, adminUserId) {
         if (dto.firstName)
             dto.firstName = (0, string_util_1.capitalizeWords)(dto.firstName);
         if (dto.lastName)
@@ -371,7 +471,7 @@ let AdminPlayersService = class AdminPlayersService {
         await this.findOne(id);
         await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
         const { clubHistory, dateOfBirth, ...playerData } = dto;
-        const dataToUpdate = { ...playerData };
+        const dataToUpdate = { ...playerData, createdBy: adminUserId };
         if (dateOfBirth !== undefined) {
             dataToUpdate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
         }
@@ -395,14 +495,32 @@ let AdminPlayersService = class AdminPlayersService {
             }
             const currentClubId = 'currentClubId' in dataToUpdate ? dataToUpdate.currentClubId : (await tx.player.findUnique({ where: { id }, select: { currentClubId: true } }))?.currentClubId;
             if (currentClubId) {
-                const existing = await tx.playerClub.findFirst({
-                    where: { playerId: id, clubId: currentClubId, isCurrent: true }
+                await tx.playerClub.updateMany({
+                    where: { playerId: id, isCurrent: true, clubId: { not: currentClubId } },
+                    data: { isCurrent: false }
                 });
-                if (!existing) {
+                const existing = await tx.playerClub.findFirst({
+                    where: { playerId: id, clubId: currentClubId }
+                });
+                if (existing) {
+                    if (!existing.isCurrent) {
+                        await tx.playerClub.update({
+                            where: { id: existing.id },
+                            data: { isCurrent: true }
+                        });
+                    }
+                }
+                else {
                     await tx.playerClub.create({
                         data: { playerId: id, clubId: currentClubId, isCurrent: true }
                     });
                 }
+            }
+            else {
+                await tx.playerClub.updateMany({
+                    where: { playerId: id, isCurrent: true },
+                    data: { isCurrent: false }
+                });
             }
         });
         await this.playerDenormService.regenerateForPlayer(id);

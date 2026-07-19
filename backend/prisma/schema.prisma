@@ -45,6 +45,13 @@ enum Region {
   WORLD
 }
 
+enum PositionCategory {
+  GOALKEEPER
+  DEFENDER
+  MIDFIELDER
+  FORWARD
+}
+
 enum Position {
   GK
   RB
@@ -184,6 +191,8 @@ model Competition {
   countryCode String?
   region      Region?
   tier        Int?
+  createdAt   DateTime        @default(now())
+  createdBy   String?
 
   country          Country?          @relation(fields: [countryCode], references: [id])
   clubs            Club[]            @relation("ClubCurrentCompetition")
@@ -203,6 +212,8 @@ model Club {
   /// matching the same pattern as the old FootballPlayer.clubs array.
   competitions         String[] @default([])
   logoUrl              String?
+  createdAt            DateTime @default(now())
+  createdBy            String?
 
   country            Country           @relation(fields: [countryCode], references: [id])
   currentCompetition Competition?      @relation("ClubCurrentCompetition", fields: [currentCompetitionId], references: [id])
@@ -211,6 +222,7 @@ model Club {
   clubCompetitions   ClubCompetition[]
 
   @@index([competitions], type: Gin)
+  @@index([name])
 }
 
 // ─── Club ↔ Competition join table ─────────────────────────────────────────────
@@ -243,6 +255,7 @@ model Player {
   dateOfBirth     DateTime?
   heightCm        Int?
   preferredFoot   PreferredFoot?
+  positionCategories PositionCategory[] @default([])
   positions       Position[]     @default([])
   primaryPosition Position?
   isRetired       Boolean        @default(false)
@@ -254,6 +267,8 @@ model Player {
   /// Denormalised flat list of competition names derived from clubs[].competitions.
   /// GIN indexed. Do NOT set directly — use PlayerDenormService.regenerateForPlayer().
   competitions    String[]       @default([])
+  createdAt       DateTime       @default(now())
+  createdBy       String?
 
   currentClub     Club?              @relation(fields: [currentClubId], references: [id])
   playerClubs     PlayerClub[]
@@ -263,10 +278,14 @@ model Player {
 
   // GIN index on positions array for filter queries
   @@index([positions], type: Gin)
+  @@index([positionCategories], type: Gin)
   // GIN index on clubs (denormalised) for fast filter queries
   @@index([clubs], type: Gin)
   // GIN index on competitions (denormalised) for fast filter queries
   @@index([competitions], type: Gin)
+  @@index([name])
+  @@index([currentClubId])
+  @@index([nationality])
 }
 
 // ─── Player ↔ Club history ────────────────────────────────────────────────────
@@ -290,11 +309,11 @@ model PlayerClub {
 // ─── Questions ────────────────────────────────────────────────────────────────
 
 model Question {
-  id            String         @id @default(uuid())
-  text          String
-  gameMode      GameMode
-  answerType    AnswerType
-  scope         QuestionScope @default(BOTH)
+  id                 String             @id @default(uuid())
+  text               String
+  gameMode           GameMode
+  answerType         AnswerType
+  scope              QuestionScope      @default(BOTH)
   logicOperator      LogicOperator? // applies when answerType = FILTER and there are >1 clauses
   photoPlayerId      String? // populated when gameMode = PHOTO_GUESS
   isActive           Boolean            @default(true)
@@ -302,6 +321,7 @@ model Question {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdBy String?
 
   photoPlayer Player?                @relation("QuestionPhotoPlayer", fields: [photoPlayerId], references: [id])
   clauses     QuestionFilterClause[]
@@ -310,14 +330,15 @@ model Question {
 
   @@index([gameMode])
   @@index([answerType])
+  @@index([createdAt])
 }
 
 model QuestionFilterClause {
   id          String     @id @default(uuid())
-  questionId      String
-  filterType      FilterType
-  filterValue     String
-  timeframe       Timeframe  @default(BOTH)
+  questionId  String
+  filterType  FilterType
+  filterValue String
+  timeframe   Timeframe  @default(BOTH)
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
@@ -347,7 +368,7 @@ model AnswerSuggestion {
   id          String           @id @default(uuid())
   questionId  String
   guessText   String
-  playerId    String
+  playerId    String?
   suggestedBy String
   status      SuggestionStatus @default(PENDING)
   comment     String?
@@ -356,7 +377,7 @@ model AnswerSuggestion {
   reviewedAt  DateTime?
 
   question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  player    Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
   suggester User     @relation(fields: [suggestedBy], references: [id], onDelete: Cascade)
 
   @@index([questionId, status])

@@ -17,10 +17,16 @@ let SuggestionsService = class SuggestionsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async getAllSuggestions(status) {
-        const whereClause = status ? { status } : {};
-        return this.prisma.answerSuggestion.findMany({
+    async getAllSuggestions(filters = {}) {
+        const whereClause = filters.status ? { status: filters.status } : {};
+        const page = filters.page || 1;
+        const limit = filters.limit || 50;
+        const skip = (page - 1) * limit;
+        const total = await this.prisma.answerSuggestion.count({ where: whereClause });
+        const data = await this.prisma.answerSuggestion.findMany({
             where: whereClause,
+            skip,
+            take: limit,
             include: {
                 question: true,
                 player: true,
@@ -30,6 +36,14 @@ let SuggestionsService = class SuggestionsService {
             },
             orderBy: { createdAt: 'desc' },
         });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     async approveSuggestion(id, reviewNote) {
         const suggestion = await this.prisma.answerSuggestion.findUnique({
@@ -42,26 +56,31 @@ let SuggestionsService = class SuggestionsService {
         let message = 'Suggestion approved.';
         let createdAnswer = false;
         if (suggestion.question.answerType === 'LIST') {
-            const existing = await this.prisma.questionAnswer.findUnique({
-                where: {
-                    questionId_playerId: {
-                        questionId: suggestion.questionId,
-                        playerId: suggestion.playerId,
-                    },
-                },
-            });
-            if (!existing) {
-                await this.prisma.questionAnswer.create({
-                    data: {
-                        questionId: suggestion.questionId,
-                        playerId: suggestion.playerId,
-                    },
-                });
-                createdAnswer = true;
-                message = 'Suggestion approved and new QuestionAnswer created for LIST question.';
+            if (!suggestion.playerId) {
+                message = 'Suggestion approved. Note: No player was linked. Please add the player manually to the database.';
             }
             else {
-                message = 'Suggestion approved, but QuestionAnswer already existed.';
+                const existing = await this.prisma.questionAnswer.findUnique({
+                    where: {
+                        questionId_playerId: {
+                            questionId: suggestion.questionId,
+                            playerId: suggestion.playerId,
+                        },
+                    },
+                });
+                if (!existing) {
+                    await this.prisma.questionAnswer.create({
+                        data: {
+                            questionId: suggestion.questionId,
+                            playerId: suggestion.playerId,
+                        },
+                    });
+                    createdAnswer = true;
+                    message = 'Suggestion approved and new QuestionAnswer created for LIST question.';
+                }
+                else {
+                    message = 'Suggestion approved, but QuestionAnswer already existed.';
+                }
             }
         }
         else {

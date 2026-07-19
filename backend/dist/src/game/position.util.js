@@ -5,6 +5,6 @@ exports.POSITION_CATEGORY_MAP = {
     GOALKEEPER: ['GK'],
     DEFENDER: ['RB', 'CB', 'LB'],
     MIDFIELDER: ['CDM', 'CM', 'CAM', 'RM', 'LM'],
-    ATTACKER: ['RW', 'LW', 'CF', 'ST'],
+    FORWARD: ['RW', 'LW', 'CF', 'ST'],
 };
 //# sourceMappingURL=position.util.js.map

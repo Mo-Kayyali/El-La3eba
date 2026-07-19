@@ -50,10 +50,76 @@ export class UpdateCompetitionDto {
 export class AdminCompetitionsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.competition.findMany({
-      orderBy: { name: 'asc' },
+  async findAll(filters: { countryCode?: string; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
+    const where: any = {};
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const skip = (page - 1) * limit;
+
+    if (filters.countryCode) {
+      if (filters.countryCode === '_WORLD') {
+        where.type = { in: ['INTERNATIONAL_TOURNAMENT', 'GLOBAL_CLUB_CHAMPIONSHIP', 'INTERNATIONAL'] };
+      } else if (filters.countryCode === '_CONTINENTAL') {
+        where.type = { in: ['CONTINENTAL_CLUB_COMPETITION', 'CONTINENTAL_SUPER_CUP', 'CONTINENTAL_CLUB'] };
+      } else {
+        where.countryCode = filters.countryCode;
+      }
+    }
+
+    if (filters.search) {
+      const normalizedSearch = filters.search.trim();
+      if (normalizedSearch.length <= 2) {
+        where.name = { contains: normalizedSearch, mode: 'insensitive' };
+      } else {
+        const [_, matchedIdsObj] = await this.prisma.$transaction([
+          this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+          this.prisma.$queryRaw<{id: string}[]>`
+            SELECT c.id
+            FROM "Competition" c
+            WHERE lower(unaccent_immutable(c.name)) %> lower(unaccent(${normalizedSearch}))
+            ORDER BY word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(c.name))) DESC
+            LIMIT 500;
+          `
+        ]);
+        const matchedIds = matchedIdsObj.map(row => row.id);
+        if (matchedIds.length === 0) {
+          return { data: [], meta: { total: 0, page, totalPages: 0 } };
+        }
+        where.id = { in: matchedIds };
+      }
+    }
+
+    const total = await this.prisma.competition.count({ where });
+
+    let orderBy: any = { name: 'asc' };
+    if (filters.sort) {
+      const validSorts = ['name', 'createdAt', 'type', 'tier'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+      } else if (filters.sort === 'location') {
+        // Sort by countryCode primarily, or region if countryCode is null
+        orderBy = [
+          { countryCode: filters.order === 'desc' ? 'desc' : 'asc' },
+          { region: filters.order === 'desc' ? 'desc' : 'asc' }
+        ];
+      }
+    }
+
+    const data = await this.prisma.competition.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
     });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async findOne(id: string) {
@@ -93,12 +159,12 @@ export class AdminCompetitionsService {
     }
   }
 
-  async create(dto: CreateCompetitionDto) {
+  async create(dto: CreateCompetitionDto, adminUserId: string) {
     this.validateRules(dto.type, dto.countryCode, dto.region);
-    return this.prisma.competition.create({ data: dto });
+    return this.prisma.competition.create({ data: { ...dto, createdBy: adminUserId } });
   }
 
-  async update(id: string, dto: UpdateCompetitionDto) {
+  async update(id: string, dto: UpdateCompetitionDto, adminUserId: string) {
     const comp = await this.findOne(id);
     const newType = dto.type !== undefined ? dto.type : comp.type;
     const newCountryCode = dto.countryCode !== undefined ? dto.countryCode : comp.countryCode;
@@ -114,6 +180,7 @@ export class AdminCompetitionsService {
     } else {
       updateData.countryCode = null;
     }
+    updateData.createdBy = adminUserId;
     
     return this.prisma.competition.update({ where: { id }, data: updateData });
   }

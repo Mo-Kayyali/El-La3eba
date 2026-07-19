@@ -22,67 +22,92 @@ export declare class AdminClubsService {
     constructor(prisma: PrismaService, clubDenormService: ClubDenormService);
     private validateFks;
     private validateCompetitions;
-    findAll(): Promise<({
-        clubCompetitions: {
+    findAll(filters?: {
+        competitionId?: string;
+        countryCode?: string;
+        search?: string;
+        page?: number;
+        limit?: number;
+        sort?: string;
+        order?: string;
+    }): Promise<{
+        data: ({
+            clubCompetitions: {
+                id: string;
+                clubId: string;
+                competitionId: string;
+            }[];
+        } & {
             id: string;
-            clubId: string;
-            competitionId: string;
-        }[];
-    } & {
-        id: string;
-        name: string;
-        aliases: string[];
-        countryCode: string;
-        currentCompetitionId: string | null;
-        competitions: string[];
-        logoUrl: string | null;
-    })[]>;
+            createdAt: Date;
+            name: string;
+            competitions: string[];
+            createdBy: string | null;
+            aliases: string[];
+            countryCode: string;
+            currentCompetitionId: string | null;
+            logoUrl: string | null;
+        })[];
+        meta: {
+            total: number;
+            page: number;
+            totalPages: number;
+        };
+    }>;
     findOne(id: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
         }[];
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
     }>;
-    create(dto: CreateClubDto): Promise<{
+    create(dto: CreateClubDto, adminUserId: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
         }[];
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
     }>;
-    update(id: string, dto: UpdateClubDto): Promise<{
+    update(id: string, dto: UpdateClubDto, adminUserId: string): Promise<{
         competitionIds: string[];
         clubCompetitions: {
             competitionId: string;
         }[];
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
+        createdAt: Date;
         name: string;
+        competitions: string[];
+        createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
-        competitions: string[];
         logoUrl: string | null;
     }>;
 }

@@ -24,17 +24,25 @@ let AdminClubsController = class AdminClubsController {
     constructor(clubsService) {
         this.clubsService = clubsService;
     }
-    create(createDto) {
-        return this.clubsService.create(createDto);
+    create(createDto, req) {
+        return this.clubsService.create(createDto, req.user.userId);
     }
-    findAll() {
-        return this.clubsService.findAll();
+    findAll(competitionId, countryCode, search, page, limit, sort, order) {
+        return this.clubsService.findAll({
+            competitionId,
+            countryCode,
+            search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+            sort,
+            order,
+        });
     }
     findOne(id) {
         return this.clubsService.findOne(id);
     }
-    update(id, updateDto) {
-        return this.clubsService.update(id, updateDto);
+    update(id, updateDto, req) {
+        return this.clubsService.update(id, updateDto, req.user.userId);
     }
     remove(id) {
         return this.clubsService.remove(id);
@@ -44,14 +52,22 @@ exports.AdminClubsController = AdminClubsController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [clubs_service_1.CreateClubDto]),
+    __metadata("design:paramtypes", [clubs_service_1.CreateClubDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminClubsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('competitionId')),
+    __param(1, (0, common_1.Query)('countryCode')),
+    __param(2, (0, common_1.Query)('search')),
+    __param(3, (0, common_1.Query)('page')),
+    __param(4, (0, common_1.Query)('limit')),
+    __param(5, (0, common_1.Query)('sort')),
+    __param(6, (0, common_1.Query)('order')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminClubsController.prototype, "findAll", null);
 __decorate([
@@ -65,8 +81,9 @@ __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, clubs_service_1.UpdateClubDto]),
+    __metadata("design:paramtypes", [String, clubs_service_1.UpdateClubDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminClubsController.prototype, "update", null);
 __decorate([

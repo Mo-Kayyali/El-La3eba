@@ -4,9 +4,14 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft, X, Search, Check, AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, Plus, Search, Trash2, X, Check } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { Pagination } from "@/components/pagination";
+import { SortHeader } from "@/components/sort-header";
+import { Modal } from "@/components/modal";
+import { PlayerFormModal, Player } from "@/components/admin/player-form-modal";
 
 type PlayerSearchResult = {
   id: string;
@@ -45,14 +50,17 @@ type Question = {
   isActive?: boolean;
   playerStatusFilter?: "ANY" | "CURRENT_ONLY" | "RETIRED_ONLY";
   scope?: "NATIONAL" | "INTERNATIONAL" | "BOTH";
+  createdAt: string;
 };
 
 function PlayerSearch({ 
   onSelect, 
+  onEdit,
   placeholder = "Search player by name...",
   autoClear = true
 }: { 
   onSelect: (p: PlayerSearchResult) => void;
+  onEdit?: (playerId: string) => void;
   placeholder?: string;
   autoClear?: boolean;
 }) {
@@ -120,24 +128,34 @@ function PlayerSearch({
             {results.map((p) => (
               <li
                 key={p.id}
-                onClick={() => {
-                  onSelect(p);
-                  if (autoClear) {
-                    setQuery("");
-                    setResults([]);
-                  } else {
-                    setQuery(p.name);
-                  }
-                  setShowDropdown(false);
-                }}
-                className="flex cursor-pointer items-center justify-between px-4 py-2 hover:bg-slate-700 text-white"
+                className="flex items-center justify-between px-4 py-2 hover:bg-slate-700 text-white"
               >
-                <div>
+                <div 
+                  className="flex-1 cursor-pointer"
+                  onClick={() => {
+                    onSelect(p);
+                    if (autoClear) {
+                      setQuery("");
+                      setResults([]);
+                    } else {
+                      setQuery(p.name);
+                    }
+                    setShowDropdown(false);
+                  }}
+                >
                   <div className="font-medium">{p.name}</div>
                   <div className="text-xs text-slate-400">
                     {p.nationality} • {p.currentClub?.name || (p.isRetired ? "Retired" : "Free Agent")}
                   </div>
                 </div>
+                {onEdit && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(p.id); setShowDropdown(false); }}
+                    className="ml-2 rounded-lg border border-slate-600/50 bg-slate-700/30 p-1.5 text-slate-400 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400 transition"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -163,6 +181,14 @@ function AdminQuestionsContent() {
   const [error, setError] = useState("");
 
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string, bulk?: boolean, count?: number } | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [sort, setSort] = useState("createdAt");
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -191,14 +217,27 @@ function AdminQuestionsContent() {
   const [testGuessResult, setTestGuessResult] = useState<any>(null);
   const [isTestingGuess, setIsTestingGuess] = useState(false);
 
+  // New states for Part 2
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [playerModalContext, setPlayerModalContext] = useState<{ mode: 'edit', player: Partial<Player> } | { mode: 'create' } | null>(null);
+
+  const openPlayerEditModal = async (playerId: string) => {
+    try {
+      const { data } = await api.get<Player>(`/admin/players/${playerId}`);
+      setPlayerModalContext({ mode: 'edit', player: data });
+    } catch (err) {
+      alert("Failed to load player details");
+    }
+  };
+
   useEffect(() => {
     if (!bootstrapped) return;
     if (!user || user.role !== "ADMIN") {
       router.replace("/");
       return;
     }
-    fetchQuestions();
-  }, [bootstrapped, user, router, filterGameMode, filterIsActive]);
+    fetchData();
+  }, [bootstrapped, user, router]);
 
   useEffect(() => {
     // Auto-set answer type rules based on game mode
@@ -207,23 +246,16 @@ function AdminQuestionsContent() {
     }
   }, [gameMode]);
 
-  const fetchQuestions = async () => {
+  const fetchData = async () => {
     try {
-      const params = new URLSearchParams();
-      if (filterGameMode) params.append("gameMode", filterGameMode);
-      if (filterIsActive) params.append("isActive", filterIsActive);
-
-      const [res, clubsRes, compsRes, countriesRes] = await Promise.all([
-        api.get<Question[]>(`/admin/questions?${params.toString()}`),
-        api.get<any[]>("/admin/clubs"),
-        api.get<any[]>("/admin/competitions"),
+      const [clubsRes, compsRes, countriesRes] = await Promise.all([
+        api.get<{data: any[]}>("/admin/clubs", { params: { limit: 10000 } }),
+        api.get<{data: any[]}>("/admin/competitions", { params: { limit: 1000 } }),
         api.get<any[]>("/admin/countries"),
       ]);
-      setQuestions(res.data);
-      setClubs(clubsRes.data);
-      setCompetitions(compsRes.data);
+      setClubs(clubsRes.data.data);
+      setCompetitions(compsRes.data.data);
       setCountries(countriesRes.data);
-      setSelectedQuestionIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     } finally {
@@ -232,13 +264,51 @@ function AdminQuestionsContent() {
   };
 
   useEffect(() => {
+    if (!bootstrapped || !user || user.role !== "ADMIN") return;
+    fetchQuestions();
+  }, [bootstrapped, user, page, search, filterGameMode, filterIsActive, sort, order]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [searchInput]);
+
+  const fetchQuestions = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filterGameMode) params.append("gameMode", filterGameMode);
+      if (filterIsActive) params.append("isActive", filterIsActive);
+      if (search) params.append("search", search);
+      if (sort) params.append("sort", sort);
+      if (order) params.append("order", order);
+      params.append("page", page.toString());
+      params.append("limit", "50");
+
+      const res = await api.get<{data: Question[], meta: any}>(`/admin/questions?${params.toString()}`);
+      setQuestions(res.data.data);
+      setMeta(res.data.meta);
+      setSelectedQuestionIds([]);
+    } catch (err) {
+      setError(extractApiErrorMessage(err));
+    }
+  };
+
+  useEffect(() => {
     if (editId && questions.length > 0 && !showForm) {
       const q = questions.find(q => q.id === editId);
       if (q) {
         handleEdit(q);
+      } else {
+        // Fetch directly if not in list
+        api.get<Question>(`/admin/questions/${editId}`).then(res => {
+          handleEdit(res.data);
+        }).catch(err => console.error(err));
       }
     }
-  }, [editId, questions]);
+  }, [editId, questions, showForm]);
 
   const handleEdit = async (q: Question) => {
     setEditingId(q.id);
@@ -270,10 +340,11 @@ function AdminQuestionsContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this question?")) return;
     try {
       await api.delete(`/admin/questions/${id}`);
+      if (editingId === id) resetForm();
       setQuestions((prev) => prev.filter((q) => q.id !== id));
+      setConfirmDelete(null);
     } catch (err) {
       alert(extractApiErrorMessage(err));
     }
@@ -281,12 +352,14 @@ function AdminQuestionsContent() {
 
   const handleBulkDelete = async () => {
     if (selectedQuestionIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedQuestionIds.length} selected questions?`)) return;
     setError("");
     try {
       await Promise.all(selectedQuestionIds.map(id => api.delete(`/admin/questions/${id}`)));
-      setSelectedQuestionIds([]);
+      setShowForm(false);
+      setEditingId(null);
+      if (editId) router.replace('/admin/questions');
       fetchQuestions();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -422,7 +495,8 @@ function AdminQuestionsContent() {
 
   const addAnswer = (p: PlayerSearchResult) => {
     if (answers.some(a => a.playerId === p.id)) {
-      alert("Player already in list");
+      setDuplicateError("Already in list");
+      setTimeout(() => setDuplicateError(null), 2000);
       return;
     }
     setAnswers(prev => [...prev, {
@@ -467,8 +541,23 @@ function AdminQuestionsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-7xl px-6 py-10 text-slate-200">
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="Confirm Deletion"
+        message={confirmDelete?.bulk ? `Are you sure you want to delete ${confirmDelete.count} selected questions? This action cannot be undone.` : "Are you sure you want to delete this question? This action cannot be undone."}
+        onConfirm={() => {
+          if (confirmDelete?.bulk) {
+            handleBulkDelete();
+          } else if (confirmDelete?.id) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        confirmText="Delete"
+        isDestructive={true}
+      />
+      <div>
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -481,14 +570,20 @@ function AdminQuestionsContent() {
             </Link>
             <h1 className="text-3xl font-bold">Questions</h1>
           </div>
-          {!showForm && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchQuestions()}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-white hover:bg-white/10 transition"
+            >
+              Refresh
+            </button>
             <button
               onClick={() => setShowForm(true)}
               className="rounded-xl bg-violet-600 px-6 py-2.5 font-medium text-white transition hover:bg-violet-700"
             >
               Add Question
             </button>
-          )}
+          </div>
         </div>
 
         {error && (
@@ -498,19 +593,14 @@ function AdminQuestionsContent() {
         )}
 
         {/* Form Panel */}
-        {showForm && (
-          <div className="mb-10 rounded-2xl border border-white/10 bg-slate-900/50 p-6 backdrop-blur-md sm:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                {editingId ? "Edit Question" : "Create New Question"}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <Modal 
+          isOpen={showForm} 
+          onClose={() => {
+            setShowForm(false);
+            if (editId) router.replace('/admin/questions');
+          }} 
+          title={editingId ? "Edit Question" : "Create New Question"}
+        >
 
             {formError && (
               <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-400">
@@ -534,7 +624,7 @@ function AdminQuestionsContent() {
                 />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-300">
                     Game Mode
@@ -565,8 +655,11 @@ function AdminQuestionsContent() {
                     <option value="INTERNATIONAL">International Only</option>
                   </select>
                 </div>
+              </div>
 
-                {gameMode === "STRIKES" && (
+              <div className="grid gap-6 sm:grid-cols-2">
+
+                {gameMode === "STRIKES" ? (
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-300">
                       Answer Type
@@ -580,7 +673,7 @@ function AdminQuestionsContent() {
                       <option value="LIST">LIST (Specific exact players)</option>
                     </select>
                   </div>
-                )}
+                ) : <div />}
                 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-300">
@@ -597,17 +690,18 @@ function AdminQuestionsContent() {
                   </select>
                 </div>
 
-                <div className="flex items-center pt-8">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={(e) => setIsActive(e.target.checked)}
-                      className="h-5 w-5 rounded border-white/10 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900"
-                    />
-                    <span className="text-sm font-medium text-slate-300">Question is Active</span>
-                  </label>
-                </div>
+              </div>
+
+              <div className="flex items-center pt-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-5 w-5 rounded border-white/10 bg-slate-800 text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900"
+                  />
+                  <span className="text-sm font-medium text-slate-300">Question is Active</span>
+                </label>
               </div>
 
               {/* STRIKES + FILTER */}
@@ -618,9 +712,10 @@ function AdminQuestionsContent() {
                     <button
                       type="button"
                       onClick={() => setClauses([...clauses, { filterType: "NATIONALITY", filterValue: "" }])}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300"
+                      className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                     >
-                      + Add Clause
+                      <Plus className="h-3 w-3" />
+                      Add Clause
                     </button>
                   </div>
                   
@@ -811,11 +906,27 @@ function AdminQuestionsContent() {
               {/* LIST based answers (STRIKES-LIST, TOP_10, LINEUP) */}
               {gameMode !== "PHOTO_GUESS" && (gameMode !== "STRIKES" || answerType === "LIST") && (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-4">
-                  <label className="block text-sm font-medium text-slate-300">
-                    Answers List
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-slate-300">
+                      Answers List
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerModalContext({ mode: 'create' })}
+                      className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1"
+                    >
+                      + Add New Player
+                    </button>
+                  </div>
                   
-                  <PlayerSearch onSelect={addAnswer} />
+                  <div className="relative">
+                    <PlayerSearch onSelect={addAnswer} onEdit={openPlayerEditModal} />
+                    {duplicateError && (
+                      <div className="absolute right-0 top-0 -mt-8 text-xs font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded">
+                        {duplicateError}
+                      </div>
+                    )}
+                  </div>
 
                   {answers.length > 0 && (
                     <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-slate-900/50">
@@ -857,13 +968,20 @@ function AdminQuestionsContent() {
                                   />
                                 </td>
                               )}
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); openPlayerEditModal(ans.playerId); }}
+                                  className="text-slate-400 hover:text-blue-400 transition mr-3"
+                                >
+                                  <svg className="h-5 w-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => removeAnswer(idx)}
                                   className="text-slate-400 hover:text-red-400 transition"
                                 >
-                                  <X className="h-5 w-5" />
+                                  <X className="h-5 w-5 inline" />
                                 </button>
                               </td>
                             </tr>
@@ -937,16 +1055,35 @@ function AdminQuestionsContent() {
                 )}
               </div>
             )}
-          </div>
-        )}
+          </Modal>
 
         {/* List Panel */}
-        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-4">
+            <div className="relative min-w-[16rem]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                }}
+                placeholder="Search questions..."
+                className="h-[42px] w-full rounded-xl border border-white/[0.08] bg-black/40 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none transition"
+              />
+              {search && (
+                <button 
+                  onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             <div className="w-48">
               <FilterSelect
                 value={filterGameMode}
-                onChange={setFilterGameMode}
+                onChange={(val) => { setFilterGameMode(val); setPage(1); }}
                 options={[
                   { value: "STRIKES", label: "STRIKES" },
                   { value: "TOP_10", label: "TOP_10" },
@@ -959,7 +1096,7 @@ function AdminQuestionsContent() {
             <div className="w-48">
               <FilterSelect
                 value={filterIsActive}
-                onChange={setFilterIsActive}
+                onChange={(val) => { setFilterIsActive(val); setPage(1); }}
                 options={[
                   { value: "true", label: "Active Only" },
                   { value: "false", label: "Inactive Only" }
@@ -969,7 +1106,7 @@ function AdminQuestionsContent() {
             </div>
           </div>
           <div className="text-sm text-slate-400">
-            {questions.length} question{questions.length === 1 ? '' : 's'} found
+            {meta.total} question{meta.total === 1 ? '' : 's'} found
           </div>
         </div>
 
@@ -989,21 +1126,30 @@ function AdminQuestionsContent() {
                 Cancel
               </button>
             )}
-            <button
-              onClick={handleBulkDelete}
-              disabled={selectedQuestionIds.length === 0}
-              className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
-                selectedQuestionIds.length > 0 
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                  : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
-              }`}
-            >
-              Delete Selected
-            </button>
+            {selectedQuestionIds.length > 0 && (
+              <button
+                onClick={() => setConfirmDelete({ bulk: true, count: selectedQuestionIds.length })}
+                className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected ({selectedQuestionIds.length})
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-md">
+        {questions.length > 0 && (
+          <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+            <Pagination 
+              currentPage={meta.page}
+              totalPages={meta.totalPages}
+              totalItems={meta.total}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
+
+        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl overflow-hidden">
           {questions.length === 0 ? (
             <div className="p-8 text-center text-slate-400">
               No questions found. Add one above.
@@ -1014,8 +1160,9 @@ function AdminQuestionsContent() {
                 <thead className="bg-slate-800/50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <tr>
                     <th className="px-6 py-4 w-12"></th>
-                    <th className="px-6 py-4">Question Text</th>
-                    <th className="px-6 py-4">Mode / Type</th>
+                    <SortHeader label="Question Text" field="text" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} className="px-6" />
+                    <SortHeader label="Mode / Type" field="gameMode" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} className="px-6" />
+                    <SortHeader label="Date Entered" field="createdAt" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} className="px-6" />
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1067,16 +1214,19 @@ function AdminQuestionsContent() {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-slate-400 text-xs">
+                        {new Date(q.createdAt).toLocaleDateString()}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEdit(q); }}
-                          className="mr-3 font-medium text-violet-400 hover:text-violet-300"
+                          className="mr-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
-                          className="font-medium text-red-400 hover:text-red-300"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: q.id }); }}
+                          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                         >
                           Delete
                         </button>
@@ -1088,7 +1238,50 @@ function AdminQuestionsContent() {
             </div>
           )}
         </div>
+        
+        <Pagination 
+          currentPage={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.total}
+          onPageChange={setPage}
+        />
       </div>
+
+      <PlayerFormModal
+        isOpen={!!playerModalContext}
+        initialData={playerModalContext?.mode === 'edit' ? playerModalContext.player : {}}
+        onClose={() => setPlayerModalContext(null)}
+        onSuccess={async (savedPlayer: any) => {
+          setPlayerModalContext(null);
+          if (playerModalContext?.mode === 'create' && savedPlayer?.id) {
+            try {
+              const { data } = await api.get<Player>(`/admin/players/${savedPlayer.id}`);
+              addAnswer({
+                id: data.id,
+                name: data.name,
+                firstName: data.firstName || "",
+                lastName: data.lastName || "",
+                nationality: data.nationality || "",
+                isRetired: data.isRetired,
+                currentClub: data.currentClub ? { name: data.currentClub.name } : null
+              });
+            } catch (e) {
+              console.error("Failed to auto-add newly created player", e);
+            }
+          } else if (playerModalContext?.mode === 'edit' && savedPlayer?.id) {
+            try {
+              const { data } = await api.get<Player>(`/admin/players/${savedPlayer.id}`);
+              setAnswers(prev => prev.map(a => 
+                a.playerId === data.id 
+                  ? { ...a, player: { name: data.name, aliases: a.player?.aliases || [] } }
+                  : a
+              ));
+            } catch (e) {
+              console.error("Failed to refresh edited player", e);
+            }
+          }
+        }}
+      />
     </div>
   );
 }

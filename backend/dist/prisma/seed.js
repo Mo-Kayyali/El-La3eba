@@ -104,7 +104,7 @@ async function main() {
     await prisma.country.deleteMany({ where: { id: 'GBR' } });
     console.log('Seeding countries...');
     const iso3166 = require('iso-3166-1');
-    const countries = iso3166.all().filter((c) => c.alpha3 !== 'GBR');
+    const countries = iso3166.all().filter((c) => c.alpha3 !== 'GBR' && c.alpha3 !== 'ISR');
     let countryCount = 0;
     for (const c of countries) {
         await prisma.country.upsert({

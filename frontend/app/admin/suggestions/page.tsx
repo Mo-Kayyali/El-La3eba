@@ -7,6 +7,8 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Check, X, ArrowLeft, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { Pagination } from "@/components/pagination";
+import { PlayerFormModal } from "@/components/admin/player-form-modal";
 
 type Suggestion = {
   id: string;
@@ -23,7 +25,7 @@ type Suggestion = {
     name: string;
     aliases: string[];
     image: string | null;
-  };
+  } | null;
   question: {
     id: string;
     text: string;
@@ -38,7 +40,7 @@ function AdminSuggestionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, bootstrapped } = useAuthStore();
-  const [allSuggestions, setAllSuggestions] = useState<Suggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // For modal
@@ -47,9 +49,13 @@ function AdminSuggestionsContent() {
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessOptions, setShowSuccessOptions] = useState(false);
+  const [addPlayerName, setAddPlayerName] = useState<string | null>(null);
   
   const initialTab = (searchParams.get("tab") as any) || "PENDING";
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "APPROVED" | "REJECTED" | "ALL">(initialTab);
+  
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, page: 1 });
 
   useEffect(() => {
     const currentTab = searchParams.get("tab");
@@ -67,28 +73,25 @@ function AdminSuggestionsContent() {
       return;
     }
     fetchSuggestions();
-  }, [bootstrapped, user, router]);
+  }, [bootstrapped, user, router, statusFilter, page]);
 
   const fetchSuggestions = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get("/admin/suggestions");
-      setAllSuggestions(res.data);
+      const params = new URLSearchParams();
+      if (statusFilter !== "ALL") params.append("status", statusFilter);
+      params.append("page", page.toString());
+      params.append("limit", "50");
+      
+      const res = await api.get<{data: Suggestion[], meta: any}>(`/admin/suggestions?${params.toString()}`);
+      setSuggestions(res.data.data);
+      setMeta(res.data.meta);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to load suggestions");
     } finally {
       setIsLoading(false);
     }
   };
-
-  const suggestions = statusFilter === "ALL" 
-    ? allSuggestions 
-    : allSuggestions.filter(s => s.status === statusFilter);
-
-  const pendingCount = allSuggestions.filter(s => s.status === "PENDING").length;
-  const approvedCount = allSuggestions.filter(s => s.status === "APPROVED").length;
-  const rejectedCount = allSuggestions.filter(s => s.status === "REJECTED").length;
-  const allCount = allSuggestions.length;
 
   const handleAction = async () => {
     if (!activeSuggestion || !actionType) return;
@@ -100,8 +103,8 @@ function AdminSuggestionsContent() {
       toast.success(res.data.message || `Suggestion ${actionType}d`);
       
       // Update status in list
-      setAllSuggestions((prev) => 
-        prev.map((s) => s.id === activeSuggestion.id ? { ...s, status: actionType === "approve" ? "APPROVED" : "REJECTED" } : s)
+      setSuggestions((prev) => 
+        prev.map((s: Suggestion) => s.id === activeSuggestion.id ? { ...s, status: actionType === "approve" ? "APPROVED" : "REJECTED" } : s)
       );
       
       if (actionType === "approve") {
@@ -161,12 +164,20 @@ function AdminSuggestionsContent() {
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs font-semibold shrink-0">
-          <div className="flex items-center gap-1.5 text-yellow-400/80 bg-yellow-500/10 px-3 py-1.5 rounded-full"><span className="text-yellow-400">{pendingCount}</span> Pending</div>
-          <div className="flex items-center gap-1.5 text-emerald-400/80 bg-emerald-500/10 px-3 py-1.5 rounded-full"><span className="text-emerald-400">{approvedCount}</span> Approved</div>
-          <div className="flex items-center gap-1.5 text-red-400/80 bg-red-500/10 px-3 py-1.5 rounded-full"><span className="text-red-400">{rejectedCount}</span> Rejected</div>
-          <div className="flex items-center gap-1.5 text-slate-400/80 bg-slate-500/10 px-3 py-1.5 rounded-full"><span className="text-slate-300">{allCount}</span> Total</div>
+          <div className="flex items-center gap-1.5 text-slate-400/80 bg-slate-500/10 px-3 py-1.5 rounded-full"><span className="text-slate-300">{meta.total}</span> {statusFilter === "ALL" ? "Total" : statusFilter} Suggestions</div>
         </div>
       </div>
+
+      {suggestions.length > 0 && !isLoading && (
+        <div className="mb-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl backdrop-blur-xl">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-20 text-slate-500">Loading suggestions...</div>
@@ -205,7 +216,7 @@ function AdminSuggestionsContent() {
                 </div>
                 <div className="flex items-center gap-2 text-sm mt-1">
                   <span className="text-slate-400">Matched Player:</span>
-                  <span className="font-semibold text-emerald-300">{suggestion.player.name}</span>
+                  <span className="font-semibold text-emerald-300">{suggestion.player ? suggestion.player.name : "None (Unmatched)"}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm mt-1">
                   <span className="text-slate-400">Suggested By:</span>
@@ -239,16 +250,25 @@ function AdminSuggestionsContent() {
                   </div>
                 )}
                 {suggestion.status === "APPROVED" && (
-                  <div className="flex flex-col items-end gap-2">
-                    <Link
-                      href={`/admin/players?edit=${suggestion.player.id}`}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300 underline"
-                    >
-                      Edit this player's data
-                    </Link>
+                  <div className="flex flex-col items-end gap-3 mt-2">
+                    {suggestion.player ? (
+                      <Link
+                        href={`/admin/players?edit=${suggestion.player.id}`}
+                        className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20 text-center w-full sm:w-auto"
+                      >
+                        Edit this player's data
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => setAddPlayerName(suggestion.guessText)}
+                        className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20 text-center w-full sm:w-auto"
+                      >
+                        Add Player ({suggestion.guessText})
+                      </button>
+                    )}
                     <Link
                       href={`/admin/questions?edit=${suggestion.question.id}`}
-                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline"
+                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-bold text-emerald-400 transition hover:bg-emerald-500/20 text-center w-full sm:w-auto"
                     >
                       Edit this question
                     </Link>
@@ -262,6 +282,17 @@ function AdminSuggestionsContent() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="mt-6">
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
         </div>
       )}
 
@@ -283,12 +314,21 @@ function AdminSuggestionsContent() {
                   Would you like to edit the player or question data now?
                 </p>
                 <div className="flex flex-col gap-3">
-                  <Link
-                    href={`/admin/players?edit=${activeSuggestion.player.id}`}
-                    className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-500 transition"
-                  >
-                    Edit Player ({activeSuggestion.player.name})
-                  </Link>
+                  {activeSuggestion.player ? (
+                    <Link
+                      href={`/admin/players?edit=${activeSuggestion.player.id}`}
+                      className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-blue-500 transition"
+                    >
+                      Edit Player ({activeSuggestion.player.name})
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => { closeModal(); setAddPlayerName(activeSuggestion.guessText); }}
+                      className="rounded-xl bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-emerald-500 transition"
+                    >
+                      Add Player ({activeSuggestion.guessText})
+                    </button>
+                  )}
                   <Link
                     href={`/admin/questions?edit=${activeSuggestion.question.id}`}
                     className="rounded-xl bg-violet-600 px-4 py-3 text-center text-sm font-bold text-white hover:bg-violet-500 transition"
@@ -352,6 +392,19 @@ function AdminSuggestionsContent() {
           </div>
         </div>
       )}
+      <PlayerFormModal
+        isOpen={!!addPlayerName}
+        onClose={() => setAddPlayerName(null)}
+        initialData={addPlayerName ? {
+          name: addPlayerName,
+          firstName: addPlayerName.split(" ")[0] || "",
+          lastName: addPlayerName.split(" ").slice(1).join(" ") || ""
+        } : null}
+        onSuccess={() => {
+          setAddPlayerName(null);
+          toast.success("Player added successfully.");
+        }}
+      />
     </div>
   );
 }

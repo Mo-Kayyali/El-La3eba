@@ -137,7 +137,7 @@ export class AdminQuestionsService {
     return { gameMode, answerType, scope: (dto as any).scope, logicOperator: logicOperator || null, photoPlayerId, answers, clauses };
   }
 
-  async create(createDto: CreateQuestionDto) {
+  async create(createDto: CreateQuestionDto, adminUserId: string) {
     createDto.text = capitalizeWords(createDto.text);
     const validated = await this.validateShape(createDto);
 
@@ -152,6 +152,7 @@ export class AdminQuestionsService {
           photoPlayerId: validated.photoPlayerId || null,
           playerStatusFilter: createDto.playerStatusFilter || 'ANY',
           isActive: createDto.isActive ?? true,
+          createdBy: adminUserId,
         }
       });
 
@@ -181,19 +182,62 @@ export class AdminQuestionsService {
     });
   }
 
-  findAll(gameMode?: GameMode, isActive?: boolean) {
+  async findAll(filters: { gameMode?: GameMode; isActive?: boolean; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
     const where: any = {};
-    if (gameMode) where.gameMode = gameMode;
-    if (isActive !== undefined) where.isActive = isActive;
-    
-    return this.prisma.question.findMany({
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const skip = (page - 1) * limit;
+
+    if (filters.gameMode) where.gameMode = filters.gameMode;
+    if (filters.isActive !== undefined) where.isActive = filters.isActive;
+
+    if (filters.search) {
+      const normalizedSearch = filters.search.trim();
+      if (normalizedSearch.length <= 2) {
+        where.text = { contains: normalizedSearch, mode: 'insensitive' };
+      } else {
+        const [_, matchedIdsObj] = await this.prisma.$transaction([
+          this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+          this.prisma.$queryRaw<{id: string}[]>`
+            SELECT q.id
+            FROM "Question" q
+            WHERE lower(unaccent_immutable(q.text)) %> lower(unaccent(${normalizedSearch}))
+          `
+        ]);
+        const matchedIds = matchedIdsObj.map(obj => obj.id);
+        where.id = { in: matchedIds };
+      }
+    }
+
+    const total = await this.prisma.question.count({ where });
+
+    let orderBy: any = { createdAt: 'desc' };
+    if (filters.sort) {
+      const validSorts = ['text', 'createdAt', 'gameMode'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'asc' ? 'asc' : 'desc' };
+      }
+    }
+
+    const data = await this.prisma.question.findMany({
       where,
+      skip,
+      take: limit,
       include: {
         _count: { select: { answers: true } },
         clauses: true
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy
     });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   findOne(id: string) {
@@ -210,7 +254,7 @@ export class AdminQuestionsService {
     });
   }
 
-  async update(id: string, updateDto: PatchQuestionDto) {
+  async update(id: string, updateDto: PatchQuestionDto, adminUserId: string) {
     if (updateDto.text) updateDto.text = capitalizeWords(updateDto.text);
     const validated = await this.validateShape(updateDto);
 
@@ -226,6 +270,7 @@ export class AdminQuestionsService {
           photoPlayerId: validated.photoPlayerId || null,
           playerStatusFilter: updateDto.playerStatusFilter || 'ANY',
           isActive: updateDto.isActive ?? true,
+          createdBy: adminUserId,
         }
       });
 

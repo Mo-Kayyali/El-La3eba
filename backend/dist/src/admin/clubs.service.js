@@ -124,11 +124,71 @@ let AdminClubsService = class AdminClubsService {
             }
         }
     }
-    async findAll() {
-        return this.prisma.club.findMany({
-            orderBy: { name: 'asc' },
+    async findAll(filters = {}) {
+        const where = {};
+        const page = filters.page || 1;
+        const limit = filters.limit || 50;
+        const skip = (page - 1) * limit;
+        if (filters.competitionId) {
+            where.OR = [
+                { currentCompetitionId: filters.competitionId },
+                { clubCompetitions: { some: { competitionId: filters.competitionId } } }
+            ];
+        }
+        if (filters.countryCode) {
+            where.countryCode = filters.countryCode;
+        }
+        if (filters.search) {
+            const normalizedSearch = filters.search.trim();
+            if (normalizedSearch.length <= 2) {
+                where.name = { contains: normalizedSearch, mode: 'insensitive' };
+            }
+            else {
+                const [_, matchedIdsObj] = await this.prisma.$transaction([
+                    this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+                    this.prisma.$queryRaw `
+            SELECT c.id
+            FROM "Club" c
+            WHERE 
+              lower(unaccent_immutable(c.name)) %> lower(unaccent(${normalizedSearch})) OR
+              lower(unaccent_immutable(array_to_string_immutable(c.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+            ORDER BY GREATEST(
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(c.name))),
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(c.aliases, ' '))))
+            ) DESC
+            LIMIT 500;
+          `
+                ]);
+                const matchedIds = matchedIdsObj.map(row => row.id);
+                if (matchedIds.length === 0) {
+                    return { data: [], meta: { total: 0, page, totalPages: 0 } };
+                }
+                where.id = { in: matchedIds };
+            }
+        }
+        const total = await this.prisma.club.count({ where });
+        let orderBy = { name: 'asc' };
+        if (filters.sort) {
+            const validSorts = ['name', 'createdAt', 'countryCode'];
+            if (validSorts.includes(filters.sort)) {
+                orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+            }
+        }
+        const data = await this.prisma.club.findMany({
+            where,
+            skip,
+            take: limit,
+            orderBy,
             include: { clubCompetitions: true }
         });
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     }
     async findOne(id) {
         const club = await this.prisma.club.findUnique({
@@ -146,13 +206,13 @@ let AdminClubsService = class AdminClubsService {
             competitionIds: club.clubCompetitions.map(cc => cc.competitionId)
         };
     }
-    async create(dto) {
+    async create(dto, adminUserId) {
         if (dto.name)
             dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         await this.validateFks(dto.countryCode, dto.currentCompetitionId);
         await this.validateCompetitions(dto.competitionIds);
         const { competitionIds, ...clubData } = dto;
-        const club = await this.prisma.club.create({ data: clubData });
+        const club = await this.prisma.club.create({ data: { ...clubData, createdBy: adminUserId } });
         if (competitionIds && competitionIds.length > 0) {
             await this.prisma.clubCompetition.createMany({
                 data: competitionIds.map(compId => ({
@@ -176,7 +236,7 @@ let AdminClubsService = class AdminClubsService {
         }
         return this.findOne(club.id);
     }
-    async update(id, dto) {
+    async update(id, dto, adminUserId) {
         if (dto.name)
             dto.name = (0, string_util_1.capitalizeWords)(dto.name);
         const existingClub = await this.findOne(id);
@@ -184,8 +244,9 @@ let AdminClubsService = class AdminClubsService {
         await this.validateCompetitions(dto.competitionIds);
         const { competitionIds, ...clubData } = dto;
         await this.prisma.$transaction(async (tx) => {
-            if (Object.keys(clubData).length > 0) {
-                await tx.club.update({ where: { id }, data: clubData });
+            const updatePayload = { ...clubData, createdBy: adminUserId };
+            if (Object.keys(updatePayload).length > 0) {
+                await tx.club.update({ where: { id }, data: updatePayload });
             }
             if (competitionIds !== undefined) {
                 await tx.clubCompetition.deleteMany({ where: { clubId: id } });

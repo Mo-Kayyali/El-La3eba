@@ -1524,7 +1524,11 @@ export class GameGateway
               // If no candidate is both un-guessed and correct, fallback to the top match
               // so the logic below registers it as either a wrong guess or an already-taken strike.
               if (!matchedPlayer) {
-                matchedPlayer = matchedPlayers[0];
+                if (matchedPlayers[0].isAmbiguous) {
+                  matchedPlayer = null;
+                } else {
+                  matchedPlayer = matchedPlayers[0];
+                }
                 initialIsCorrect = false;
               }
             }
@@ -1577,10 +1581,12 @@ export class GameGateway
             // Penalty: treat already-guessed as a WRONG answer (strike)
             finalIsCorrect = false;
             state.strikes[userId] += 1;
+            // We optionally could push this back to feed, but currently we just add a strike
           } else {
             if (finalIsCorrect) {
               state.guessedPlayers.push({
                 name: matchedPlayer.name,
+                guessText: guessName,
                 guessedBy: userId,
                 isCorrect: true,
                 playerId: matchedPlayer.id,
@@ -1588,14 +1594,13 @@ export class GameGateway
               state.scores[userId] += 1;
             } else {
               state.strikes[userId] += 1;
-              if (matchedPlayer) {
-                state.guessedPlayers.push({
-                  name: matchedPlayer.name,
-                  guessedBy: userId,
-                  isCorrect: false,
-                  playerId: matchedPlayer.id,
-                });
-              }
+              state.guessedPlayers.push({
+                name: matchedPlayer ? matchedPlayer.name : guessName,
+                guessText: guessName,
+                guessedBy: userId,
+                isCorrect: false,
+                playerId: matchedPlayer ? matchedPlayer.id : null,
+              });
             }
           }
 

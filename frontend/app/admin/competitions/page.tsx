@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search, X, Trash2 } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
+import { Pagination } from "@/components/pagination";
+import { SortHeader } from "@/components/sort-header";
+import { Modal } from "@/components/modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 type Competition = {
   id: string;
@@ -15,6 +19,7 @@ type Competition = {
   countryCode: string | null;
   region: string | null;
   tier: number | null;
+  createdAt: string;
 };
 
 type Country = { id: string; name: string };
@@ -28,6 +33,14 @@ export default function AdminCompetitionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedCompetitionIds, setSelectedCompetitionIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<{ id?: string, bulk?: boolean, count?: number } | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("name");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
 
   const [isEditing, setIsEditing] = useState<Partial<Competition> | null>(null);
   const [selectedType, setSelectedType] = useState<string>("DOMESTIC_LEAGUE");
@@ -44,17 +57,46 @@ export default function AdminCompetitionsPage() {
       router.replace("/");
       return;
     }
-    fetchCompetitions();
+    const loadCountries = async () => {
+      try {
+        const { data } = await api.get<Country[]>("/admin/countries");
+        setCountries(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadCountries();
   }, [bootstrapped, user, router]);
+
+  useEffect(() => {
+    if (!bootstrapped || !user || user.role !== "ADMIN") return;
+    fetchCompetitions();
+  }, [bootstrapped, user, filterCompCountryCode, search, page, sort, order]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [searchInput]);
 
   const fetchCompetitions = async () => {
     try {
-      const [{ data: comps }, { data: cntrs }] = await Promise.all([
-        api.get<Competition[]>("/admin/competitions"),
-        api.get<Country[]>("/admin/countries"),
-      ]);
-      setCompetitions(comps);
-      setCountries(cntrs);
+      setLoading(true);
+      const params: any = { page, limit: 50 };
+      if (filterCompCountryCode) {
+        if (filterCompCountryCode === "_WORLD") params.countryCode = "_WORLD";
+        else if (filterCompCountryCode === "_CONTINENTAL") params.countryCode = "_CONTINENTAL";
+        else params.countryCode = filterCompCountryCode;
+      }
+      if (search) params.search = search;
+      if (sort) params.sort = sort;
+      if (order) params.order = order;
+      
+      const { data } = await api.get<{data: Competition[], meta: any}>("/admin/competitions", { params });
+      setCompetitions(data.data);
+      setMeta(data.meta);
       setSelectedCompetitionIds([]);
     } catch (err) {
       setError(extractApiErrorMessage(err));
@@ -95,11 +137,11 @@ export default function AdminCompetitionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return;
     setError("");
     try {
       await api.delete(`/admin/competitions/${id}`);
       fetchCompetitions();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -107,12 +149,12 @@ export default function AdminCompetitionsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedCompetitionIds.length === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedCompetitionIds.length} selected competitions?`)) return;
     setError("");
     try {
       await Promise.all(selectedCompetitionIds.map(id => api.delete(`/admin/competitions/${id}`)));
       setSelectedCompetitionIds([]);
       fetchCompetitions();
+      setConfirmDelete(null);
     } catch (err) {
       setError(extractApiErrorMessage(err));
     }
@@ -127,7 +169,7 @@ export default function AdminCompetitionsPage() {
   if (!bootstrapped || loading) return <div className="p-8">Loading...</div>;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10 text-slate-200">
+    <div className="mx-auto max-w-7xl px-6 py-10 text-slate-200">
       <div className="mb-6">
         <Link href="/admin" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition">
           <ArrowLeft className="h-4 w-4" />
@@ -139,12 +181,20 @@ export default function AdminCompetitionsPage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Competitions</h1>
           <p className="mt-1 text-sm text-slate-400">Manage domestic and international competitions.</p>
         </div>
-        <button
-          onClick={() => setIsEditing({})}
-          className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20 transition"
-        >
-          Add Competition
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchCompetitions()}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 transition"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={() => setIsEditing({})}
+            className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20 transition"
+          >
+            Add Competition
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -154,10 +204,11 @@ export default function AdminCompetitionsPage() {
       )}
 
       {isEditing && (
-        <div className="mb-8 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-xl">
-          <h2 className="mb-5 text-lg font-bold text-white">
-            {isEditing.id ? "Edit Competition" : "New Competition"}
-          </h2>
+        <Modal 
+          isOpen={!!isEditing} 
+          onClose={() => setIsEditing(null)} 
+          title={isEditing.id ? "Edit Competition" : "New Competition"}
+        >
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -236,67 +287,60 @@ export default function AdminCompetitionsPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-3 pt-4">
-              <button
-                type="submit"
-                className="rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:brightness-110 active:scale-95"
-              >
-                Save
-              </button>
+            <div className="flex justify-end gap-3 pt-4 border-t border-white/10 mt-6">
               <button
                 type="button"
                 onClick={() => setIsEditing(null)}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 transition"
               >
                 Cancel
               </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 transition"
+              >
+                Save Competition
+              </button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
-      <div className="mb-6 flex items-center justify-between">
-        <div className="w-64">
-          <FilterSelect
-            value={filterCompCountryCode}
-            onChange={setFilterCompCountryCode}
-            options={[
-              { value: "_WORLD", label: "World (International)", group: "Global" },
-              { value: "_CONTINENTAL", label: "Continental", group: "Global" },
-              ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
-            ]}
-            placeholder="League Country"
-          />
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative min-w-[16rem]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search competitions..."
+              className="h-[42px] w-full rounded-xl border border-white/[0.08] bg-black/40 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:outline-none transition"
+            />
+            {search && (
+              <button 
+                onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="w-64">
+            <FilterSelect
+              value={filterCompCountryCode}
+              onChange={(val) => { setFilterCompCountryCode(val); setPage(1); }}
+              options={[
+                { value: "_WORLD", label: "World (International)", group: "Global" },
+                { value: "_CONTINENTAL", label: "Continental", group: "Global" },
+                ...countries.map(c => ({ value: c.id, label: c.name, group: "Nations" }))
+              ]}
+              placeholder="League Country"
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-400 pl-2">
-            <span className="font-bold text-white">{selectedCompetitionIds.length}</span> selected
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {selectedCompetitionIds.length > 0 && (
-            <button
-              onClick={() => setSelectedCompetitionIds([])}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition"
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            onClick={handleBulkDelete}
-            disabled={selectedCompetitionIds.length === 0}
-            className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
-              selectedCompetitionIds.length > 0 
-                ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
-                : 'bg-white/5 text-slate-500 border border-transparent cursor-not-allowed'
-            }`}
-          >
-            Delete Selected
-          </button>
+        <div className="text-sm text-slate-400 shrink-0">
+          <span className="font-bold text-white">{meta.total}</span> competitions found
         </div>
       </div>
 
@@ -306,10 +350,11 @@ export default function AdminCompetitionsPage() {
             <thead className="border-b border-white/[0.06] bg-white/[0.02]">
               <tr>
                 <th className="px-5 py-4 w-12"></th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Name</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Type</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Location</th>
-                <th className="px-5 py-4 font-semibold text-slate-300">Tier</th>
+                <SortHeader label="Name" field="name" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Type" field="type" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Location" field="location" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Tier" field="tier" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
+                <SortHeader label="Date Entered" field="createdAt" currentSort={sort} currentOrder={order} onSort={(f, o) => { setSort(f); setOrder(o); setPage(1); }} />
                 <th className="px-5 py-4 font-semibold text-slate-300 text-right">Actions</th>
               </tr>
             </thead>
@@ -339,16 +384,19 @@ export default function AdminCompetitionsPage() {
                   <td className="px-5 py-4 text-slate-400">{comp.type}</td>
                   <td className="px-5 py-4 text-slate-300">{comp.countryCode || comp.region || "-"}</td>
                   <td className="px-5 py-4 text-slate-300">{comp.tier || "-"}</td>
+                  <td className="px-5 py-4 text-slate-400 text-xs">
+                    {new Date(comp.createdAt).toLocaleDateString()}
+                  </td>
                   <td className="px-5 py-4 flex justify-end gap-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); setIsEditing(comp); }}
-                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
+                      className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-400 transition hover:bg-blue-500/20"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(comp.id); }}
-                      className="text-xs font-semibold text-red-400 hover:text-red-300 transition"
+                      onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: comp.id }); }}
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20"
                     >
                       Delete
                     </button>
@@ -357,7 +405,7 @@ export default function AdminCompetitionsPage() {
               ))}
               {competitions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
                     No competitions found.
                   </td>
                 </tr>
@@ -365,7 +413,40 @@ export default function AdminCompetitionsPage() {
             </tbody>
           </table>
         </div>
+        <div className="flex items-center justify-between p-4 border-t border-white/[0.06]">
+          {selectedCompetitionIds.length > 0 && (
+            <button
+              onClick={() => setConfirmDelete({ bulk: true, count: selectedCompetitionIds.length })}
+              className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Selected ({selectedCompetitionIds.length})
+            </button>
+          )}
+          <Pagination 
+            currentPage={meta.page}
+            totalPages={meta.totalPages}
+            totalItems={meta.total}
+            onPageChange={setPage}
+          />
+        </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="Confirm Deletion"
+        message={confirmDelete?.bulk ? `Are you sure you want to delete ${confirmDelete.count} selected competitions? This action cannot be undone.` : "Are you sure you want to delete this competition? This action cannot be undone."}
+        onConfirm={() => {
+          if (confirmDelete?.bulk) {
+            handleBulkDelete();
+          } else if (confirmDelete?.id) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        confirmText="Delete"
+        isDestructive={true}
+      />
     </div>
   );
 }

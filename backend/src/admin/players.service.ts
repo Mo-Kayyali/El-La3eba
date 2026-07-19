@@ -2,7 +2,7 @@ import { Injectable, ConflictException, NotFoundException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { capitalizeWords } from '../utils/string.util';
 import { PlayerDenormService } from '../game/player-denorm.service';
-import { Position, PreferredFoot } from '@prisma/client';
+import { Position, PreferredFoot, PositionCategory } from '@prisma/client';
 import { IsString, IsOptional, IsArray, IsUUID, IsBoolean, IsInt, IsEnum, IsDateString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -51,6 +51,11 @@ export class CreatePlayerDto {
   @IsOptional()
   @IsEnum(PreferredFoot)
   preferredFoot?: PreferredFoot;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(PositionCategory, { each: true })
+  positionCategories?: PositionCategory[];
 
   @IsArray()
   @IsEnum(Position, { each: true })
@@ -113,6 +118,11 @@ export class PatchPlayerDto {
 
   @IsOptional()
   @IsArray()
+  @IsEnum(PositionCategory, { each: true })
+  positionCategories?: PositionCategory[];
+
+  @IsOptional()
+  @IsArray()
   @IsEnum(Position, { each: true })
   positions?: Position[];
 
@@ -166,20 +176,50 @@ export class AdminPlayersService {
   async search(query: string) {
     if (!query || query.length < 2) return [];
     
-    return this.prisma.player.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { aliases: { hasSome: [query] } },
-          // A true case-insensitive array element match in Prisma Postgres is tricky.
-          // Since aliases are usually exact names, we can also just rely on name match 
-          // or we can just fetch and let the DB do a simple contains on the stringified array if needed.
-          // Actually `hasSome` is exact match (case-sensitive).
-          // To make it simple and fast, we'll do name contains. If they type part of alias, 
-          // `name` usually covers it. For aliases, we can't easily do `contains` insensitive on string[].
-        ]
-      },
-      take: 15,
+    const normalizedSearch = query.trim();
+
+    if (normalizedSearch.length <= 2) {
+      return this.prisma.player.findMany({
+        where: {
+          name: { contains: normalizedSearch, mode: 'insensitive' }
+        },
+        take: 15,
+        select: {
+          id: true,
+          name: true,
+          firstName: true,
+          lastName: true,
+          nationality: true,
+          isRetired: true,
+          currentClub: {
+            select: { name: true }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+    }
+
+    const [_, matchedIdsObj] = await this.prisma.$transaction([
+      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+      this.prisma.$queryRaw<{id: string}[]>`
+        SELECT p.id
+        FROM "Player" p
+        WHERE 
+          lower(unaccent_immutable(p.name)) %> lower(unaccent(${normalizedSearch})) OR
+          lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+        ORDER BY GREATEST(
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(p.name))),
+          word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+        ) DESC
+        LIMIT 15;
+      `
+    ]);
+
+    const matchedIds = matchedIdsObj.map(row => row.id);
+    if (matchedIds.length === 0) return [];
+
+    const players = await this.prisma.player.findMany({
+      where: { id: { in: matchedIds } },
       select: {
         id: true,
         name: true,
@@ -190,13 +230,47 @@ export class AdminPlayersService {
         currentClub: {
           select: { name: true }
         }
-      },
-      orderBy: { name: 'asc' }
+      }
     });
+
+    // Sort to maintain the pg_trgm rank order
+    return players.sort((a, b) => matchedIds.indexOf(a.id) - matchedIds.indexOf(b.id));
   }
 
-  async findAll(filters: { competitionId?: string; compCountryCode?: string; clubId?: string; isRetired?: string; nationality?: string } = {}) {
+  async findAll(filters: { competitionId?: string; compCountryCode?: string; clubId?: string; isRetired?: string; nationality?: string; search?: string; page?: number; limit?: number; sort?: string; order?: string } = {}) {
     const where: any = {};
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const skip = (page - 1) * limit;
+
+    if (filters.search) {
+      const normalizedSearch = filters.search.trim();
+      if (normalizedSearch.length <= 2) {
+        where.name = { contains: normalizedSearch, mode: 'insensitive' };
+      } else {
+        const [_, matchedIdsObj] = await this.prisma.$transaction([
+          this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`),
+          this.prisma.$queryRaw<{id: string}[]>`
+            SELECT p.id
+            FROM "Player" p
+            WHERE 
+              lower(unaccent_immutable(p.name)) %> lower(unaccent(${normalizedSearch})) OR
+              lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> lower(unaccent(${normalizedSearch}))
+            ORDER BY GREATEST(
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(p.name))),
+              word_similarity(lower(unaccent(${normalizedSearch})), lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+            ) DESC
+            LIMIT 500;
+          `
+        ]);
+        const matchedIds = matchedIdsObj.map(row => row.id);
+        if (matchedIds.length === 0) {
+          return { data: [], meta: { total: 0, page, totalPages: 0 } };
+        }
+        where.id = { in: matchedIds };
+      }
+    }
+
     if (filters.clubId) {
       where.currentClubId = filters.clubId;
     } else {
@@ -237,13 +311,36 @@ export class AdminPlayersService {
       where.nationality = filters.nationality;
     }
 
-    return this.prisma.player.findMany({
+    const total = await this.prisma.player.count({ where });
+
+    let orderBy: any = { name: 'asc' };
+    if (filters.sort) {
+      const validSorts = ['name', 'createdAt', 'isRetired', 'nationality'];
+      if (validSorts.includes(filters.sort)) {
+        orderBy = { [filters.sort]: filters.order === 'desc' ? 'desc' : 'asc' };
+      } else if (filters.sort === 'currentClub') {
+        orderBy = { currentClub: { name: filters.order === 'desc' ? 'desc' : 'asc' } };
+      }
+    }
+
+    const data = await this.prisma.player.findMany({
       where,
-      orderBy: { name: 'asc' },
+      skip,
+      take: limit,
+      orderBy,
       include: {
         currentClub: { select: { id: true, name: true, logoUrl: true } }
       }
     });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   }
 
   async findOne(id: string) {
@@ -261,7 +358,7 @@ export class AdminPlayersService {
     return player;
   }
 
-  async create(dto: CreatePlayerDto) {
+  async create(dto: CreatePlayerDto, adminUserId: string) {
     if (dto.firstName) dto.firstName = capitalizeWords(dto.firstName);
     if (dto.lastName) dto.lastName = capitalizeWords(dto.lastName);
     if (dto.name) dto.name = capitalizeWords(dto.name);
@@ -278,6 +375,7 @@ export class AdminPlayersService {
         ...dto,
         aliases,
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+        createdBy: adminUserId,
       }
     });
 
@@ -295,7 +393,7 @@ export class AdminPlayersService {
     return player;
   }
 
-  async update(id: string, dto: PatchPlayerDto) {
+  async update(id: string, dto: PatchPlayerDto, adminUserId: string) {
     if (dto.firstName) dto.firstName = capitalizeWords(dto.firstName);
     if (dto.lastName) dto.lastName = capitalizeWords(dto.lastName);
     if (dto.name) dto.name = capitalizeWords(dto.name);
@@ -304,7 +402,7 @@ export class AdminPlayersService {
     await this.validateFks(dto.nationality, dto.currentClubId, dto.clubHistory);
 
     const { clubHistory, dateOfBirth, ...playerData } = dto;
-    const dataToUpdate: any = { ...playerData };
+    const dataToUpdate: any = { ...playerData, createdBy: adminUserId };
     if (dateOfBirth !== undefined) {
       dataToUpdate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
     }
@@ -334,15 +432,37 @@ export class AdminPlayersService {
 
       // AUTO-SYNC currentClubId
       const currentClubId = 'currentClubId' in dataToUpdate ? dataToUpdate.currentClubId : (await tx.player.findUnique({ where: { id }, select: { currentClubId: true } }))?.currentClubId;
+      
       if (currentClubId) {
-        const existing = await tx.playerClub.findFirst({
-          where: { playerId: id, clubId: currentClubId, isCurrent: true }
+        // 1. Remove isCurrent mark from all other clubs
+        await tx.playerClub.updateMany({
+          where: { playerId: id, isCurrent: true, clubId: { not: currentClubId } },
+          data: { isCurrent: false }
         });
-        if (!existing) {
+
+        // 2. Ensure current club is marked as current
+        const existing = await tx.playerClub.findFirst({
+          where: { playerId: id, clubId: currentClubId }
+        });
+        
+        if (existing) {
+          if (!existing.isCurrent) {
+            await tx.playerClub.update({
+              where: { id: existing.id },
+              data: { isCurrent: true }
+            });
+          }
+        } else {
           await tx.playerClub.create({
             data: { playerId: id, clubId: currentClubId, isCurrent: true }
           });
         }
+      } else {
+        // If current club is cleared, no club should be marked current
+        await tx.playerClub.updateMany({
+          where: { playerId: id, isCurrent: true },
+          data: { isCurrent: false }
+        });
       }
     });
     // 3. Regenerate denormalized arrays

@@ -24,11 +24,16 @@ let AdminPlayersController = class AdminPlayersController {
     constructor(playersService) {
         this.playersService = playersService;
     }
-    create(createDto) {
-        return this.playersService.create(createDto);
+    create(createDto, req) {
+        return this.playersService.create(createDto, req.user.userId);
     }
-    findAll(competitionId, compCountryCode, clubId, isRetired, nationality) {
-        return this.playersService.findAll({ competitionId, compCountryCode, clubId, isRetired, nationality });
+    findAll(competitionId, compCountryCode, clubId, isRetired, nationality, search, page, limit, sort, order) {
+        return this.playersService.findAll({
+            competitionId, compCountryCode, clubId, isRetired, nationality, search,
+            page: page ? parseInt(page, 10) : 1,
+            limit: limit ? parseInt(limit, 10) : 50,
+            sort, order,
+        });
     }
     search(q) {
         return this.playersService.search(q);
@@ -36,8 +41,8 @@ let AdminPlayersController = class AdminPlayersController {
     findOne(id) {
         return this.playersService.findOne(id);
     }
-    update(id, updateDto) {
-        return this.playersService.update(id, updateDto);
+    update(id, updateDto, req) {
+        return this.playersService.update(id, updateDto, req.user.userId);
     }
     remove(id) {
         return this.playersService.remove(id);
@@ -47,8 +52,9 @@ exports.AdminPlayersController = AdminPlayersController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [players_service_1.CreatePlayerDto]),
+    __metadata("design:paramtypes", [players_service_1.CreatePlayerDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminPlayersController.prototype, "create", null);
 __decorate([
@@ -58,8 +64,13 @@ __decorate([
     __param(2, (0, common_1.Query)('clubId')),
     __param(3, (0, common_1.Query)('isRetired')),
     __param(4, (0, common_1.Query)('nationality')),
+    __param(5, (0, common_1.Query)('search')),
+    __param(6, (0, common_1.Query)('page')),
+    __param(7, (0, common_1.Query)('limit')),
+    __param(8, (0, common_1.Query)('sort')),
+    __param(9, (0, common_1.Query)('order')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String, String, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], AdminPlayersController.prototype, "findAll", null);
 __decorate([
@@ -80,8 +91,9 @@ __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, players_service_1.PatchPlayerDto]),
+    __metadata("design:paramtypes", [String, players_service_1.PatchPlayerDto, Object]),
     __metadata("design:returntype", void 0)
 ], AdminPlayersController.prototype, "update", null);
 __decorate([

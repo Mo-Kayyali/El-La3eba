@@ -1052,7 +1052,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
                                 }
                             }
                             if (!matchedPlayer) {
-                                matchedPlayer = matchedPlayers[0];
+                                if (matchedPlayers[0].isAmbiguous) {
+                                    matchedPlayer = null;
+                                }
+                                else {
+                                    matchedPlayer = matchedPlayers[0];
+                                }
                                 initialIsCorrect = false;
                             }
                         }
@@ -1098,6 +1103,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         if (finalIsCorrect) {
                             state.guessedPlayers.push({
                                 name: matchedPlayer.name,
+                                guessText: guessName,
                                 guessedBy: userId,
                                 isCorrect: true,
                                 playerId: matchedPlayer.id,
@@ -1106,14 +1112,13 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         }
                         else {
                             state.strikes[userId] += 1;
-                            if (matchedPlayer) {
-                                state.guessedPlayers.push({
-                                    name: matchedPlayer.name,
-                                    guessedBy: userId,
-                                    isCorrect: false,
-                                    playerId: matchedPlayer.id,
-                                });
-                            }
+                            state.guessedPlayers.push({
+                                name: matchedPlayer ? matchedPlayer.name : guessName,
+                                guessText: guessName,
+                                guessedBy: userId,
+                                isCorrect: false,
+                                playerId: matchedPlayer ? matchedPlayer.id : null,
+                            });
                         }
                     }
                     isRoundOver = false;

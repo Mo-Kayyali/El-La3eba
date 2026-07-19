@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { evaluateMatch } from './guess-matcher.util';
 import { POSITION_CATEGORY_MAP } from './position.util';
 import { GameMode, AnswerType, FilterType, Position, Question } from '@prisma/client';
 
@@ -12,16 +13,12 @@ export class GameService {
   constructor(private readonly prisma: PrismaService) {}
 
   async guessPlayer(guessName: string): Promise<any[]> {
-    const normalizedGuess = guessName.trim();
+    const normalizedGuess = guessName.trim().replace(/-/g, ' ');
     const guessLen = normalizedGuess.length;
     if (guessLen < 3) return [];
 
-    let allowedTypos = 0;
-    if (guessLen >= 8) allowedTypos = 2;
-    else if (guessLen >= 5) allowedTypos = 1;
-
-    const [_, matches] = await this.prisma.$transaction([
-      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.15;`),
+    const [_, candidates] = await this.prisma.$transaction([
+      this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.2;`),
       this.prisma.$queryRaw<any[]>`
         WITH guess AS (
           SELECT lower(unaccent(${normalizedGuess})) AS val
@@ -32,22 +29,15 @@ export class GameService {
             c.name as "currentClubName",
             c.competitions as "currentClubCompetitions",
             g.val,
-            -- Best edit distance to the FULL name or any FULL alias within length tolerance
-            (
-              SELECT min(levenshtein(lower(unaccent(alias)), g.val))
-              FROM unnest(array_append(p.aliases, p.name)) as alias
-              WHERE abs(char_length(g.val) - char_length(alias)) <= 3
-            ) as best_dist,
-            -- Trigram similarity against both name and aliases for sorting (and pre-filtering)
             GREATEST(
-              word_similarity(g.val, lower(unaccent_immutable(p.name))),
-              word_similarity(g.val, lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))))
+              word_similarity(g.val, replace(lower(unaccent_immutable(p.name)), '-', ' ')),
+              word_similarity(g.val, replace(lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))), '-', ' '))
             ) as w_sim
           FROM "Player" p
           LEFT JOIN "Club" c ON p."currentClubId" = c.id
           CROSS JOIN guess g
           WHERE
-            -- Generous prefilter to narrow candidates via GIN index (if configured) or fast discard
+            -- Generous prefilter to narrow candidates via GIN index
             (
               lower(unaccent_immutable(p.name)) %> g.val OR
               lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> g.val
@@ -55,35 +45,71 @@ export class GameService {
         )
         SELECT *
         FROM player_metrics
-        WHERE 
-          best_dist <= ${allowedTypos}
-        ORDER BY 
-          w_sim DESC,
-          best_dist ASC
-        LIMIT 5;
+        ORDER BY w_sim DESC
+        LIMIT 20;
       `
     ]);
 
-    return matches;
+    // Apply TS Token-Level Matcher
+    const scoredCandidates = candidates.map(c => {
+      let bestConfidence = 0;
+      const targets = [c.name, ...(c.aliases || [])];
+      for (const target of targets) {
+        const result = evaluateMatch(normalizedGuess, target);
+        if (result.confidence > bestConfidence) {
+          bestConfidence = result.confidence;
+        }
+      }
+      return { ...c, matchConfidence: bestConfidence };
+    });
+
+    // Filter out completely irrelevant matches (e.g., confidence < 0.3)
+    const validCandidates = scoredCandidates
+      .filter(c => c.matchConfidence >= 0.3)
+      .sort((a, b) => b.matchConfidence - a.matchConfidence)
+      .slice(0, 10);
+
+    if (validCandidates.length > 0) {
+      const topScore = validCandidates[0].matchConfidence;
+      
+      // Ambiguity detection
+      let isAmbiguous = false;
+      if (topScore < 0.95 && validCandidates.length > 1) {
+        const gap = topScore - validCandidates[1].matchConfidence;
+        if (gap <= 0.05) {
+          isAmbiguous = true;
+        }
+      }
+
+      // We attach it to the first candidate, as the gateway checks matchedPlayers[0].isAmbiguous
+      validCandidates[0].isAmbiguous = isAmbiguous;
+    }
+
+    return validCandidates;
   }
 
   async getRandomQuestion(gameMode: GameMode = 'STRIKES', excludeIds: string[] = []): Promise<Question | null> {
     let effectiveExclude = excludeIds;
+    let availableCount = 0;
 
     if (effectiveExclude.length > 0) {
-      const countWithExclusion = await this.prisma.question.count({
+      availableCount = await this.prisma.question.count({
         where: { gameMode, id: { notIn: effectiveExclude } },
       });
       
-      if (countWithExclusion === 0) {
+      if (availableCount === 0) {
         // Exhaustion rule: keep only the most recently used question excluded
         effectiveExclude = [excludeIds[excludeIds.length - 1]];
+        // Re-count with new exclusion rule
+        availableCount = await this.prisma.question.count({
+          where: { gameMode, id: { notIn: effectiveExclude } },
+        });
       }
+    } else {
+      availableCount = await this.prisma.question.count({
+        where: { gameMode },
+      });
     }
-
-    const availableCount = await this.prisma.question.count({
-      where: { gameMode, id: { notIn: effectiveExclude } },
-    });
 
     if (availableCount === 0) {
       // Fallback if there are literally no questions at all (or only 1 question that is excluded)
@@ -133,8 +159,7 @@ export class GameService {
         } else if (clause.filterType === 'POSITION') {
           return player.positions?.includes(clause.filterValue) ?? false;
         } else if (clause.filterType === 'POSITION_CATEGORY') {
-          const allowedPositions = clause.filterValue ? POSITION_CATEGORY_MAP[clause.filterValue] || [] : [];
-          return player.positions?.some((p: string) => allowedPositions.includes(p)) ?? false;
+          return player.positionCategories?.includes(clause.filterValue) ?? false;
         }
         return false;
       };
@@ -179,7 +204,7 @@ export class GameService {
   async createSuggestion(
     userId: string,
     questionId: string,
-    playerId: string,
+    playerId: string | null,
     guessText: string,
     comment?: string,
   ) {
@@ -187,7 +212,7 @@ export class GameService {
       where: {
         suggestedBy: userId,
         questionId,
-        playerId,
+        ...(playerId ? { playerId } : { guessText }),
         status: 'PENDING',
       },
     });
@@ -202,7 +227,7 @@ export class GameService {
     const suggestion = await this.prisma.answerSuggestion.create({
       data: {
         questionId,
-        playerId,
+        playerId: playerId as any,
         guessText,
         suggestedBy: userId,
         comment,
