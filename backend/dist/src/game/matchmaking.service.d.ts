@@ -44,9 +44,10 @@ export declare class MatchmakingService {
     private processQueue;
     initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean): Promise<{
         players: string[];
+        status: string;
         winner: null;
-        currentTurn: string;
-        turnDeadlineAt: number;
+        isRanked: boolean;
+        mode: "STRIKES";
         playerNames: {
             [player1Id]: string;
             [player2Id]: string;
@@ -55,24 +56,28 @@ export declare class MatchmakingService {
             [player1Id]: number;
             [player2Id]: number;
         };
-        roundHistory: never[];
-        scores: {
-            [player1Id]: number;
-            [player2Id]: number;
+        modeState: {
+            currentTurn: string;
+            turnDeadlineAt: number;
+            currentRound: number;
+            roundWinnerId: string | null;
+            scores: {
+                [player1Id]: number;
+                [player2Id]: number;
+            };
+            overallScores: {
+                [player1Id]: number;
+                [player2Id]: number;
+            };
+            strikes: {
+                [player1Id]: number;
+                [player2Id]: number;
+            };
+            guessedPlayers: any[];
+            usedQuestionIds: string[];
+            currentQuestion: any;
+            roundHistory: any[];
         };
-        overallScores: {
-            [player1Id]: number;
-            [player2Id]: number;
-        };
-        currentRound: number;
-        strikes: {
-            [player1Id]: number;
-            [player2Id]: number;
-        };
-        guessedPlayers: never[];
-        usedQuestionIds: string[];
-        currentQuestion: any;
-        isRanked: boolean;
     }>;
     deleteActiveGameKeysInMulti(multi: ChainableCommander, playerIds: Array<string | number | undefined | null>): void;
     setActiveGameSessionIdInMulti(multi: ChainableCommander, userId: string, gameSessionId: string): void;

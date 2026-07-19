@@ -323,9 +323,10 @@ return selected
         const p2Mmr = p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;
         const gameState = {
             players: [player1Id, player2Id],
+            status: 'in_progress',
             winner: null,
-            currentTurn: player1Id,
-            turnDeadlineAt: Date.now() + 10_000,
+            isRanked,
+            mode: 'STRIKES',
             playerNames: {
                 [player1Id]: player1Username ?? String(player1Id),
                 [player2Id]: player2Username ?? String(player2Id),
@@ -334,20 +335,24 @@ return selected
                 [player1Id]: p1Mmr,
                 [player2Id]: p2Mmr,
             },
-            roundHistory: [],
-            scores: { [player1Id]: 0, [player2Id]: 0 },
-            overallScores: { [player1Id]: 0, [player2Id]: 0 },
-            currentRound: 1,
-            strikes: { [player1Id]: 0, [player2Id]: 0 },
-            guessedPlayers: [],
-            usedQuestionIds: [],
-            currentQuestion: null,
-            isRanked,
+            modeState: {
+                currentTurn: player1Id,
+                turnDeadlineAt: Date.now() + 10_000,
+                currentRound: 1,
+                roundWinnerId: null,
+                scores: { [player1Id]: 0, [player2Id]: 0 },
+                overallScores: { [player1Id]: 0, [player2Id]: 0 },
+                strikes: { [player1Id]: 0, [player2Id]: 0 },
+                guessedPlayers: [],
+                usedQuestionIds: [],
+                currentQuestion: null,
+                roundHistory: [],
+            },
         };
         const firstQuestion = await this.gameService.getRandomQuestion('STRIKES');
-        gameState.currentQuestion = firstQuestion;
+        gameState.modeState.currentQuestion = firstQuestion;
         if (firstQuestion) {
-            gameState.usedQuestionIds.push(firstQuestion.id);
+            gameState.modeState.usedQuestionIds.push(firstQuestion.id);
         }
         const gameKey = `game:${gameSessionId}`;
         const stateJson = JSON.stringify(gameState);

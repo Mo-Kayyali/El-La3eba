@@ -485,10 +485,12 @@ return selected
       p2Result.status === 'fulfilled' ? (p2Result.value?.mmr ?? 1000) : 1000;
 
     const gameState = {
+      // ── Envelope (mode-agnostic) ──────────────────────────────────────────
       players: [player1Id, player2Id],
+      status: 'in_progress',
       winner: null,
-      currentTurn: player1Id,
-      turnDeadlineAt: Date.now() + 10_000,
+      isRanked,
+      mode: 'STRIKES' as const,
       playerNames: {
         [player1Id]: player1Username ?? String(player1Id),
         [player2Id]: player2Username ?? String(player2Id),
@@ -497,21 +499,26 @@ return selected
         [player1Id]: p1Mmr,
         [player2Id]: p2Mmr,
       },
-      roundHistory: [],
-      scores: { [player1Id]: 0, [player2Id]: 0 },
-      overallScores: { [player1Id]: 0, [player2Id]: 0 },
-      currentRound: 1,
-      strikes: { [player1Id]: 0, [player2Id]: 0 },
-      guessedPlayers: [],
-      usedQuestionIds: [] as string[],
-      currentQuestion: null as any,
-      isRanked, // consumed by gateway to decide whether to update MMR on completion
+      // ── Mode-specific state (owned by StrikesModeStrategy) ────────────────
+      modeState: {
+        currentTurn: player1Id,
+        turnDeadlineAt: Date.now() + 10_000,
+        currentRound: 1,
+        roundWinnerId: null as string | null,
+        scores: { [player1Id]: 0, [player2Id]: 0 },
+        overallScores: { [player1Id]: 0, [player2Id]: 0 },
+        strikes: { [player1Id]: 0, [player2Id]: 0 },
+        guessedPlayers: [] as any[],
+        usedQuestionIds: [] as string[],
+        currentQuestion: null as any,
+        roundHistory: [] as any[],
+      },
     };
-    
+
     const firstQuestion = await this.gameService.getRandomQuestion('STRIKES');
-    gameState.currentQuestion = firstQuestion;
+    gameState.modeState.currentQuestion = firstQuestion;
     if (firstQuestion) {
-      gameState.usedQuestionIds.push(firstQuestion.id);
+      gameState.modeState.usedQuestionIds.push(firstQuestion.id);
     }
     const gameKey = `game:${gameSessionId}`;
     const stateJson = JSON.stringify(gameState);
@@ -521,6 +528,7 @@ return selected
     this.setActiveGameSessionIdInMulti(multi, player2Id, gameSessionId);
     await multi.exec();
     return gameState;
+
   }
 
   /**

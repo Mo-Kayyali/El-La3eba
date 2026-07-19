@@ -41,11 +41,11 @@ export declare class AdminClubsService {
             id: string;
             createdAt: Date;
             name: string;
-            competitions: string[];
             createdBy: string | null;
             aliases: string[];
             countryCode: string;
             currentCompetitionId: string | null;
+            competitions: string[];
             logoUrl: string | null;
         })[];
         meta: {
@@ -62,11 +62,11 @@ export declare class AdminClubsService {
         id: string;
         createdAt: Date;
         name: string;
-        competitions: string[];
         createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
     create(dto: CreateClubDto, adminUserId: string): Promise<{
@@ -77,11 +77,11 @@ export declare class AdminClubsService {
         id: string;
         createdAt: Date;
         name: string;
-        competitions: string[];
         createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
     update(id: string, dto: UpdateClubDto, adminUserId: string): Promise<{
@@ -92,22 +92,22 @@ export declare class AdminClubsService {
         id: string;
         createdAt: Date;
         name: string;
-        competitions: string[];
         createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
     remove(id: string): Promise<{
         id: string;
         createdAt: Date;
         name: string;
-        competitions: string[];
         createdBy: string | null;
         aliases: string[];
         countryCode: string;
         currentCompetitionId: string | null;
+        competitions: string[];
         logoUrl: string | null;
     }>;
 }

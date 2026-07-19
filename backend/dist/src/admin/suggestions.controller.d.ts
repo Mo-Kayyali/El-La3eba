@@ -8,10 +8,9 @@ export declare class SuggestionsController {
                 id: string;
                 createdAt: Date;
                 name: string;
-                clubs: string[];
-                competitions: string[];
                 createdBy: string | null;
                 aliases: string[];
+                competitions: string[];
                 firstName: string;
                 lastName: string;
                 nationality: string;
@@ -24,6 +23,7 @@ export declare class SuggestionsController {
                 isRetired: boolean;
                 currentClubId: string | null;
                 imageUrl: string | null;
+                clubs: string[];
             } | null;
             question: {
                 id: string;
@@ -40,9 +40,9 @@ export declare class SuggestionsController {
                 createdBy: string | null;
             };
             suggester: {
-                id: string;
                 email: string;
                 username: string;
+                id: string;
             };
         } & {
             id: string;
