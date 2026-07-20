@@ -115,9 +115,6 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 .srem(this.invitesSentKey(inviterId), inviteeId)
                 .exec()
                 .catch(() => { });
-            await this.matchmakingService
-                .cancelPrivateRoom(inviterId)
-                .catch(() => { });
             this.server.to(inviterId).emit('inviteCancelledBySystem', {
                 inviterId,
                 inviteeId,
@@ -696,18 +693,42 @@ let GameGateway = GameGateway_1 = class GameGateway {
         try {
             const cooldownSet = await this.redisClient.set(this.inviteCooldownKey(userId), '1', 'EX', this.INVITE_COOLDOWN_SECONDS, 'NX');
             if (cooldownSet !== 'OK') {
+                const ttl = await this.redisClient.ttl(this.inviteCooldownKey(userId));
+                const remaining = Math.max(1, ttl);
                 return {
                     status: 'error',
-                    message: 'Please wait 5 seconds before sending another invite.',
+                    message: `Please wait ${remaining} more second${remaining === 1 ? '' : 's'} before sending another invite.`,
                 };
             }
             await this.friendsService.ensureUsersAreFriends(userId, friendId);
-            await this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
-            const res = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername, config);
-            if (!res.success) {
-                return { status: 'error', message: res.error };
+            let roomCode;
+            const existingRoomCode = await this.redisClient.get(`user_room:${userId}`);
+            if (existingRoomCode) {
+                const rawRoom = await this.redisClient.get(`private_room:${existingRoomCode}`);
+                if (!rawRoom) {
+                    const res = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername, config);
+                    if (!res.success)
+                        return { status: 'error', message: res.error };
+                    roomCode = res.roomCode;
+                }
+                else {
+                    const roomData = JSON.parse(rawRoom);
+                    if (roomData.guestId) {
+                        return {
+                            status: 'error',
+                            message: 'Your lobby already has a guest. Ask them to leave before inviting someone else.',
+                        };
+                    }
+                    roomCode = existingRoomCode;
+                }
             }
-            const roomCode = res.roomCode;
+            else {
+                const res = await this.matchmakingService.createPrivateRoom(userId, client.id, inviterUsername, config);
+                if (!res.success)
+                    return { status: 'error', message: res.error };
+                roomCode = res.roomCode;
+                this.server.to(userId).emit('lobbyStateUpdated', res.roomData);
+            }
             await this.redisClient
                 .multi()
                 .set(this.inviteKey(userId, friendId), JSON.stringify({
@@ -753,7 +774,6 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const execResult = await multi.exec().catch(() => null);
         const deletedCount = execResult ? Number(execResult[0]?.[1] ?? 0) : 0;
         this.clearInviteExpiryTimer(inviterId, friendId);
-        await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => { });
         if (deletedCount > 0) {
             this.server.to(friendId).emit('inviteCancelledBySystem', {
                 inviterId,

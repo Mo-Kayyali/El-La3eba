@@ -148,7 +148,10 @@ export class GameGateway
           return;
         }
 
-        // Key still present — natural TTL expiry. Clean up index + invite key + room.
+        // Key still present — natural TTL expiry. Clean up index + invite key only.
+        // We do NOT cancel the private room here: the host may still be sitting in
+        // their LobbyRoom (with or without a guest) and the lobby has its own 15-min
+        // TTL independent of individual invite TTLs.
         await this.redisClient
           .multi()
           .del(this.inviteKey(inviterId, inviteeId))
@@ -156,9 +159,6 @@ export class GameGateway
           .exec()
           .catch(() => {});
 
-        await this.matchmakingService
-          .cancelPrivateRoom(inviterId)
-          .catch(() => {});
         this.server.to(inviterId).emit('inviteCancelledBySystem', {
           inviterId,
           inviteeId,
@@ -995,6 +995,7 @@ export class GameGateway
       userId;
 
     try {
+      // ── Invite cooldown (5s, static — NX so repeated attempts only READ) ─
       const cooldownSet = await this.redisClient.set(
         this.inviteCooldownKey(userId),
         '1',
@@ -1003,26 +1004,62 @@ export class GameGateway
         'NX',
       );
       if (cooldownSet !== 'OK') {
+        // Read the actual remaining TTL so the error message is accurate
+        const ttl = await this.redisClient.ttl(this.inviteCooldownKey(userId));
+        const remaining = Math.max(1, ttl);
         return {
           status: 'error',
-          message: 'Please wait 5 seconds before sending another invite.',
+          message: `Please wait ${remaining} more second${remaining === 1 ? '' : 's'} before sending another invite.`,
         };
       }
 
       await this.friendsService.ensureUsersAreFriends(userId, friendId);
 
-      await this.matchmakingService.cancelPrivateRoom(userId).catch(() => {});
+      // ── Lookup-first: reuse an existing room if the host already has one ─
+      // This is the critical path when inviting from inside the LobbyRoom UI.
+      // We must NOT cancel-then-create; that would orphan any guest already
+      // present and trigger the 3-second lobby_cancel_cooldown.
+      let roomCode: string;
 
-      const res = await this.matchmakingService.createPrivateRoom(
-        userId,
-        client.id,
-        inviterUsername,
-        config,
-      );
-      if (!res.success) {
-        return { status: 'error', message: res.error };
+      const existingRoomCode = await this.redisClient.get(`user_room:${userId}`);
+
+      if (existingRoomCode) {
+        // Host already has an active lobby — verify it's still valid and not full.
+        const rawRoom = await this.redisClient.get(`private_room:${existingRoomCode}`);
+        if (!rawRoom) {
+          // Key vanished (expired) between the two reads — fall through and create fresh.
+          const res = await this.matchmakingService.createPrivateRoom(
+            userId,
+            client.id,
+            inviterUsername,
+            config,
+          );
+          if (!res.success) return { status: 'error', message: res.error };
+          roomCode = res.roomCode!;
+        } else {
+          const roomData = JSON.parse(rawRoom) as any;
+          if (roomData.guestId) {
+            return {
+              status: 'error',
+              message: 'Your lobby already has a guest. Ask them to leave before inviting someone else.',
+            };
+          }
+          // Room exists and has no guest — attach the invite to the existing code.
+          roomCode = existingRoomCode;
+        }
+      } else {
+        // No active lobby — create one (original friends-page flow).
+        const res = await this.matchmakingService.createPrivateRoom(
+          userId,
+          client.id,
+          inviterUsername,
+          config,
+        );
+        if (!res.success) return { status: 'error', message: res.error };
+        roomCode = res.roomCode!;
+        // Emit initial lobby state to the host when a brand-new room is created
+        this.server.to(userId).emit('lobbyStateUpdated', res.roomData);
       }
-      const roomCode = res.roomCode;
 
       await this.redisClient
         .multi()
@@ -1088,7 +1125,12 @@ export class GameGateway
     const execResult = await multi.exec().catch(() => null);
     const deletedCount = execResult ? Number(execResult[0]?.[1] ?? 0) : 0;
     this.clearInviteExpiryTimer(inviterId, friendId);
-    await this.matchmakingService.cancelPrivateRoom(inviterId).catch(() => {});
+    // NOTE: We intentionally do NOT call cancelPrivateRoom here.
+    // Cancelling a single invite must not destroy the host's lobby —
+    // the host may have an active LobbyRoom with a guest already present,
+    // or may want to send a different invite to another friend.
+    // Room cleanup happens explicitly via the host's "Cancel Lobby" button
+    // (cancelPrivateRoom event) or via TTL expiry.
 
     if (deletedCount > 0) {
       this.server.to(friendId).emit('inviteCancelledBySystem', {

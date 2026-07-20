@@ -116,7 +116,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         roomCode?: undefined;
     } | {
         status: string;
-        roomCode: string | undefined;
+        roomCode: string;
         message?: undefined;
     }>;
     handleInviteFriendToGame(client: Socket, friendId: string, config?: {
@@ -128,7 +128,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         roomCode?: undefined;
     } | {
         status: string;
-        roomCode: string | undefined;
+        roomCode: string;
         message?: undefined;
     }>;
     handleCancelGameInvite(client: Socket, friendId: string): Promise<{
