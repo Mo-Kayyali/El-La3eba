@@ -265,7 +265,7 @@ return selected
             this.redisClient.zadd('private_rooms_expiry', Date.now() + 900000, roomCode),
         ]);
         this.logger.log(`Private room ${roomCode} created by user ${userId}`);
-        return { success: true, roomCode };
+        return { success: true, roomCode, roomData: JSON.parse(roomData) };
     }
     async cancelPrivateRoom(userId) {
         const cleanedRoomCode = await this.cleanupUserPrivateRoom(userId);

@@ -11,7 +11,7 @@ interface RoomConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (config: RoomConfig) => void;
-  friendName: string;
+  friendName?: string;
 }
 
 const TIMERS = [10000, 15000, 30000, 60000];
@@ -52,7 +52,7 @@ export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: Room
   const decrement = (setter: any, current: number) => setter(Math.max(0, current - 1));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Invite ${friendName}`} maxWidth="max-w-md">
+    <Modal isOpen={isOpen} onClose={onClose} title={friendName ? `Invite ${friendName}` : "Configure Private Room"} maxWidth="max-w-md">
       <div className="space-y-6">
         
         {error && (
@@ -118,7 +118,7 @@ export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: Room
             onClick={handleConfirm}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-sky-500 text-white hover:bg-sky-400 transition shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_25px_rgba(14,165,233,0.5)]"
           >
-            Send Invite
+            {friendName ? "Send Invite" : "Create Lobby"}
           </button>
         </div>
 

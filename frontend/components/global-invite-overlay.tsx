@@ -6,6 +6,7 @@ import {
   IncomingGameInvite,
   useNotificationStore,
 } from "@/src/store/notificationStore";
+import { useLobbyStore } from "@/src/store/lobbyStore";
 
 function canRenderOnPath(pathname: string) {
   if (pathname.startsWith("/game/")) return false;
@@ -22,6 +23,8 @@ function InviteCard({ invite }: { invite: IncomingGameInvite }) {
   );
   const router = useRouter();
 
+  const setLobbyData = useLobbyStore((s) => s.setLobbyData);
+
   function acceptInvite() {
     if (!socket?.connected) return;
     socket.emit(
@@ -29,12 +32,14 @@ function InviteCard({ invite }: { invite: IncomingGameInvite }) {
       { inviterId: invite.inviterId },
       (response: {
         status?: string;
-        gameSessionId?: string;
+        roomCode?: string;
+        roomData?: any;
         message?: string;
       }) => {
-        if (response?.status === "ok" && response.gameSessionId) {
+        if (response?.status === "success" && response.roomCode) {
           removeIncomingGameInvite(invite.inviterId);
-          router.push(`/game/${response.gameSessionId}`);
+          setLobbyData(response.roomData);
+          router.push(`/lobby/room/${response.roomCode}`);
           return;
         }
       },

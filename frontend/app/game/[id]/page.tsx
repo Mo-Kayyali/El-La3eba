@@ -253,8 +253,8 @@ export default function GamePage() {
       }
     }
 
-    const ms = (mode && config?.[mode]) ?? 10000;
-    return Math.floor(ms / 1000);
+    const ms = (mode ? config?.[mode] : undefined) ?? 10000;
+    return Math.floor(Number(ms) / 1000);
   }, [
     gameState?.timerConfig,
     gameState?.mode,

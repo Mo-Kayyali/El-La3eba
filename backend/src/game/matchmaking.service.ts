@@ -281,7 +281,7 @@ return selected
     socketId: string,
     username?: string,
     config?: { composition: any[]; timerConfig: Record<string, number> },
-  ): Promise<{ success: boolean; roomCode?: string; error?: string }> {
+  ): Promise<{ success: boolean; roomCode?: string; roomData?: any; error?: string }> {
     const existingRoom = await this.redisClient.get(`user_room:${userId}`);
     if (existingRoom) {
       return { success: false, error: 'You already have an active private room. Cancel it first.' };
@@ -347,7 +347,7 @@ return selected
     ]);
 
     this.logger.log(`Private room ${roomCode} created by user ${userId}`);
-    return { success: true, roomCode };
+    return { success: true, roomCode, roomData: JSON.parse(roomData) };
   }
 
   /** Allows the host to cancel their own private room before anyone joins. */

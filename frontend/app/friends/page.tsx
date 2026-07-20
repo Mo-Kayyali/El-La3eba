@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { BadgeAlert, BellOff, MessageSquarePlus, RefreshCw, Trophy, UserCheck, UserMinus, UserPlus, X, Gamepad2, Search, Plus, Swords, Users, UserRound } from "lucide-react";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { RoomConfigModal, RoomConfig } from "@/components/room-config-modal";
+import { useFriendsList } from "@/hooks/use-friends-list";
 import {
   acceptFriendRequest,
   cancelOutgoingRequest,
@@ -79,9 +80,8 @@ export default function FriendsPage() {
     (s) => s.setPendingFriendRequests,
   );
 
-  const [friendsData, setFriendsData] = useState<FriendsResponse | null>(null);
+  const { friendsData, loading, refresh, setFriendsData } = useFriendsList();
   const [inviteModalFriend, setInviteModalFriend] = useState<FriendEntry | null>(null);
-  const [loading, setLoading] = useState(true);
   const [identifier, setIdentifier] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -97,71 +97,13 @@ export default function FriendsPage() {
     if (!bootstrapped) return;
     if (!accessToken) {
       router.replace("/");
-      setPendingFriendRequests(0);
     }
-  }, [accessToken, bootstrapped, router, setPendingFriendRequests]);
+  }, [accessToken, bootstrapped, router]);
 
   useEffect(() => {
     if (!bootstrapped || !accessToken) return;
     void refreshAuthProfile();
   }, [accessToken, bootstrapped]);
-
-  useEffect(() => {
-    if (!bootstrapped || !isAuthenticated || !accessToken) return;
-
-    const loadFriends = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchFriends();
-        setFriendsData(data);
-        setPendingFriendRequests(data.incomingRequests.length);
-      } catch {
-        setFriendsData({
-          friends: [],
-          incomingRequests: [],
-          outgoingRequests: [],
-        });
-        setPendingFriendRequests(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadFriends();
-  }, [accessToken, bootstrapped, isAuthenticated, setPendingFriendRequests]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const onFriendsPresenceUpdated = (payload: {
-      friends?: FriendPresence[];
-    }) => {
-      const updates = payload?.friends ?? [];
-      setFriendsData((current) => {
-        if (!current) return current;
-        const nextFriends = current.friends.map((friend) => {
-          const match = updates.find(
-            (entry) => String(entry.userId) === String(friend.userId),
-          );
-          if (!match) return friend;
-          return {
-            ...friend,
-            presence: {
-              status: match.status,
-              gameSessionId: match.gameSessionId ?? null,
-            },
-          };
-        });
-        return { ...current, friends: nextFriends };
-      });
-    };
-
-    socket.on("friendsPresenceUpdated", onFriendsPresenceUpdated);
-
-    return () => {
-      socket.off("friendsPresenceUpdated", onFriendsPresenceUpdated);
-    };
-  }, [socket]);
 
   useEffect(() => {
     if (!socket) return;
@@ -208,9 +150,7 @@ export default function FriendsPage() {
           : `Friend request sent to ${response.friendship.username}.`,
       );
       setIdentifier("");
-      const refreshed = await fetchFriends();
-      setFriendsData(refreshed);
-      setPendingFriendRequests(refreshed.incomingRequests.length);
+      await refresh();
     } catch (error) {
       const message = extractApiErrorMessage(error, "Failed to send request.");
       setActionMessage(message);
@@ -227,9 +167,7 @@ export default function FriendsPage() {
   async function handleAccept(requestId: string) {
     try {
       await acceptFriendRequest(requestId);
-      const refreshed = await fetchFriends();
-      setFriendsData(refreshed);
-      setPendingFriendRequests(refreshed.incomingRequests.length);
+      await refresh();
     } catch (error) {
       setActionMessage(
         error instanceof Error ? error.message : "Could not accept request.",
@@ -240,9 +178,7 @@ export default function FriendsPage() {
   async function handleReject(requestId: string) {
     try {
       await rejectFriendRequest(requestId);
-      const refreshed = await fetchFriends();
-      setFriendsData(refreshed);
-      setPendingFriendRequests(refreshed.incomingRequests.length);
+      await refresh();
     } catch (error) {
       setActionMessage(
         error instanceof Error ? error.message : "Could not reject request.",
@@ -253,9 +189,7 @@ export default function FriendsPage() {
   async function handleCancelOutgoing(requestId: string) {
     try {
       await cancelOutgoingRequest(requestId);
-      const refreshed = await fetchFriends();
-      setFriendsData(refreshed);
-      setPendingFriendRequests(refreshed.incomingRequests.length);
+      await refresh();
       toast.success("Outgoing request cancelled.");
     } catch (error) {
       const message = extractApiErrorMessage(
@@ -271,9 +205,7 @@ export default function FriendsPage() {
     setIsRemovingFriend(true);
     try {
       await removeFriend(friendshipId);
-      const refreshed = await fetchFriends();
-      setFriendsData(refreshed);
-      setPendingFriendRequests(refreshed.incomingRequests.length);
+      await refresh();
       toast.success("Friend removed.");
       setPendingRemovalFriend(null);
     } catch (error) {
@@ -472,7 +404,7 @@ export default function FriendsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => void fetchFriends().then(setFriendsData)}
+                  onClick={() => void refresh()}
                   className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white transition"
                 >
                   <RefreshCw className="h-4 w-4" />

@@ -38,6 +38,7 @@ export declare class MatchmakingService {
     }): Promise<{
         success: boolean;
         roomCode?: string;
+        roomData?: any;
         error?: string;
     }>;
     cancelPrivateRoom(userId: string): Promise<{

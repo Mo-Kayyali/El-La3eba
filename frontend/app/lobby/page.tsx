@@ -7,6 +7,7 @@ import { Trophy, Swords, Users, Crown, Star } from "lucide-react";
 import { api, refreshAuthProfile } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useSocketStore } from "@/src/store/socketStore";
+import { useLobbyStore } from "@/src/store/lobbyStore";
 import { getRank } from "@/lib/rank";
 import { RankTierLegend } from "@/components/rank-tier-legend";
 
@@ -93,15 +94,12 @@ export default function LobbyPage() {
     null,
   );
 
-  // Private match — create flow
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
-  const [createdRoomCode, setCreatedRoomCode] = useState<string | null>(null);
-  const [isWaitingForFriend, setIsWaitingForFriend] = useState(false);
-
   // Private match — join flow
   const [roomCode, setRoomCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const setLobbyData = useLobbyStore((s) => s.setLobbyData);
+
   // Leaderboard
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
@@ -157,23 +155,14 @@ export default function LobbyPage() {
       toast.message("Search timed out after 60 seconds. Please try again.");
     };
 
-    const onRoomExpired = () => {
-      setIsCreatingRoom(false);
-      setIsWaitingForFriend(false);
-      setCreatedRoomCode(null);
-      toast.message("Search timed out after 60 seconds.");
-    };
-
     socket.on("matchFound", onMatchFound);
     socket.on("connect_error", onConnectError);
     socket.on("searchExpired", onSearchExpired);
-    socket.on("roomExpired", onRoomExpired);
 
     return () => {
       socket.off("matchFound", onMatchFound);
       socket.off("connect_error", onConnectError);
       socket.off("searchExpired", onSearchExpired);
-      socket.off("roomExpired", onRoomExpired);
     };
   }, [disconnectSocket, logout, router, socket]);
 
@@ -328,79 +317,16 @@ export default function LobbyPage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {/* Create */}
                   <div className="rounded-2xl border border-white/[0.07] bg-black/30 p-4 space-y-3">
                     <p className="text-xs font-semibold tracking-wide text-slate-400">
                       CREATE A ROOM
                     </p>
-                    {!isWaitingForFriend ? (
-                      <button
-                        disabled={isCreatingRoom || !socket?.connected}
-                        onClick={() => {
-                          if (!socket?.connected) return;
-                          setIsCreatingRoom(true);
-                          setCreatedRoomCode(null);
-                          socket.emit(
-                            "createPrivateMatch",
-                            (response: {
-                              status: string;
-                              roomCode?: string;
-                            }) => {
-                              setIsCreatingRoom(false);
-                              if (
-                                response?.status === "success" &&
-                                response.roomCode
-                              ) {
-                                setCreatedRoomCode(response.roomCode);
-                                setIsWaitingForFriend(true);
-                              }
-                            },
-                          );
-                        }}
-                        className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.06] py-2.5 text-sm font-semibold text-white hover:bg-white/[0.1] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isCreatingRoom ? "Creating…" : "Create Room"}
-                      </button>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/8 p-3 text-center">
-                          <p className="text-[10px] font-bold tracking-[0.3em] text-blue-300">
-                            YOUR CODE
-                          </p>
-                          <p className="mt-1 text-3xl font-extrabold tracking-[0.3em] text-white">
-                            {createdRoomCode}
-                          </p>
-                          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-400">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
-                            Waiting for friend…
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              if (socket?.connected) {
-                                socket.emit("cancelPrivateRoom");
-                              }
-                              setIsWaitingForFriend(false);
-                              setCreatedRoomCode(null);
-                            }}
-                            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 text-xs font-semibold text-slate-400 hover:bg-white/[0.08] transition"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(
-                                createdRoomCode ?? "",
-                              )
-                            }
-                            className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.06] py-2 text-xs font-semibold text-white hover:bg-white/[0.1] transition"
-                          >
-                            Copy
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => router.push("/lobby/create")}
+                      className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.06] py-2.5 text-sm font-semibold text-white hover:bg-white/[0.1] transition"
+                    >
+                      Create Room
+                    </button>
                   </div>
 
                   {/* Join */}
@@ -434,17 +360,18 @@ export default function LobbyPage() {
                             "joinPrivateMatch",
                             { roomCode: code },
                             (response: {
-                              success?: boolean;
-                              error?: string;
                               status?: string;
+                              message?: string;
+                              roomData?: any;
+                              roomCode?: string;
                             }) => {
                               setIsJoining(false);
-                              if (
-                                response?.success === false ||
-                                response?.status === "error"
-                              ) {
+                              if (response?.status === "success" && response.roomCode) {
+                                setLobbyData(response.roomData);
+                                router.replace(`/lobby/room/${response.roomCode}`);
+                              } else {
                                 setJoinError(
-                                  response?.error ?? "Failed to join room.",
+                                  response?.message ?? "Failed to join room.",
                                 );
                               }
                             },

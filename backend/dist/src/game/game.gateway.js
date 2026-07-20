@@ -670,6 +670,19 @@ let GameGateway = GameGateway_1 = class GameGateway {
             return { status: 'error', message: res.error };
         return { status: 'success', roomCode: res.roomCode };
     }
+    async handleCreateLobby(client, config) {
+        const userId = client.data?.user?.sub || client.data?.user?.userId;
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        const username = client.data?.user?.username ||
+            client.data?.user?.name ||
+            client.data?.user?.email;
+        const res = await this.matchmakingService.createPrivateRoom(userId, client.id, username, config);
+        if (!res.success)
+            return { status: 'error', message: res.error };
+        this.server.to(userId).emit('lobbyStateUpdated', res.roomData);
+        return { status: 'success', roomCode: res.roomCode, roomData: res.roomData };
+    }
     async handleSendGameInvite(client, friendId, config) {
         const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
         if (!userId)
@@ -1448,6 +1461,14 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleCreatePrivateRoom", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('createLobby'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('config')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleCreateLobby", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('sendGameInvite'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

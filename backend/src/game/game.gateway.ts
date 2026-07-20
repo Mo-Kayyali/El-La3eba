@@ -949,6 +949,33 @@ export class GameGateway
     return { status: 'success', roomCode: res.roomCode };
   }
 
+  @SubscribeMessage('createLobby')
+  async handleCreateLobby(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('config') config?: { composition: any[]; timerConfig: Record<string, number> },
+  ) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const username =
+      client.data?.user?.username ||
+      client.data?.user?.name ||
+      client.data?.user?.email;
+
+    const res = await this.matchmakingService.createPrivateRoom(
+      userId,
+      client.id,
+      username,
+      config,
+    );
+    if (!res.success) return { status: 'error', message: res.error };
+    
+    // Emit initial lobby state to the host
+    this.server.to(userId).emit('lobbyStateUpdated', res.roomData);
+    
+    return { status: 'success', roomCode: res.roomCode, roomData: res.roomData };
+  }
+
   @SubscribeMessage('sendGameInvite')
   async handleSendGameInvite(
     @ConnectedSocket() client: Socket,

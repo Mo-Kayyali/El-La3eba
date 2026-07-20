@@ -93,6 +93,20 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         roomCode: string | undefined;
         message?: undefined;
     }>;
+    handleCreateLobby(client: Socket, config?: {
+        composition: any[];
+        timerConfig: Record<string, number>;
+    }): Promise<{
+        status: string;
+        message: string | undefined;
+        roomCode?: undefined;
+        roomData?: undefined;
+    } | {
+        status: string;
+        roomCode: string | undefined;
+        roomData: any;
+        message?: undefined;
+    }>;
     handleSendGameInvite(client: Socket, friendId: string, config?: {
         composition: any[];
         timerConfig: Record<string, number>;

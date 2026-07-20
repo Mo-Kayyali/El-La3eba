@@ -7,6 +7,7 @@ export type IncomingGameInvite = {
   inviterUsername: string;
   roomCode: string;
   expiresAt: number;
+  config?: { composition: string[]; timerConfig: Record<string, number> };
 };
 
 type OutgoingInvite = {
