@@ -30,6 +30,7 @@ export declare class AuthController {
         };
     }): Promise<{
         activeGameSessionId: string | null;
+        activeLobbyRoomCode: string | null;
         pendingIncomingFriendRequests: number;
         pendingOfflinePenalty: {
             id: string;

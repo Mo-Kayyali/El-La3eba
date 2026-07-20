@@ -46,6 +46,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
     turnTimers = new Map();
     rematchTimers = new Map();
     disconnectTimers = new Map();
+    lobbyDisconnectTimers = new Map();
     guessTimestamps = new Map();
     inviteExpiryTimers = new Map();
     roundTransitionMs = 4000;
@@ -395,6 +396,79 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.disconnectTimers.delete(key);
         }
     }
+    lobbyDisconnectTimerKey(roomCode, userId) {
+        return `${roomCode}:${userId}`;
+    }
+    startLobbyDisconnectTimer(roomCode, userId) {
+        const key = this.lobbyDisconnectTimerKey(roomCode, userId);
+        this.clearLobbyDisconnectTimer(roomCode, userId);
+        const timer = setTimeout(async () => {
+            this.lobbyDisconnectTimers.delete(key);
+            this.logger.log(`Lobby disconnect grace expired for user ${userId} in room ${roomCode}`);
+            const roomData = await this.matchmakingService.getPrivateRoomByCode(roomCode);
+            if (!roomData)
+                return;
+            if (roomData.hostId === userId) {
+                this.server.to(roomCode).emit('lobbyCancelledByHost', {
+                    hostId: userId,
+                    roomCode,
+                    reason: 'host_disconnected',
+                });
+                await this.matchmakingService.cancelPrivateRoom(userId).catch(() => { });
+                return;
+            }
+            if (roomData.guestId !== userId) {
+                return;
+            }
+            const updatedRoomData = {
+                ...roomData,
+                guestId: null,
+                guestUsername: null,
+                guestReady: false,
+                status: 'waiting_for_guest',
+            };
+            const privateRoomKey = `private_room:${roomCode}`;
+            await this.redisClient.watch(privateRoomKey);
+            const latestRaw = await this.redisClient.get(privateRoomKey);
+            if (!latestRaw) {
+                await this.redisClient.unwatch().catch(() => { });
+                return;
+            }
+            let latestRoomData;
+            try {
+                latestRoomData = JSON.parse(latestRaw);
+            }
+            catch {
+                await this.redisClient.unwatch().catch(() => { });
+                return;
+            }
+            if (latestRoomData.guestId !== userId) {
+                await this.redisClient.unwatch().catch(() => { });
+                return;
+            }
+            const multi = this.redisClient.multi();
+            multi.set(privateRoomKey, JSON.stringify(updatedRoomData), 'KEEPTTL');
+            multi.del(`user_room:${userId}`);
+            multi.del(`user_active_lobby:${userId}`);
+            const result = await multi.exec();
+            if (!result) {
+                await this.redisClient.unwatch().catch(() => { });
+                return;
+            }
+            await this.redisClient.unwatch().catch(() => { });
+            this.server.to(roomCode).emit('lobbyStateUpdated', updatedRoomData);
+            this.logger.log(`Guest ${userId} disconnected from lobby ${roomCode} and was removed after grace expired`);
+        }, this.DISCONNECT_GRACE_MS);
+        this.lobbyDisconnectTimers.set(key, timer);
+    }
+    clearLobbyDisconnectTimer(roomCode, userId) {
+        const key = this.lobbyDisconnectTimerKey(roomCode, userId);
+        const existing = this.lobbyDisconnectTimers.get(key);
+        if (existing) {
+            clearTimeout(existing);
+            this.lobbyDisconnectTimers.delete(key);
+        }
+    }
     startTurnTimer(gameSessionId, remainingMs = 10_000) {
         this.clearTurnTimer(gameSessionId);
         const timeout = setTimeout(async () => {
@@ -426,7 +500,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     }
                     const outcome = this.resolveStrategy(state.mode).handleTurnTimeout(state, timedOutUserId);
                     isRoundOver = outcome.isRoundOver ?? false;
-                    roundWinner = 'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
+                    roundWinner =
+                        'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
                     if (isRoundOver) {
                         const matchOutcome = (0, match_evaluator_util_1.checkBestOfNMatchWin)(state);
                         isMatchOver = matchOutcome.isMatchOver;
@@ -454,7 +529,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     if (!results) {
                         attempt++;
                         if (attempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
+                            await new Promise((res) => setTimeout(res, 50));
                         continue;
                     }
                     success = true;
@@ -463,7 +538,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     await this.redisClient.unwatch().catch(() => { });
                     attempt++;
                     if (attempt < 3)
-                        await new Promise(res => setTimeout(res, 50));
+                        await new Promise((res) => setTimeout(res, 50));
                 }
             }
             if (!success) {
@@ -515,7 +590,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         }
                         latest.modeState.currentRound += 1;
                         latest.modeState.roundWinnerId = null;
-                        latest.mode = latest.composition[latest.modeState.currentRound - 1];
+                        latest.mode =
+                            latest.composition[latest.modeState.currentRound - 1];
                         this.resolveStrategy(latest.mode).initializeRoundState(latest);
                         const nextQuestion = await this.gameService.getRandomQuestion(latest.mode, latest.modeState.usedQuestionIds || []);
                         latest.modeState.currentQuestion = nextQuestion;
@@ -530,7 +606,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         if (!results2) {
                             nextRoundAttempt++;
                             if (nextRoundAttempt < 3)
-                                await new Promise(res => setTimeout(res, 50));
+                                await new Promise((res) => setTimeout(res, 50));
                             continue;
                         }
                         nextRoundSuccess = true;
@@ -539,7 +615,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         await this.redisClient.unwatch().catch(() => { });
                         nextRoundAttempt++;
                         if (nextRoundAttempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
+                            await new Promise((res) => setTimeout(res, 50));
                     }
                 }
                 if (!nextRoundSuccess) {
@@ -599,7 +675,6 @@ let GameGateway = GameGateway_1 = class GameGateway {
         if (userId) {
             await Promise.allSettled([
                 this.matchmakingService.cancelSearch(userId),
-                this.matchmakingService.cancelPrivateRoom(userId),
                 this.cancelActiveInvitesByInviter(userId, 'inviter_offline'),
                 this.cancelPendingInvitesForInvitee(userId, 'invitee_offline'),
             ]);
@@ -607,12 +682,21 @@ let GameGateway = GameGateway_1 = class GameGateway {
         try {
             if (userId) {
                 const gameSessionId = await this.matchmakingService.getActiveGameSessionIdForUser(userId);
+                const lobbyRoomCode = await this.matchmakingService.getActiveLobbyRoomCodeForUser(userId);
                 if (gameSessionId) {
                     this.startDisconnectTimer(gameSessionId, userId);
                     this.server
                         .to(gameSessionId)
                         .emit('playerDisconnected', { userId, gameSessionId });
                     this.logger.log(`User ${userId} disconnected from active game ${gameSessionId} — grace period started`);
+                }
+                if (lobbyRoomCode) {
+                    this.startLobbyDisconnectTimer(lobbyRoomCode, userId);
+                    this.server.to(lobbyRoomCode).emit('lobbyPlayerDisconnected', {
+                        userId,
+                        roomCode: lobbyRoomCode,
+                    });
+                    this.logger.log(`User ${userId} disconnected from active lobby ${lobbyRoomCode} — grace period started`);
                 }
             }
         }
@@ -650,6 +734,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
+        const { roomCode, roomData } = await this.matchmakingService.getPrivateRoomByUser(userId);
+        if (roomCode && roomData?.guestId) {
+            this.server.to(roomData.guestId).emit('lobbyCancelledByHost', {
+                hostId: userId,
+                roomCode,
+                reason: 'host_cancelled',
+            });
+        }
         const res = await this.matchmakingService.cancelPrivateRoom(userId);
         if (!res.success)
             return { status: 'error', message: res.error };
@@ -677,8 +769,17 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const res = await this.matchmakingService.createPrivateRoom(userId, client.id, username, config);
         if (!res.success)
             return { status: 'error', message: res.error };
-        this.server.to(userId).emit('lobbyStateUpdated', res.roomData);
-        return { status: 'success', roomCode: res.roomCode, roomData: res.roomData };
+        const createdRoomCode = res.roomCode;
+        if (!createdRoomCode) {
+            return { status: 'error', message: 'Failed to create lobby room' };
+        }
+        await client.join(createdRoomCode);
+        this.server.to(createdRoomCode).emit('lobbyStateUpdated', res.roomData);
+        return {
+            status: 'success',
+            roomCode: createdRoomCode,
+            roomData: res.roomData,
+        };
     }
     async handleSendGameInvite(client, friendId, config) {
         const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
@@ -710,6 +811,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     if (!res.success)
                         return { status: 'error', message: res.error };
                     roomCode = res.roomCode;
+                    await client.join(roomCode);
+                    this.server.to(roomCode).emit('lobbyStateUpdated', res.roomData);
                 }
                 else {
                     const roomData = JSON.parse(rawRoom);
@@ -720,6 +823,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         };
                     }
                     roomCode = existingRoomCode;
+                    await client.join(roomCode);
                 }
             }
             else {
@@ -727,7 +831,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 if (!res.success)
                     return { status: 'error', message: res.error };
                 roomCode = res.roomCode;
-                this.server.to(userId).emit('lobbyStateUpdated', res.roomData);
+                await client.join(roomCode);
+                this.server.to(roomCode).emit('lobbyStateUpdated', res.roomData);
             }
             await this.redisClient
                 .multi()
@@ -829,6 +934,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 message: joinResult?.error ?? 'Could not accept invite',
             };
         }
+        await client.join(invite.roomCode);
         const otherInvitees = await this.redisClient.smembers(this.invitesSentKey(inviterId));
         if (otherInvitees && otherInvitees.length > 0) {
             const multi = this.redisClient.multi();
@@ -846,9 +952,14 @@ let GameGateway = GameGateway_1 = class GameGateway {
             multi.del(this.invitesSentKey(inviterId));
             await multi.exec();
         }
-        this.server.to(inviterId).emit('lobbyStateUpdated', joinResult.roomData);
-        this.server.to(client.id).emit('lobbyStateUpdated', joinResult.roomData);
-        return { status: 'success', roomCode: invite.roomCode, roomData: joinResult.roomData };
+        this.server
+            .to(invite.roomCode)
+            .emit('lobbyStateUpdated', joinResult.roomData);
+        return {
+            status: 'success',
+            roomCode: invite.roomCode,
+            roomData: joinResult.roomData,
+        };
     }
     async handleDeclineGameInvite(client, inviterId) {
         const inviteeId = String(client.data?.user?.sub || client.data?.user?.userId || '');
@@ -885,8 +996,12 @@ let GameGateway = GameGateway_1 = class GameGateway {
             client.data?.user?.email;
         const result = await this.matchmakingService.joinPrivateRoom(roomCode, userId, client.id, username);
         if (!result.success) {
-            return { status: 'error', message: result.error || 'Room not found or expired' };
+            return {
+                status: 'error',
+                message: result.error || 'Room not found or expired',
+            };
         }
+        await client.join(roomCode);
         const inviterId = result.roomData.hostId;
         const otherInvitees = await this.redisClient.smembers(this.invitesSentKey(inviterId));
         if (otherInvitees && otherInvitees.length > 0) {
@@ -905,8 +1020,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
             multi.del(this.invitesSentKey(inviterId));
             await multi.exec();
         }
-        this.server.to(inviterId).emit('lobbyStateUpdated', result.roomData);
-        this.server.to(userId).emit('lobbyStateUpdated', result.roomData);
+        this.server.to(roomCode).emit('lobbyStateUpdated', result.roomData);
         return { status: 'success', roomCode, roomData: result.roomData };
     }
     async handleToggleLobbyReady(client) {
@@ -916,26 +1030,75 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const res = await this.matchmakingService.toggleLobbyReady(userId);
         if (!res.success)
             return { status: 'error', message: res.error };
-        this.server.to(res.roomData.hostId).emit('lobbyStateUpdated', res.roomData);
-        if (res.roomData.guestId) {
-            this.server.to(res.roomData.guestId).emit('lobbyStateUpdated', res.roomData);
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (roomCode) {
+            this.server.to(roomCode).emit('lobbyStateUpdated', res.roomData);
         }
         return { status: 'success' };
+    }
+    async handleUpdateLobbyConfig(client, config) {
+        const userId = client.data?.user?.sub || client.data?.user?.userId;
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        if (!config)
+            return { status: 'error', message: 'config required' };
+        const res = await this.matchmakingService.updateLobbyConfig(userId, config);
+        if (!res.success)
+            return { status: 'error', message: res.error };
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (roomCode) {
+            this.server.to(roomCode).emit('lobbyStateUpdated', res.roomData);
+        }
+        return { status: 'success', roomData: res.roomData };
+    }
+    async handleJoinLobbyRoom(client, roomCode) {
+        const userId = String(client.data?.user?.sub || client.data?.user?.userId || '');
+        if (!userId)
+            return { status: 'error', message: 'Unauthorized' };
+        const targetRoomCode = (roomCode ||
+            (await this.redisClient.get(`user_room:${userId}`)) ||
+            '').toUpperCase();
+        if (!targetRoomCode)
+            return { status: 'error', message: 'Room code required' };
+        const roomData = await this.matchmakingService.getPrivateRoomByCode(targetRoomCode);
+        if (!roomData)
+            return { status: 'error', message: 'Lobby not found' };
+        if (roomData.hostId !== userId && roomData.guestId !== userId) {
+            return { status: 'error', message: 'You are not a member of this lobby' };
+        }
+        await client.join(targetRoomCode);
+        await this.matchmakingService.setActiveLobbyRoomCodeForUser(userId, targetRoomCode);
+        const hadLobbyTimer = this.lobbyDisconnectTimers.has(this.lobbyDisconnectTimerKey(targetRoomCode, userId));
+        this.clearLobbyDisconnectTimer(targetRoomCode, userId);
+        if (hadLobbyTimer) {
+            this.server.to(targetRoomCode).emit('lobbyPlayerReconnected', {
+                userId,
+                roomCode: targetRoomCode,
+            });
+        }
+        return { status: 'success', roomCode: targetRoomCode, roomData };
     }
     async handleLeaveLobby(client) {
         const userId = client.data?.user?.sub || client.data?.user?.userId;
         if (!userId)
             return { status: 'error', message: 'Unauthorized' };
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
         const res = await this.matchmakingService.leaveLobby(userId);
         if (!res.success)
             return { status: 'error', message: res.error };
         if (res.isHost) {
             if (res.roomData.guestId) {
-                this.server.to(res.roomData.guestId).emit('roomExpired', { roomCode: res.roomData.roomCode });
+                this.server.to(res.roomData.guestId).emit('lobbyCancelledByHost', {
+                    hostId: userId,
+                    roomCode: res.roomData.roomCode,
+                    reason: 'host_left',
+                });
             }
         }
         else {
-            this.server.to(res.roomData.hostId).emit('lobbyStateUpdated', res.roomData);
+            if (roomCode) {
+                this.server.to(roomCode).emit('lobbyStateUpdated', res.roomData);
+            }
         }
         return { status: 'success' };
     }
@@ -946,14 +1109,24 @@ let GameGateway = GameGateway_1 = class GameGateway {
         const res = await this.matchmakingService.startLobbyMatch(userId);
         if (!res.success)
             return { status: 'error', message: res.error };
-        const hostSockets = await this.server.in(res.roomData.hostId).fetchSockets();
-        const guestSockets = await this.server.in(res.roomData.guestId).fetchSockets();
+        const hostSockets = await this.server
+            .in(res.roomData.hostId)
+            .fetchSockets();
+        const guestSockets = await this.server
+            .in(res.roomData.guestId)
+            .fetchSockets();
         for (const s of [...hostSockets, ...guestSockets]) {
             s.join(res.gameSessionId);
         }
-        this.server.to(res.roomData.hostId).emit('matchFound', { gameSessionId: res.gameSessionId });
-        this.server.to(res.roomData.guestId).emit('matchFound', { gameSessionId: res.gameSessionId });
-        this.server.to(res.gameSessionId).emit('gameStateUpdated', { state: res.gameState });
+        this.server
+            .to(res.roomData.hostId)
+            .emit('matchFound', { gameSessionId: res.gameSessionId });
+        this.server
+            .to(res.roomData.guestId)
+            .emit('matchFound', { gameSessionId: res.gameSessionId });
+        this.server
+            .to(res.gameSessionId)
+            .emit('gameStateUpdated', { state: res.gameState });
         this.startTurnTimer(res.gameSessionId);
         return { status: 'success' };
     }
@@ -1070,7 +1243,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
             parsedState = JSON.parse(stateStr);
             if (parsedState?.status === 'match_completed') {
                 this.clearDisconnectTimer(gameSessionId, userId);
-                client.emit('gameStateUpdated', { state: this.flattenStateForFrontend(parsedState) });
+                client.emit('gameStateUpdated', {
+                    state: this.flattenStateForFrontend(parsedState),
+                });
                 return {
                     status: 'error',
                     message: 'Match is already completed',
@@ -1100,7 +1275,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 try {
                     const latestState = JSON.parse(latestStateStr);
                     if (latestState?.status === 'match_completed') {
-                        client.emit('gameStateUpdated', { state: this.flattenStateForFrontend(latestState) });
+                        client.emit('gameStateUpdated', {
+                            state: this.flattenStateForFrontend(latestState),
+                        });
                         return {
                             status: 'error',
                             message: 'Match is already completed',
@@ -1131,7 +1308,9 @@ let GameGateway = GameGateway_1 = class GameGateway {
             this.startTurnTimer(gameSessionId, remainingMs);
             this.logger.log(`User ${userId} reconnected to game ${gameSessionId} — timer resumed`);
         }
-        client.emit('gameStateUpdated', { state: this.flattenStateForFrontend(parsedState) });
+        client.emit('gameStateUpdated', {
+            state: this.flattenStateForFrontend(parsedState),
+        });
         return { status: 'success', message: `Joined room ${gameSessionId}` };
     }
     async handleSubmitGuess(client, payload) {
@@ -1175,7 +1354,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                                     continue;
                                 const isCorrect = await this.gameService.validateAnswer(currentState.modeState.currentQuestion, p);
                                 if (isCorrect) {
-                                    answerDetails = await this.gameService.validateAndGetAnswerDetails(currentState.modeState.currentQuestion.id, p.id);
+                                    answerDetails =
+                                        await this.gameService.validateAndGetAnswerDetails(currentState.modeState.currentQuestion.id, p.id);
                                 }
                                 if (isCorrect) {
                                     matchedPlayer = p;
@@ -1222,7 +1402,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     }
                     if (state.modeState.roundWinnerId) {
                         await this.redisClient.unwatch();
-                        return { status: 'error', message: 'Round already won, guess rejected.' };
+                        return {
+                            status: 'error',
+                            message: 'Round already won, guess rejected.',
+                        };
                     }
                     finalIsCorrect = initialIsCorrect;
                     if (matchedPlayer &&
@@ -1240,7 +1423,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         return { status: 'error', message: outcome.error };
                     }
                     isRoundOver = outcome.isRoundOver ?? false;
-                    roundWinner = 'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
+                    roundWinner =
+                        'roundWinner' in outcome ? (outcome.roundWinner ?? null) : null;
                     if (isRoundOver) {
                         const matchOutcome = (0, match_evaluator_util_1.checkBestOfNMatchWin)(state);
                         isMatchOver = matchOutcome.isMatchOver;
@@ -1269,7 +1453,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     if (!results) {
                         attempt++;
                         if (attempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
+                            await new Promise((res) => setTimeout(res, 50));
                         continue;
                     }
                     success = true;
@@ -1278,7 +1462,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                     await this.redisClient.unwatch().catch(() => { });
                     attempt++;
                     if (attempt < 3)
-                        await new Promise(res => setTimeout(res, 50));
+                        await new Promise((res) => setTimeout(res, 50));
                 }
             }
             if (!success) {
@@ -1331,7 +1515,11 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         latest = JSON.parse(latestStr);
                         if (latest.status === 'match_completed') {
                             await this.redisClient.unwatch();
-                            return { status: 'success', isCorrect: finalIsCorrect, matchedPlayer };
+                            return {
+                                status: 'success',
+                                isCorrect: finalIsCorrect,
+                                matchedPlayer,
+                            };
                         }
                         latest.modeState.currentRound += 1;
                         latest.modeState.roundWinnerId = null;
@@ -1350,7 +1538,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         if (!results2) {
                             nextRoundAttempt++;
                             if (nextRoundAttempt < 3)
-                                await new Promise(res => setTimeout(res, 50));
+                                await new Promise((res) => setTimeout(res, 50));
                             continue;
                         }
                         nextRoundSuccess = true;
@@ -1359,12 +1547,15 @@ let GameGateway = GameGateway_1 = class GameGateway {
                         await this.redisClient.unwatch().catch(() => { });
                         nextRoundAttempt++;
                         if (nextRoundAttempt < 3)
-                            await new Promise(res => setTimeout(res, 50));
+                            await new Promise((res) => setTimeout(res, 50));
                     }
                 }
                 if (!nextRoundSuccess) {
                     this.logger.error(`Failed to transition to next round after 3 attempts for ${gameSessionId}`);
-                    return { status: 'error', message: 'Concurrent modification, try again' };
+                    return {
+                        status: 'error',
+                        message: 'Concurrent modification, try again',
+                    };
                 }
                 const nextPayload = {
                     state: this.flattenStateForFrontend(latest),
@@ -1546,6 +1737,22 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleToggleLobbyReady", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('updateLobbyConfig'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('config')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleUpdateLobbyConfig", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('joinLobbyRoom'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)('roomCode')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, String]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleJoinLobbyRoom", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('leaveLobby'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

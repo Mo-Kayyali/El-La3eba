@@ -27,6 +27,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     startTurnTimerFn;
     SEARCH_TTL_SECONDS = 60;
     ACTIVE_GAME_KEY_PREFIX = 'user_active_game:';
+    ACTIVE_LOBBY_KEY_PREFIX = 'user_active_lobby:';
     QUEUES = {
         ranked: { zset: 'ranked_queue', members: 'ranked_queue_members' },
         unrated: { zset: 'unrated_queue', members: 'unrated_queue_members' },
@@ -48,6 +49,46 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     activeGameKey(userId) {
         return `${this.ACTIVE_GAME_KEY_PREFIX}${userId}`;
     }
+    activeLobbyKey(userId) {
+        return `${this.ACTIVE_LOBBY_KEY_PREFIX}${userId}`;
+    }
+    async getActiveLobbyRoomCodeForUser(userId) {
+        const uid = String(userId);
+        if (!uid)
+            return null;
+        return this.redisClient.get(this.activeLobbyKey(uid));
+    }
+    setActiveLobbyRoomCodeInMulti(multi, userId, roomCode, ttlSeconds = 900) {
+        const key = this.activeLobbyKey(String(userId));
+        multi.set(key, String(roomCode));
+        multi.expire(key, ttlSeconds);
+    }
+    async setActiveLobbyRoomCodeForUser(userId, roomCode, ttlSeconds = 900) {
+        await this.redisClient.set(this.activeLobbyKey(String(userId)), String(roomCode), 'EX', ttlSeconds);
+    }
+    async clearActiveLobbyRoomCodeForUser(userId) {
+        await this.redisClient.del(this.activeLobbyKey(String(userId)));
+    }
+    async getPrivateRoomByCode(roomCode) {
+        if (!roomCode)
+            return null;
+        const roomDataStr = await this.redisClient.get(`private_room:${roomCode.toUpperCase()}`);
+        if (!roomDataStr)
+            return null;
+        try {
+            return JSON.parse(roomDataStr);
+        }
+        catch {
+            return null;
+        }
+    }
+    async getPrivateRoomByUser(userId) {
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (!roomCode)
+            return { roomCode: null, roomData: null };
+        const roomData = await this.getPrivateRoomByCode(roomCode);
+        return { roomCode, roomData };
+    }
     async handleRoomExpiryInterval() {
         if (!this.server)
             return;
@@ -68,9 +109,12 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
                     const roomData = JSON.parse(roomDataRaw);
                     if (roomData.hostId) {
                         multi.del(`user_room:${roomData.hostId}`);
+                        multi.del(this.activeLobbyKey(roomData.hostId));
                         this.server.to(roomData.hostId).emit('roomExpired', { roomCode });
                     }
                     if (roomData.guestId) {
+                        multi.del(`user_room:${roomData.guestId}`);
+                        multi.del(this.activeLobbyKey(roomData.guestId));
                         this.server.to(roomData.guestId).emit('roomExpired', { roomCode });
                     }
                 }
@@ -83,7 +127,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
         const queueCooldownKey = `queue_toggle_cooldown:${userId}`;
         const setCooldown = await this.redisClient.set(queueCooldownKey, '1', 'EX', 2, 'NX');
         if (!setCooldown) {
-            return { success: false, error: 'Please wait a moment before toggling queue status.' };
+            return {
+                success: false,
+                error: 'Please wait a moment before toggling queue status.',
+            };
         }
         const { zset, members } = this.QUEUES[mode];
         const opposite = mode === 'ranked' ? 'unrated' : 'ranked';
@@ -114,7 +161,10 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             const queueCooldownKey = `queue_toggle_cooldown:${userId}`;
             const setCooldown = await this.redisClient.set(queueCooldownKey, '1', 'EX', 2, 'NX');
             if (!setCooldown) {
-                return { success: false, error: 'Please wait a moment before toggling queue status.' };
+                return {
+                    success: false,
+                    error: 'Please wait a moment before toggling queue status.',
+                };
             }
         }
         await Promise.all([
@@ -208,15 +258,22 @@ return selected
     async createPrivateRoom(userId, socketId, username, config) {
         const existingRoom = await this.redisClient.get(`user_room:${userId}`);
         if (existingRoom) {
-            return { success: false, error: 'You already have an active private room. Cancel it first.' };
+            return {
+                success: false,
+                error: 'You already have an active private room. Cancel it first.',
+            };
         }
         const isCoolingDown = await this.redisClient.get(`lobby_cancel_cooldown:${userId}`);
         if (isCoolingDown) {
-            return { success: false, error: 'Please wait a moment before creating a new lobby.' };
+            return {
+                success: false,
+                error: 'Please wait a moment before creating a new lobby.',
+            };
         }
         let finalConfig = config;
         if (finalConfig) {
-            if (!Array.isArray(finalConfig.composition) || finalConfig.composition.length === 0) {
+            if (!Array.isArray(finalConfig.composition) ||
+                finalConfig.composition.length === 0) {
                 throw new Error('Composition must have at least 1 entry');
             }
             const validModes = ['STRIKES', 'TOP_10', 'PHOTO_GUESS', 'LINEUP'];
@@ -257,11 +314,12 @@ return selected
             hostReady: false,
             guestReady: false,
             status: 'waiting_for_guest',
-            createdAt: Date.now()
+            createdAt: Date.now(),
         });
         await Promise.all([
             this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
             this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
+            this.redisClient.set(this.activeLobbyKey(userId), roomCode, 'EX', TTL),
             this.redisClient.zadd('private_rooms_expiry', Date.now() + 900000, roomCode),
         ]);
         this.logger.log(`Private room ${roomCode} created by user ${userId}`);
@@ -282,9 +340,27 @@ return selected
             return null;
         }
         const privateRoomKey = `private_room:${roomCode}`;
+        const roomDataStr = await this.redisClient.get(privateRoomKey);
+        let roomData = null;
+        if (roomDataStr) {
+            try {
+                roomData = JSON.parse(roomDataStr);
+            }
+            catch {
+                roomData = null;
+            }
+        }
         const multi = this.redisClient.multi();
         multi.del(privateRoomKey);
         multi.del(userRoomKey);
+        multi.del(this.activeLobbyKey(userId));
+        if (roomData?.hostId) {
+            multi.del(this.activeLobbyKey(String(roomData.hostId)));
+        }
+        if (roomData?.guestId) {
+            multi.del(`user_room:${String(roomData.guestId)}`);
+            multi.del(this.activeLobbyKey(String(roomData.guestId)));
+        }
         multi.zrem('private_rooms_expiry', roomCode);
         await multi.exec();
         return roomCode;
@@ -313,6 +389,7 @@ return selected
         const multi = this.redisClient.multi();
         multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
         multi.set(`user_room:${userId}`, uppercaseCode, 'KEEPTTL');
+        multi.set(this.activeLobbyKey(userId), uppercaseCode, 'KEEPTTL');
         const result = await multi.exec();
         if (!result) {
             await this.redisClient.unwatch();
@@ -391,6 +468,7 @@ return selected
             const multi = this.redisClient.multi();
             multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
             multi.del(`user_room:${userId}`);
+            multi.del(this.activeLobbyKey(userId));
             const result = await multi.exec();
             if (!result) {
                 await this.redisClient.unwatch();
@@ -401,6 +479,39 @@ return selected
         }
         await this.redisClient.unwatch();
         return { success: false, error: 'Not a member of this lobby' };
+    }
+    async updateLobbyConfig(userId, config) {
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (!roomCode)
+            return { success: false, error: 'You are not in a lobby' };
+        const privateRoomKey = `private_room:${roomCode}`;
+        await this.redisClient.watch(privateRoomKey);
+        const roomDataStr = await this.redisClient.get(privateRoomKey);
+        if (!roomDataStr) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Lobby not found' };
+        }
+        const roomData = JSON.parse(roomDataStr);
+        if (roomData.hostId !== userId) {
+            await this.redisClient.unwatch();
+            return {
+                success: false,
+                error: 'Only the host can edit the configuration',
+            };
+        }
+        roomData.config = config;
+        roomData.hostReady = false;
+        roomData.guestReady = false;
+        roomData.status = roomData.guestId ? 'guest_joined' : 'waiting_for_guest';
+        const multi = this.redisClient.multi();
+        multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
+        const result = await multi.exec();
+        if (!result) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Conflict updating lobby state' };
+        }
+        await this.redisClient.unwatch().catch(() => { });
+        return { success: true, roomData };
     }
     async startLobbyMatch(userId) {
         const roomCode = await this.redisClient.get(`user_room:${userId}`);
@@ -426,6 +537,8 @@ return selected
         multi.del(privateRoomKey);
         multi.del(`user_room:${roomData.hostId}`);
         multi.del(`user_room:${roomData.guestId}`);
+        multi.del(this.activeLobbyKey(roomData.hostId));
+        multi.del(this.activeLobbyKey(roomData.guestId));
         multi.zrem('private_rooms_expiry', roomCode);
         const result = await multi.exec();
         if (!result) {

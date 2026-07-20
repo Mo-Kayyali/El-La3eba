@@ -6,6 +6,7 @@ export type AuthUser = {
   username?: string;
   email?: string;
   activeGameSessionId?: string | null;
+  activeLobbyRoomCode?: string | null;
   mmr?: number;
   wins?: number;
   gamesPlayed?: number;

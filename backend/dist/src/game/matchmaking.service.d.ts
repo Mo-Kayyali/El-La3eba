@@ -13,12 +13,23 @@ export declare class MatchmakingService {
     private startTurnTimerFn?;
     private readonly SEARCH_TTL_SECONDS;
     private readonly ACTIVE_GAME_KEY_PREFIX;
+    private readonly ACTIVE_LOBBY_KEY_PREFIX;
     private readonly QUEUES;
     constructor(redisClient: RedisService, prisma: PrismaService, gameService: GameService);
     setServer(server: Server): void;
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
     private queueSearchKey;
     private activeGameKey;
+    private activeLobbyKey;
+    getActiveLobbyRoomCodeForUser(userId: string): Promise<string | null>;
+    setActiveLobbyRoomCodeInMulti(multi: ChainableCommander, userId: string, roomCode: string, ttlSeconds?: number): void;
+    setActiveLobbyRoomCodeForUser(userId: string, roomCode: string, ttlSeconds?: number): Promise<void>;
+    clearActiveLobbyRoomCodeForUser(userId: string): Promise<void>;
+    getPrivateRoomByCode(roomCode: string): Promise<any | null>;
+    getPrivateRoomByUser(userId: string): Promise<{
+        roomCode: string | null;
+        roomData: any | null;
+    }>;
     handleRoomExpiryInterval(): Promise<void>;
     private purgeExpiredPrivateRooms;
     joinQueue(userId: string, socketId: string, username: string | undefined, mode: QueueMode): Promise<{
@@ -65,6 +76,14 @@ export declare class MatchmakingService {
         roomData?: any;
         error?: string;
         isHost?: boolean;
+    }>;
+    updateLobbyConfig(userId: string, config: {
+        composition: string[];
+        timerConfig: Record<string, number>;
+    }): Promise<{
+        success: boolean;
+        roomData?: any;
+        error?: string;
     }>;
     startLobbyMatch(userId: string): Promise<{
         success: boolean;

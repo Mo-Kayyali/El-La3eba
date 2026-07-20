@@ -59,6 +59,7 @@ export type MeProfile = {
   createdAt: string;
   pendingIncomingFriendRequests: number;
   activeGameSessionId: string | null;
+  activeLobbyRoomCode: string | null;
   offlineDisconnectCount: number;
   lastDisconnectAt: string | null;
   pendingOfflinePenalty: {

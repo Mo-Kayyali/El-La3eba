@@ -19,6 +19,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private readonly turnTimers;
     private readonly rematchTimers;
     private readonly disconnectTimers;
+    private readonly lobbyDisconnectTimers;
     private readonly guessTimestamps;
     private readonly inviteExpiryTimers;
     private readonly roundTransitionMs;
@@ -58,6 +59,9 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private disconnectTimerKey;
     private startDisconnectTimer;
     private clearDisconnectTimer;
+    private lobbyDisconnectTimerKey;
+    private startLobbyDisconnectTimer;
+    private clearLobbyDisconnectTimer;
     private startTurnTimer;
     handleConnection(client: Socket): Promise<void>;
     handleDisconnect(client: Socket): Promise<void>;
@@ -103,7 +107,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         roomData?: undefined;
     } | {
         status: string;
-        roomCode: string | undefined;
+        roomCode: string;
         roomData: any;
         message?: undefined;
     }>;
@@ -172,6 +176,29 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         message: string | undefined;
     } | {
         status: string;
+        message?: undefined;
+    }>;
+    handleUpdateLobbyConfig(client: Socket, config?: {
+        composition: any[];
+        timerConfig: Record<string, number>;
+    }): Promise<{
+        status: string;
+        message: string | undefined;
+        roomData?: undefined;
+    } | {
+        status: string;
+        roomData: any;
+        message?: undefined;
+    }>;
+    handleJoinLobbyRoom(client: Socket, roomCode?: string): Promise<{
+        status: string;
+        message: string;
+        roomCode?: undefined;
+        roomData?: undefined;
+    } | {
+        status: string;
+        roomCode: string;
+        roomData: any;
         message?: undefined;
     }>;
     handleLeaveLobby(client: Socket): Promise<{

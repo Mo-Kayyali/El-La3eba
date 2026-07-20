@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "./modal";
 import { Minus, Plus } from "lucide-react";
 
@@ -12,16 +12,41 @@ interface RoomConfigModalProps {
   onClose: () => void;
   onConfirm: (config: RoomConfig) => void;
   friendName?: string;
+  initialConfig?: RoomConfig | null;
 }
 
 const TIMERS = [10000, 15000, 30000, 60000];
 
-export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: RoomConfigModalProps) {
+export function RoomConfigModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  friendName,
+  initialConfig,
+}: RoomConfigModalProps) {
   const [strikesCount, setStrikesCount] = useState(2);
   const [top10Count, setTop10Count] = useState(1);
   const [strikesTimer, setStrikesTimer] = useState(10000);
   const [top10Timer, setTop10Timer] = useState(10000);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const config = initialConfig ?? {
+      composition: ["STRIKES", "STRIKES", "TOP_10"],
+      timerConfig: { STRIKES: 10000, TOP_10: 10000 },
+    };
+    const strikes = config.composition.filter(
+      (mode) => mode === "STRIKES",
+    ).length;
+    const top10 = config.composition.filter((mode) => mode === "TOP_10").length;
+    setStrikesCount(strikes);
+    setTop10Count(top10);
+    setStrikesTimer(config.timerConfig.STRIKES ?? 10000);
+    setTop10Timer(config.timerConfig.TOP_10 ?? 10000);
+    setError("");
+  }, [initialConfig, isOpen]);
 
   const handleConfirm = () => {
     setError("");
@@ -29,7 +54,7 @@ export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: Room
       setError("Please select at least 1 round.");
       return;
     }
-    
+
     if (!TIMERS.includes(strikesTimer) || !TIMERS.includes(top10Timer)) {
       setError("Invalid timer selected.");
       return;
@@ -44,17 +69,23 @@ export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: Room
       timerConfig: {
         STRIKES: strikesTimer,
         TOP_10: top10Timer,
-      }
+      },
     });
   };
 
-  const increment = (setter: any, current: number) => setter(Math.min(5, current + 1));
-  const decrement = (setter: any, current: number) => setter(Math.max(0, current - 1));
+  const increment = (setter: any, current: number) =>
+    setter(Math.min(5, current + 1));
+  const decrement = (setter: any, current: number) =>
+    setter(Math.max(0, current - 1));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={friendName ? `Invite ${friendName}` : "Configure Private Room"} maxWidth="max-w-md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={friendName ? `Invite ${friendName}` : "Configure Private Room"}
+      maxWidth="max-w-md"
+    >
       <div className="space-y-6">
-        
         {error && (
           <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-500">
             {error}
@@ -62,23 +93,41 @@ export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: Room
         )}
 
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-sky-300 uppercase tracking-wider">Strikes Mode</h3>
+          <h3 className="text-sm font-semibold text-sky-300 uppercase tracking-wider">
+            Strikes Mode
+          </h3>
           <div className="flex items-center justify-between">
             <span className="text-white text-sm">Number of Rounds (0-5)</span>
             <div className="flex items-center gap-3">
-              <button onClick={() => decrement(setStrikesCount, strikesCount)} className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"><Minus size={16} /></button>
-              <span className="text-white w-4 text-center font-bold">{strikesCount}</span>
-              <button onClick={() => increment(setStrikesCount, strikesCount)} className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"><Plus size={16} /></button>
+              <button
+                onClick={() => decrement(setStrikesCount, strikesCount)}
+                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="text-white w-4 text-center font-bold">
+                {strikesCount}
+              </span>
+              <button
+                onClick={() => increment(setStrikesCount, strikesCount)}
+                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"
+              >
+                <Plus size={16} />
+              </button>
             </div>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-white text-sm">Turn Timer</span>
-            <select 
-              value={strikesTimer} 
+            <select
+              value={strikesTimer}
               onChange={(e) => setStrikesTimer(Number(e.target.value))}
               className="bg-[#0f172a] border border-white/10 text-white text-sm rounded-lg p-2 outline-none focus:border-sky-500 cursor-pointer"
             >
-              {TIMERS.map(t => <option key={t} value={t}>{t / 1000}s</option>)}
+              {TIMERS.map((t) => (
+                <option key={t} value={t}>
+                  {t / 1000}s
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -86,42 +135,59 @@ export function RoomConfigModal({ isOpen, onClose, onConfirm, friendName }: Room
         <div className="h-px bg-white/10" />
 
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-sky-300 uppercase tracking-wider">Top 10 Mode</h3>
+          <h3 className="text-sm font-semibold text-sky-300 uppercase tracking-wider">
+            Top 10 Mode
+          </h3>
           <div className="flex items-center justify-between">
             <span className="text-white text-sm">Number of Rounds (0-5)</span>
             <div className="flex items-center gap-3">
-              <button onClick={() => decrement(setTop10Count, top10Count)} className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"><Minus size={16} /></button>
-              <span className="text-white w-4 text-center font-bold">{top10Count}</span>
-              <button onClick={() => increment(setTop10Count, top10Count)} className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"><Plus size={16} /></button>
+              <button
+                onClick={() => decrement(setTop10Count, top10Count)}
+                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="text-white w-4 text-center font-bold">
+                {top10Count}
+              </span>
+              <button
+                onClick={() => increment(setTop10Count, top10Count)}
+                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white"
+              >
+                <Plus size={16} />
+              </button>
             </div>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-white text-sm">Turn Timer</span>
-            <select 
-              value={top10Timer} 
+            <select
+              value={top10Timer}
               onChange={(e) => setTop10Timer(Number(e.target.value))}
               className="bg-[#0f172a] border border-white/10 text-white text-sm rounded-lg p-2 outline-none focus:border-sky-500 cursor-pointer"
             >
-              {TIMERS.map(t => <option key={t} value={t}>{t / 1000}s</option>)}
+              {TIMERS.map((t) => (
+                <option key={t} value={t}>
+                  {t / 1000}s
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
         <div className="pt-4 flex justify-end gap-3">
-          <button 
+          <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 transition"
           >
             Cancel
           </button>
-          <button 
+          <button
             onClick={handleConfirm}
             className="px-4 py-2 rounded-xl text-sm font-bold bg-sky-500 text-white hover:bg-sky-400 transition shadow-[0_0_15px_rgba(14,165,233,0.3)] hover:shadow-[0_0_25px_rgba(14,165,233,0.5)]"
           >
             {friendName ? "Send Invite" : "Create Lobby"}
           </button>
         </div>
-
       </div>
     </Modal>
   );

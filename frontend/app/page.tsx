@@ -93,6 +93,11 @@ export default function AuthPage() {
       ? s.user.activeGameSessionId
       : null,
   );
+  const activeLobbyRoomCode = useAuthStore((s) =>
+    typeof s.user?.activeLobbyRoomCode === "string"
+      ? s.user.activeLobbyRoomCode
+      : null,
+  );
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [mode, setMode] = useState<Mode>("login");
@@ -115,8 +120,16 @@ export default function AuthPage() {
   useEffect(() => {
     if (!bootstrapped || !isAuthenticated) return;
     if (activeGameSessionId) return;
+    if (activeLobbyRoomCode) return;
     router.replace(userRole === "ADMIN" ? "/admin" : "/lobby");
-  }, [activeGameSessionId, bootstrapped, isAuthenticated, router, userRole]);
+  }, [
+    activeGameSessionId,
+    activeLobbyRoomCode,
+    bootstrapped,
+    isAuthenticated,
+    router,
+    userRole,
+  ]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

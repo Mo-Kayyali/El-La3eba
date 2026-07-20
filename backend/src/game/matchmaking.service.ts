@@ -23,6 +23,7 @@ export class MatchmakingService {
   private startTurnTimerFn?: (gameSessionId: string) => void;
   private readonly SEARCH_TTL_SECONDS = 60;
   private readonly ACTIVE_GAME_KEY_PREFIX = 'user_active_game:';
+  private readonly ACTIVE_LOBBY_KEY_PREFIX = 'user_active_lobby:';
 
   /** Redis key pairs for each queue mode. */
   private readonly QUEUES: Record<
@@ -55,6 +56,66 @@ export class MatchmakingService {
     return `${this.ACTIVE_GAME_KEY_PREFIX}${userId}`;
   }
 
+  private activeLobbyKey(userId: string) {
+    return `${this.ACTIVE_LOBBY_KEY_PREFIX}${userId}`;
+  }
+
+  async getActiveLobbyRoomCodeForUser(userId: string): Promise<string | null> {
+    const uid = String(userId);
+    if (!uid) return null;
+    return this.redisClient.get(this.activeLobbyKey(uid));
+  }
+
+  setActiveLobbyRoomCodeInMulti(
+    multi: ChainableCommander,
+    userId: string,
+    roomCode: string,
+    ttlSeconds = 900,
+  ): void {
+    const key = this.activeLobbyKey(String(userId));
+    multi.set(key, String(roomCode));
+    multi.expire(key, ttlSeconds);
+  }
+
+  async setActiveLobbyRoomCodeForUser(
+    userId: string,
+    roomCode: string,
+    ttlSeconds = 900,
+  ): Promise<void> {
+    await this.redisClient.set(
+      this.activeLobbyKey(String(userId)),
+      String(roomCode),
+      'EX',
+      ttlSeconds,
+    );
+  }
+
+  async clearActiveLobbyRoomCodeForUser(userId: string): Promise<void> {
+    await this.redisClient.del(this.activeLobbyKey(String(userId)));
+  }
+
+  async getPrivateRoomByCode(roomCode: string): Promise<any | null> {
+    if (!roomCode) return null;
+    const roomDataStr = await this.redisClient.get(
+      `private_room:${roomCode.toUpperCase()}`,
+    );
+    if (!roomDataStr) return null;
+    try {
+      return JSON.parse(roomDataStr);
+    } catch {
+      return null;
+    }
+  }
+
+  async getPrivateRoomByUser(
+    userId: string,
+  ): Promise<{ roomCode: string | null; roomData: any | null }> {
+    const roomCode = await this.redisClient.get(`user_room:${userId}`);
+    if (!roomCode) return { roomCode: null, roomData: null };
+    const roomData = await this.getPrivateRoomByCode(roomCode);
+    return { roomCode, roomData };
+  }
+
   @Interval(10000)
   async handleRoomExpiryInterval() {
     if (!this.server) return;
@@ -63,11 +124,17 @@ export class MatchmakingService {
 
   private async purgeExpiredPrivateRooms() {
     const cutoff = Date.now();
-    const expiredRooms = await this.redisClient.zrangebyscore('private_rooms_expiry', '-inf', cutoff);
+    const expiredRooms = await this.redisClient.zrangebyscore(
+      'private_rooms_expiry',
+      '-inf',
+      cutoff,
+    );
     if (!expiredRooms.length) return;
 
     for (const roomCode of expiredRooms) {
-      const roomDataRaw = await this.redisClient.get(`private_room:${roomCode}`);
+      const roomDataRaw = await this.redisClient.get(
+        `private_room:${roomCode}`,
+      );
       const multi = this.redisClient.multi();
       multi.del(`private_room:${roomCode}`);
       multi.zrem('private_rooms_expiry', roomCode);
@@ -76,9 +143,12 @@ export class MatchmakingService {
           const roomData = JSON.parse(roomDataRaw);
           if (roomData.hostId) {
             multi.del(`user_room:${roomData.hostId}`);
+            multi.del(this.activeLobbyKey(roomData.hostId));
             this.server.to(roomData.hostId).emit('roomExpired', { roomCode });
           }
           if (roomData.guestId) {
+            multi.del(`user_room:${roomData.guestId}`);
+            multi.del(this.activeLobbyKey(roomData.guestId));
             this.server.to(roomData.guestId).emit('roomExpired', { roomCode });
           }
         } catch (e) {}
@@ -102,9 +172,18 @@ export class MatchmakingService {
     mode: QueueMode,
   ): Promise<{ success: boolean; error?: string }> {
     const queueCooldownKey = `queue_toggle_cooldown:${userId}`;
-    const setCooldown = await this.redisClient.set(queueCooldownKey, '1', 'EX', 2, 'NX');
+    const setCooldown = await this.redisClient.set(
+      queueCooldownKey,
+      '1',
+      'EX',
+      2,
+      'NX',
+    );
     if (!setCooldown) {
-      return { success: false, error: 'Please wait a moment before toggling queue status.' };
+      return {
+        success: false,
+        error: 'Please wait a moment before toggling queue status.',
+      };
     }
 
     const { zset, members } = this.QUEUES[mode];
@@ -148,12 +227,24 @@ export class MatchmakingService {
   /**
    * Removes a user from all queues.
    */
-  async cancelSearch(userId: string, bypassCooldown = false): Promise<{ success: boolean; error?: string }> {
+  async cancelSearch(
+    userId: string,
+    bypassCooldown = false,
+  ): Promise<{ success: boolean; error?: string }> {
     if (!bypassCooldown) {
       const queueCooldownKey = `queue_toggle_cooldown:${userId}`;
-      const setCooldown = await this.redisClient.set(queueCooldownKey, '1', 'EX', 2, 'NX');
+      const setCooldown = await this.redisClient.set(
+        queueCooldownKey,
+        '1',
+        'EX',
+        2,
+        'NX',
+      );
       if (!setCooldown) {
-        return { success: false, error: 'Please wait a moment before toggling queue status.' };
+        return {
+          success: false,
+          error: 'Please wait a moment before toggling queue status.',
+        };
       }
     }
 
@@ -281,20 +372,36 @@ return selected
     socketId: string,
     username?: string,
     config?: { composition: any[]; timerConfig: Record<string, number> },
-  ): Promise<{ success: boolean; roomCode?: string; roomData?: any; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    roomCode?: string;
+    roomData?: any;
+    error?: string;
+  }> {
     const existingRoom = await this.redisClient.get(`user_room:${userId}`);
     if (existingRoom) {
-      return { success: false, error: 'You already have an active private room. Cancel it first.' };
+      return {
+        success: false,
+        error: 'You already have an active private room. Cancel it first.',
+      };
     }
 
-    const isCoolingDown = await this.redisClient.get(`lobby_cancel_cooldown:${userId}`);
+    const isCoolingDown = await this.redisClient.get(
+      `lobby_cancel_cooldown:${userId}`,
+    );
     if (isCoolingDown) {
-      return { success: false, error: 'Please wait a moment before creating a new lobby.' };
+      return {
+        success: false,
+        error: 'Please wait a moment before creating a new lobby.',
+      };
     }
 
     let finalConfig = config;
     if (finalConfig) {
-      if (!Array.isArray(finalConfig.composition) || finalConfig.composition.length === 0) {
+      if (
+        !Array.isArray(finalConfig.composition) ||
+        finalConfig.composition.length === 0
+      ) {
         throw new Error('Composition must have at least 1 entry');
       }
       const validModes = ['STRIKES', 'TOP_10', 'PHOTO_GUESS', 'LINEUP'];
@@ -337,13 +444,18 @@ return selected
       hostReady: false,
       guestReady: false,
       status: 'waiting_for_guest',
-      createdAt: Date.now()
+      createdAt: Date.now(),
     });
 
     await Promise.all([
       this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
       this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
-      this.redisClient.zadd('private_rooms_expiry', Date.now() + 900000, roomCode),
+      this.redisClient.set(this.activeLobbyKey(userId), roomCode, 'EX', TTL),
+      this.redisClient.zadd(
+        'private_rooms_expiry',
+        Date.now() + 900000,
+        roomCode,
+      ),
     ]);
 
     this.logger.log(`Private room ${roomCode} created by user ${userId}`);
@@ -351,12 +463,19 @@ return selected
   }
 
   /** Allows the host to cancel their own private room before anyone joins. */
-  async cancelPrivateRoom(userId: string): Promise<{ success: boolean; error?: string }> {
+  async cancelPrivateRoom(
+    userId: string,
+  ): Promise<{ success: boolean; error?: string }> {
     const cleanedRoomCode = await this.cleanupUserPrivateRoom(userId);
 
     // Only log if a room was actually found and deleted
     if (cleanedRoomCode) {
-      await this.redisClient.set(`lobby_cancel_cooldown:${userId}`, '1', 'EX', 3);
+      await this.redisClient.set(
+        `lobby_cancel_cooldown:${userId}`,
+        '1',
+        'EX',
+        3,
+      );
       this.logger.log(
         `Private room ${cleanedRoomCode} cancelled by user ${userId}`,
       );
@@ -378,9 +497,27 @@ return selected
     }
 
     const privateRoomKey = `private_room:${roomCode}`;
+    const roomDataStr = await this.redisClient.get(privateRoomKey);
+    let roomData: any | null = null;
+    if (roomDataStr) {
+      try {
+        roomData = JSON.parse(roomDataStr);
+      } catch {
+        roomData = null;
+      }
+    }
+
     const multi = this.redisClient.multi();
     multi.del(privateRoomKey);
     multi.del(userRoomKey);
+    multi.del(this.activeLobbyKey(userId));
+    if (roomData?.hostId) {
+      multi.del(this.activeLobbyKey(String(roomData.hostId)));
+    }
+    if (roomData?.guestId) {
+      multi.del(`user_room:${String(roomData.guestId)}`);
+      multi.del(this.activeLobbyKey(String(roomData.guestId)));
+    }
     multi.zrem('private_rooms_expiry', roomCode);
     await multi.exec();
     return roomCode;
@@ -425,6 +562,7 @@ return selected
     const multi = this.redisClient.multi();
     multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
     multi.set(`user_room:${userId}`, uppercaseCode, 'KEEPTTL');
+    multi.set(this.activeLobbyKey(userId), uppercaseCode, 'KEEPTTL');
 
     const result = await multi.exec();
 
@@ -445,7 +583,9 @@ return selected
     return { success: true, roomData };
   }
 
-  async toggleLobbyReady(userId: string): Promise<{ success: boolean; roomData?: any; error?: string }> {
+  async toggleLobbyReady(
+    userId: string,
+  ): Promise<{ success: boolean; roomData?: any; error?: string }> {
     const roomCode = await this.redisClient.get(`user_room:${userId}`);
     if (!roomCode) return { success: false, error: 'You are not in a lobby' };
 
@@ -493,7 +633,14 @@ return selected
     return { success: true, roomData };
   }
 
-  async leaveLobby(userId: string): Promise<{ success: boolean; roomData?: any; error?: string; isHost?: boolean }> {
+  async leaveLobby(
+    userId: string,
+  ): Promise<{
+    success: boolean;
+    roomData?: any;
+    error?: string;
+    isHost?: boolean;
+  }> {
     const roomCode = await this.redisClient.get(`user_room:${userId}`);
     if (!roomCode) return { success: false, error: 'You are not in a lobby' };
 
@@ -523,6 +670,7 @@ return selected
       const multi = this.redisClient.multi();
       multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
       multi.del(`user_room:${userId}`);
+      multi.del(this.activeLobbyKey(userId));
       const result = await multi.exec();
 
       if (!result) {
@@ -538,7 +686,58 @@ return selected
     return { success: false, error: 'Not a member of this lobby' };
   }
 
-  async startLobbyMatch(userId: string): Promise<{ success: boolean; gameSessionId?: string; roomData?: any; gameState?: any; error?: string }> {
+  async updateLobbyConfig(
+    userId: string,
+    config: { composition: string[]; timerConfig: Record<string, number> },
+  ): Promise<{ success: boolean; roomData?: any; error?: string }> {
+    const roomCode = await this.redisClient.get(`user_room:${userId}`);
+    if (!roomCode) return { success: false, error: 'You are not in a lobby' };
+
+    const privateRoomKey = `private_room:${roomCode}`;
+    await this.redisClient.watch(privateRoomKey);
+    const roomDataStr = await this.redisClient.get(privateRoomKey);
+
+    if (!roomDataStr) {
+      await this.redisClient.unwatch();
+      return { success: false, error: 'Lobby not found' };
+    }
+
+    const roomData = JSON.parse(roomDataStr);
+    if (roomData.hostId !== userId) {
+      await this.redisClient.unwatch();
+      return {
+        success: false,
+        error: 'Only the host can edit the configuration',
+      };
+    }
+
+    roomData.config = config;
+    roomData.hostReady = false;
+    roomData.guestReady = false;
+    roomData.status = roomData.guestId ? 'guest_joined' : 'waiting_for_guest';
+
+    const multi = this.redisClient.multi();
+    multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
+    const result = await multi.exec();
+
+    if (!result) {
+      await this.redisClient.unwatch();
+      return { success: false, error: 'Conflict updating lobby state' };
+    }
+
+    await this.redisClient.unwatch().catch(() => {});
+    return { success: true, roomData };
+  }
+
+  async startLobbyMatch(
+    userId: string,
+  ): Promise<{
+    success: boolean;
+    gameSessionId?: string;
+    roomData?: any;
+    gameState?: any;
+    error?: string;
+  }> {
     const roomCode = await this.redisClient.get(`user_room:${userId}`);
     if (!roomCode) return { success: false, error: 'You are not in a lobby' };
 
@@ -568,6 +767,8 @@ return selected
     multi.del(privateRoomKey);
     multi.del(`user_room:${roomData.hostId}`);
     multi.del(`user_room:${roomData.guestId}`);
+    multi.del(this.activeLobbyKey(roomData.hostId));
+    multi.del(this.activeLobbyKey(roomData.guestId));
     multi.zrem('private_rooms_expiry', roomCode);
     const result = await multi.exec();
 
@@ -587,7 +788,7 @@ return selected
       roomData.guestUsername,
       false, // private matches are unrated
       roomData.config?.composition,
-      roomData.config?.timerConfig
+      roomData.config?.timerConfig,
     );
 
     return { success: true, gameSessionId, roomData, gameState };
@@ -660,7 +861,7 @@ return selected
     player2Username?: string,
     isRanked = false,
     composition: any[] = ['STRIKES', 'STRIKES', 'TOP_10'],
-    timerConfig?: Record<string, number>
+    timerConfig?: Record<string, number>,
   ) {
     // Fetch current MMR for rank badge display on the frontend.
     // Use Promise.allSettled so a missing user doesn't abort game creation.
@@ -707,13 +908,16 @@ return selected
       },
     };
 
-    const modeClass = gameState.mode === 'TOP_10' 
-      ? require('./top10-mode.strategy').Top10ModeStrategy
-      : require('./strikes-mode.strategy').StrikesModeStrategy;
+    const modeClass =
+      gameState.mode === 'TOP_10'
+        ? require('./top10-mode.strategy').Top10ModeStrategy
+        : require('./strikes-mode.strategy').StrikesModeStrategy;
     const strategy = new modeClass();
     strategy.initializeRoundState(gameState);
 
-    const firstQuestion = await this.gameService.getRandomQuestion(gameState.mode);
+    const firstQuestion = await this.gameService.getRandomQuestion(
+      gameState.mode,
+    );
     gameState.modeState.currentQuestion = firstQuestion;
     if (firstQuestion) {
       gameState.modeState.usedQuestionIds.push(firstQuestion.id);
@@ -726,7 +930,6 @@ return selected
     this.setActiveGameSessionIdInMulti(multi, player2Id, gameSessionId);
     await multi.exec();
     return gameState;
-
   }
 
   /**

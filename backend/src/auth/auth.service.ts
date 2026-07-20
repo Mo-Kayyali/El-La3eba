@@ -29,6 +29,10 @@ export class AuthService {
     return `user_active_game:${userId}`;
   }
 
+  private activeLobbyKey(userId: string) {
+    return `user_active_lobby:${userId}`;
+  }
+
   private async getPendingOfflinePenalty(userId: string): Promise<{
     id: string;
     mmrLost: number;
@@ -131,6 +135,7 @@ export class AuthService {
       pendingIncomingFriendRequests,
       pendingOfflinePenalty,
       activeGameSessionId,
+      activeLobbyRoomCode,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -168,6 +173,12 @@ export class AuthService {
           .catch(() => null);
         return legacy;
       })(),
+      (async () => {
+        const roomCode = await this.redisService.get(
+          this.activeLobbyKey(userId),
+        );
+        return roomCode || null;
+      })(),
     ]);
     if (!user) {
       throw new UnauthorizedException();
@@ -175,6 +186,7 @@ export class AuthService {
     return {
       ...user,
       activeGameSessionId,
+      activeLobbyRoomCode,
       pendingIncomingFriendRequests,
       pendingOfflinePenalty,
     };
@@ -254,11 +266,11 @@ export class AuthService {
     // Atomically read and delete the code in one round-trip.
     // Two concurrent verify calls cannot both succeed on the same code:
     // the second will get nil because the first already consumed it.
-    const storedCode = await (this.redisService as any).eval(
+    const storedCode = (await (this.redisService as any).eval(
       `local v = redis.call('GET', KEYS[1])\nif v then redis.call('DEL', KEYS[1]) end\nreturn v`,
       1,
       key,
-    ) as string | null;
+    )) as string | null;
 
     if (!storedCode) {
       throw new UnauthorizedException(

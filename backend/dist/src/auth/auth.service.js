@@ -64,6 +64,9 @@ let AuthService = class AuthService {
     activeGameKey(userId) {
         return `user_active_game:${userId}`;
     }
+    activeLobbyKey(userId) {
+        return `user_active_lobby:${userId}`;
+    }
     async getPendingOfflinePenalty(userId) {
         const cached = await this.redisService.get(this.penaltyKey(userId));
         if (cached) {
@@ -129,7 +132,7 @@ let AuthService = class AuthService {
         return this.generateToken(user, dto.rememberMe === true);
     }
     async getProfileById(userId) {
-        const [user, pendingIncomingFriendRequests, pendingOfflinePenalty, activeGameSessionId,] = await Promise.all([
+        const [user, pendingIncomingFriendRequests, pendingOfflinePenalty, activeGameSessionId, activeLobbyRoomCode,] = await Promise.all([
             this.prisma.user.findUnique({
                 where: { id: userId },
                 select: {
@@ -168,6 +171,10 @@ let AuthService = class AuthService {
                     .catch(() => null);
                 return legacy;
             })(),
+            (async () => {
+                const roomCode = await this.redisService.get(this.activeLobbyKey(userId));
+                return roomCode || null;
+            })(),
         ]);
         if (!user) {
             throw new common_1.UnauthorizedException();
@@ -175,6 +182,7 @@ let AuthService = class AuthService {
         return {
             ...user,
             activeGameSessionId,
+            activeLobbyRoomCode,
             pendingIncomingFriendRequests,
             pendingOfflinePenalty,
         };
@@ -229,7 +237,7 @@ let AuthService = class AuthService {
     }
     async verifyEmail(userId, code) {
         const key = `verify_email:${userId}`;
-        const storedCode = await this.redisService.eval(`local v = redis.call('GET', KEYS[1])\nif v then redis.call('DEL', KEYS[1]) end\nreturn v`, 1, key);
+        const storedCode = (await this.redisService.eval(`local v = redis.call('GET', KEYS[1])\nif v then redis.call('DEL', KEYS[1]) end\nreturn v`, 1, key));
         if (!storedCode) {
             throw new common_1.UnauthorizedException('Verification code expired or not found.');
         }

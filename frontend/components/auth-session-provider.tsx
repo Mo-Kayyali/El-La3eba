@@ -25,6 +25,11 @@ export function AuthSessionProvider({
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const bootstrapped = useAuthStore((s) => s.bootstrapped);
+  const activeLobbyRoomCode = useAuthStore((s) =>
+    typeof s.user?.activeLobbyRoomCode === "string"
+      ? s.user.activeLobbyRoomCode
+      : null,
+  );
   const setBootstrapped = useAuthStore((s) => s.setBootstrapped);
   const connectSocket = useSocketStore((s) => s.connectSocket);
   const disconnectSocket = useSocketStore((s) => s.disconnectSocket);
@@ -263,6 +268,13 @@ export function AuthSessionProvider({
     user?.activeGameSessionId,
   ]);
 
+  const shouldShowLobbyPrompt =
+    bootstrapped &&
+    isAuthenticated &&
+    typeof activeLobbyRoomCode === "string" &&
+    activeLobbyRoomCode.trim().length > 0 &&
+    pathname !== `/lobby/room/${activeLobbyRoomCode}`;
+
   return (
     <>
       {isAuthenticated && <AppNavbar />}
@@ -280,6 +292,29 @@ export function AuthSessionProvider({
         {children}
       </div>
       <GlobalInviteOverlay />
+      {shouldShowLobbyPrompt && (
+        <div className="fixed bottom-4 right-4 z-[119] w-full max-w-sm rounded-3xl border border-amber-400/25 bg-zinc-950/95 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300">
+            Active Lobby
+          </p>
+          <h2 className="mt-2 text-lg font-extrabold text-white">
+            You still have a lobby open.
+          </h2>
+          <p className="mt-2 text-sm text-zinc-300">
+            Return to room{" "}
+            <span className="font-mono text-amber-200">
+              {activeLobbyRoomCode}
+            </span>{" "}
+            to continue.
+          </p>
+          <button
+            onClick={() => router.push(`/lobby/room/${activeLobbyRoomCode}`)}
+            className="mt-4 w-full rounded-2xl bg-amber-500/90 px-4 py-3 text-sm font-bold text-zinc-950 transition hover:bg-amber-400"
+          >
+            Return to Lobby
+          </button>
+        </div>
+      )}
       {pendingOfflinePenalty && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-3xl border border-red-400/25 bg-zinc-950 p-6 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">

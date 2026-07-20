@@ -10,6 +10,7 @@ export declare class AuthService {
     constructor(prisma: PrismaService, jwtService: JwtService, redisService: RedisService);
     private penaltyKey;
     private activeGameKey;
+    private activeLobbyKey;
     private getPendingOfflinePenalty;
     register(dto: RegisterDto): Promise<{
         access_token: string;
@@ -33,6 +34,7 @@ export declare class AuthService {
     }>;
     getProfileById(userId: string): Promise<{
         activeGameSessionId: string | null;
+        activeLobbyRoomCode: string | null;
         pendingIncomingFriendRequests: number;
         pendingOfflinePenalty: {
             id: string;
