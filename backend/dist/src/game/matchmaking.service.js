@@ -25,9 +25,7 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     logger = new common_1.Logger(MatchmakingService_1.name);
     server;
     startTurnTimerFn;
-    roomExpiryTimers = new Map();
     SEARCH_TTL_SECONDS = 60;
-    PRIVATE_ROOM_TTL_SECONDS = 60;
     ACTIVE_GAME_KEY_PREFIX = 'user_active_game:';
     QUEUES = {
         ranked: { zset: 'ranked_queue', members: 'ranked_queue_members' },
@@ -50,36 +48,43 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
     activeGameKey(userId) {
         return `${this.ACTIVE_GAME_KEY_PREFIX}${userId}`;
     }
-    clearRoomExpiryTimer(userId) {
-        const timer = this.roomExpiryTimers.get(userId);
-        if (!timer)
+    async handleRoomExpiryInterval() {
+        if (!this.server)
             return;
-        clearTimeout(timer);
-        this.roomExpiryTimers.delete(userId);
+        await this.purgeExpiredPrivateRooms();
     }
-    schedulePrivateRoomExpiry(userId, roomCode) {
-        this.clearRoomExpiryTimer(userId);
-        const timeout = setTimeout(async () => {
-            this.roomExpiryTimers.delete(userId);
-            const userRoomKey = `user_room:${userId}`;
-            const privateRoomKey = `private_room:${roomCode}`;
-            const currentRoomCode = await this.redisClient.get(userRoomKey);
-            if (currentRoomCode !== roomCode)
-                return;
-            const roomExists = await this.redisClient
-                .exists(privateRoomKey)
-                .catch(() => 0);
-            if (!roomExists)
-                return;
+    async purgeExpiredPrivateRooms() {
+        const cutoff = Date.now();
+        const expiredRooms = await this.redisClient.zrangebyscore('private_rooms_expiry', '-inf', cutoff);
+        if (!expiredRooms.length)
+            return;
+        for (const roomCode of expiredRooms) {
+            const roomDataRaw = await this.redisClient.get(`private_room:${roomCode}`);
             const multi = this.redisClient.multi();
-            multi.del(privateRoomKey);
-            multi.del(userRoomKey);
+            multi.del(`private_room:${roomCode}`);
+            multi.zrem('private_rooms_expiry', roomCode);
+            if (roomDataRaw) {
+                try {
+                    const roomData = JSON.parse(roomDataRaw);
+                    if (roomData.hostId) {
+                        multi.del(`user_room:${roomData.hostId}`);
+                        this.server.to(roomData.hostId).emit('roomExpired', { roomCode });
+                    }
+                    if (roomData.guestId) {
+                        this.server.to(roomData.guestId).emit('roomExpired', { roomCode });
+                    }
+                }
+                catch (e) { }
+            }
             await multi.exec();
-            this.server?.to(userId).emit('roomExpired', { roomCode });
-        }, this.PRIVATE_ROOM_TTL_SECONDS * 1000);
-        this.roomExpiryTimers.set(userId, timeout);
+        }
     }
     async joinQueue(userId, socketId, username, mode) {
+        const queueCooldownKey = `queue_toggle_cooldown:${userId}`;
+        const setCooldown = await this.redisClient.set(queueCooldownKey, '1', 'EX', 2, 'NX');
+        if (!setCooldown) {
+            return { success: false, error: 'Please wait a moment before toggling queue status.' };
+        }
         const { zset, members } = this.QUEUES[mode];
         const opposite = mode === 'ranked' ? 'unrated' : 'ranked';
         await this.removeUserFromQueue(opposite, userId);
@@ -102,14 +107,23 @@ let MatchmakingService = MatchmakingService_1 = class MatchmakingService {
             }), 'EX', this.SEARCH_TTL_SECONDS),
         ]);
         this.logger.log(`User ${userId} joined ${mode} queue`);
+        return { success: true };
     }
-    async cancelSearch(userId) {
+    async cancelSearch(userId, bypassCooldown = false) {
+        if (!bypassCooldown) {
+            const queueCooldownKey = `queue_toggle_cooldown:${userId}`;
+            const setCooldown = await this.redisClient.set(queueCooldownKey, '1', 'EX', 2, 'NX');
+            if (!setCooldown) {
+                return { success: false, error: 'Please wait a moment before toggling queue status.' };
+            }
+        }
         await Promise.all([
             this.removeUserFromQueue('ranked', userId),
             this.removeUserFromQueue('unrated', userId),
             this.redisClient.del(this.queueSearchKey(userId)),
         ]);
         this.logger.log(`User ${userId} removed from all queues`);
+        return { success: true };
     }
     async removeUserFromQueue(mode, userId) {
         const { zset, members } = this.QUEUES[mode];
@@ -192,6 +206,14 @@ return selected
         }
     }
     async createPrivateRoom(userId, socketId, username, config) {
+        const existingRoom = await this.redisClient.get(`user_room:${userId}`);
+        if (existingRoom) {
+            return { success: false, error: 'You already have an active private room. Cancel it first.' };
+        }
+        const isCoolingDown = await this.redisClient.get(`lobby_cancel_cooldown:${userId}`);
+        if (isCoolingDown) {
+            return { success: false, error: 'Please wait a moment before creating a new lobby.' };
+        }
         let finalConfig = config;
         if (finalConfig) {
             if (!Array.isArray(finalConfig.composition) || finalConfig.composition.length === 0) {
@@ -216,7 +238,7 @@ return selected
                 timerConfig: { STRIKES: 10000, TOP_10: 10000 },
             };
         }
-        await this.cancelSearch(userId);
+        await this.cancelSearch(userId, true);
         let roomCode = '';
         let isUnique = false;
         while (!isUnique) {
@@ -225,35 +247,46 @@ return selected
             if (!exists)
                 isUnique = true;
         }
-        const TTL = this.PRIVATE_ROOM_TTL_SECONDS;
-        const roomData = JSON.stringify({ userId, socketId, username, config: finalConfig });
+        const TTL = 900;
+        const roomData = JSON.stringify({
+            hostId: userId,
+            hostUsername: username || userId,
+            guestId: null,
+            guestUsername: null,
+            config: finalConfig,
+            hostReady: false,
+            guestReady: false,
+            status: 'waiting_for_guest',
+            createdAt: Date.now()
+        });
         await Promise.all([
             this.redisClient.set(`private_room:${roomCode}`, roomData, 'EX', TTL),
             this.redisClient.set(`user_room:${userId}`, roomCode, 'EX', TTL),
+            this.redisClient.zadd('private_rooms_expiry', Date.now() + 900000, roomCode),
         ]);
-        this.schedulePrivateRoomExpiry(userId, roomCode);
         this.logger.log(`Private room ${roomCode} created by user ${userId}`);
-        return roomCode;
+        return { success: true, roomCode };
     }
     async cancelPrivateRoom(userId) {
         const cleanedRoomCode = await this.cleanupUserPrivateRoom(userId);
         if (cleanedRoomCode) {
+            await this.redisClient.set(`lobby_cancel_cooldown:${userId}`, '1', 'EX', 3);
             this.logger.log(`Private room ${cleanedRoomCode} cancelled by user ${userId}`);
         }
+        return { success: true };
     }
     async cleanupUserPrivateRoom(userId) {
         const userRoomKey = `user_room:${userId}`;
         const roomCode = await this.redisClient.get(userRoomKey);
         if (!roomCode) {
-            this.clearRoomExpiryTimer(userId);
             return null;
         }
         const privateRoomKey = `private_room:${roomCode}`;
         const multi = this.redisClient.multi();
         multi.del(privateRoomKey);
         multi.del(userRoomKey);
+        multi.zrem('private_rooms_expiry', roomCode);
         await multi.exec();
-        this.clearRoomExpiryTimer(userId);
         return roomCode;
     }
     async joinPrivateRoom(code, userId, socketId, username) {
@@ -265,38 +298,144 @@ return selected
             await this.redisClient.unwatch();
             return { success: false, error: 'Room not found or expired' };
         }
-        const host = JSON.parse(roomDataStr);
-        if (host.userId === userId) {
+        const roomData = JSON.parse(roomDataStr);
+        if (roomData.hostId === userId) {
             await this.redisClient.unwatch();
             return { success: false, error: 'You cannot join your own room' };
         }
-        const multi = this.redisClient.multi();
-        multi.del(privateRoomKey);
-        multi.del(`user_room:${host.userId}`);
-        const consumed = await multi.exec();
-        if (!consumed) {
+        if (roomData.guestId || roomData.status !== 'waiting_for_guest') {
             await this.redisClient.unwatch();
-            return { success: false, error: 'Room not found or expired' };
+            return { success: false, error: 'Room is already full' };
+        }
+        roomData.guestId = userId;
+        roomData.guestUsername = username || userId;
+        roomData.status = 'guest_joined';
+        const multi = this.redisClient.multi();
+        multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
+        multi.set(`user_room:${userId}`, uppercaseCode, 'KEEPTTL');
+        const result = await multi.exec();
+        if (!result) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Failed to join room, it might be full' };
         }
         await this.redisClient.unwatch().catch(() => { });
-        this.clearRoomExpiryTimer(host.userId);
         await Promise.all([
-            this.cancelSearch(host.userId),
-            this.cancelSearch(userId),
+            this.cancelSearch(roomData.hostId, true),
+            this.cancelSearch(userId, true),
         ]);
-        const gameSessionId = (0, crypto_1.randomUUID)();
-        const gameState = await this.initializeGameState(gameSessionId, host.userId, userId, host.username, username, false, host.config?.composition, host.config?.timerConfig);
-        if (this.server) {
-            this.server.in([host.socketId, socketId]).socketsJoin(gameSessionId);
-            this.server.to(host.socketId).emit('matchFound', { gameSessionId });
-            this.server.to(socketId).emit('matchFound', { gameSessionId });
-            this.server
-                .to(gameSessionId)
-                .emit('gameStateUpdated', { state: gameState });
-            this.startTurnTimerFn?.(gameSessionId);
+        return { success: true, roomData };
+    }
+    async toggleLobbyReady(userId) {
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (!roomCode)
+            return { success: false, error: 'You are not in a lobby' };
+        const privateRoomKey = `private_room:${roomCode}`;
+        await this.redisClient.watch(privateRoomKey);
+        const roomDataStr = await this.redisClient.get(privateRoomKey);
+        if (!roomDataStr) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Lobby not found' };
         }
-        this.logger.log(`Private match created: ${gameSessionId} [${host.userId} vs ${userId}]`);
-        return { success: true, gameSessionId };
+        const roomData = JSON.parse(roomDataStr);
+        let updated = false;
+        if (roomData.hostId === userId) {
+            roomData.hostReady = !roomData.hostReady;
+            updated = true;
+        }
+        else if (roomData.guestId === userId) {
+            roomData.guestReady = !roomData.guestReady;
+            updated = true;
+        }
+        if (!updated) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'You are not a member of this lobby' };
+        }
+        if (roomData.hostReady && roomData.guestReady) {
+            roomData.status = 'ready_to_start';
+        }
+        else {
+            roomData.status = 'guest_joined';
+        }
+        const multi = this.redisClient.multi();
+        multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
+        const result = await multi.exec();
+        if (!result) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Conflict updating lobby state' };
+        }
+        await this.redisClient.unwatch().catch(() => { });
+        return { success: true, roomData };
+    }
+    async leaveLobby(userId) {
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (!roomCode)
+            return { success: false, error: 'You are not in a lobby' };
+        const privateRoomKey = `private_room:${roomCode}`;
+        await this.redisClient.watch(privateRoomKey);
+        const roomDataStr = await this.redisClient.get(privateRoomKey);
+        if (!roomDataStr) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Lobby not found' };
+        }
+        const roomData = JSON.parse(roomDataStr);
+        if (roomData.hostId === userId) {
+            await this.redisClient.unwatch();
+            await this.cancelPrivateRoom(userId);
+            return { success: true, isHost: true, roomData };
+        }
+        else if (roomData.guestId === userId) {
+            roomData.guestId = null;
+            roomData.guestUsername = null;
+            roomData.guestReady = false;
+            roomData.status = 'waiting_for_guest';
+            const multi = this.redisClient.multi();
+            multi.set(privateRoomKey, JSON.stringify(roomData), 'KEEPTTL');
+            multi.del(`user_room:${userId}`);
+            const result = await multi.exec();
+            if (!result) {
+                await this.redisClient.unwatch();
+                return { success: false, error: 'Conflict updating lobby state' };
+            }
+            await this.redisClient.unwatch().catch(() => { });
+            return { success: true, isHost: false, roomData };
+        }
+        await this.redisClient.unwatch();
+        return { success: false, error: 'Not a member of this lobby' };
+    }
+    async startLobbyMatch(userId) {
+        const roomCode = await this.redisClient.get(`user_room:${userId}`);
+        if (!roomCode)
+            return { success: false, error: 'You are not in a lobby' };
+        const privateRoomKey = `private_room:${roomCode}`;
+        await this.redisClient.watch(privateRoomKey);
+        const roomDataStr = await this.redisClient.get(privateRoomKey);
+        if (!roomDataStr) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Lobby not found' };
+        }
+        const roomData = JSON.parse(roomDataStr);
+        if (roomData.hostId !== userId) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Only the host can start the match' };
+        }
+        if (roomData.status !== 'ready_to_start') {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Both players must be ready' };
+        }
+        const multi = this.redisClient.multi();
+        multi.del(privateRoomKey);
+        multi.del(`user_room:${roomData.hostId}`);
+        multi.del(`user_room:${roomData.guestId}`);
+        multi.zrem('private_rooms_expiry', roomCode);
+        const result = await multi.exec();
+        if (!result) {
+            await this.redisClient.unwatch();
+            return { success: false, error: 'Conflict starting match' };
+        }
+        await this.redisClient.unwatch().catch(() => { });
+        const gameSessionId = (0, crypto_1.randomUUID)();
+        const gameState = await this.initializeGameState(gameSessionId, roomData.hostId, roomData.guestId, roomData.hostUsername, roomData.guestUsername, false, roomData.config?.composition, roomData.config?.timerConfig);
+        return { success: true, gameSessionId, roomData, gameState };
     }
     async handleMatchmakingInterval() {
         if (!this.server)
@@ -541,6 +680,12 @@ return selected
     }
 };
 exports.MatchmakingService = MatchmakingService;
+__decorate([
+    (0, schedule_1.Interval)(10000),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MatchmakingService.prototype, "handleRoomExpiryInterval", null);
 __decorate([
     (0, schedule_1.Interval)(2000),
     __metadata("design:type", Function),

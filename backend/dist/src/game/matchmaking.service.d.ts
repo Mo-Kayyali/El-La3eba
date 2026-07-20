@@ -11,9 +11,7 @@ export declare class MatchmakingService {
     private readonly logger;
     private server;
     private startTurnTimerFn?;
-    private readonly roomExpiryTimers;
     private readonly SEARCH_TTL_SECONDS;
-    private readonly PRIVATE_ROOM_TTL_SECONDS;
     private readonly ACTIVE_GAME_KEY_PREFIX;
     private readonly QUEUES;
     constructor(redisClient: RedisService, prisma: PrismaService, gameService: GameService);
@@ -21,27 +19,58 @@ export declare class MatchmakingService {
     setTurnTimerStarter(fn: (gameSessionId: string) => void): void;
     private queueSearchKey;
     private activeGameKey;
-    private clearRoomExpiryTimer;
-    private schedulePrivateRoomExpiry;
-    joinQueue(userId: string, socketId: string, username: string | undefined, mode: QueueMode): Promise<void>;
-    cancelSearch(userId: string): Promise<void>;
+    handleRoomExpiryInterval(): Promise<void>;
+    private purgeExpiredPrivateRooms;
+    joinQueue(userId: string, socketId: string, username: string | undefined, mode: QueueMode): Promise<{
+        success: boolean;
+        error?: string;
+    }>;
+    cancelSearch(userId: string, bypassCooldown?: boolean): Promise<{
+        success: boolean;
+        error?: string;
+    }>;
     private removeUserFromQueue;
     private purgeExpiredUsers;
     private popValidPlayerPair;
     createPrivateRoom(userId: string, socketId: string, username?: string, config?: {
         composition: any[];
         timerConfig: Record<string, number>;
-    }): Promise<string>;
-    cancelPrivateRoom(userId: string): Promise<void>;
+    }): Promise<{
+        success: boolean;
+        roomCode?: string;
+        error?: string;
+    }>;
+    cancelPrivateRoom(userId: string): Promise<{
+        success: boolean;
+        error?: string;
+    }>;
     private cleanupUserPrivateRoom;
     joinPrivateRoom(code: string, userId: string, socketId: string, username?: string): Promise<{
         success: boolean;
         error: string;
-        gameSessionId?: undefined;
+        roomData?: undefined;
     } | {
         success: boolean;
-        gameSessionId: `${string}-${string}-${string}-${string}-${string}`;
+        roomData: any;
         error?: undefined;
+    }>;
+    toggleLobbyReady(userId: string): Promise<{
+        success: boolean;
+        roomData?: any;
+        error?: string;
+    }>;
+    leaveLobby(userId: string): Promise<{
+        success: boolean;
+        roomData?: any;
+        error?: string;
+        isHost?: boolean;
+    }>;
+    startLobbyMatch(userId: string): Promise<{
+        success: boolean;
+        gameSessionId?: string;
+        roomData?: any;
+        gameState?: any;
+        error?: string;
     }>;
     handleMatchmakingInterval(): Promise<void>;
     private processQueue;

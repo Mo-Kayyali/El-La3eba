@@ -241,6 +241,28 @@ export default function GamePage() {
   const [opponentLeftRematch, setOpponentLeftRematch] = useState(false);
   const [matchEndedByForfeit, setMatchEndedByForfeit] = useState(false);
 
+  const totalTurnSeconds = useMemo(() => {
+    const config = gameState?.timerConfig as Record<string, number> | undefined;
+    let mode = gameState?.mode as string | undefined;
+
+    if (isTransitioning) {
+      const comp = gameState?.composition as string[] | undefined;
+      const currentRound = gameState?.currentRound as number | undefined;
+      if (comp && currentRound !== undefined && currentRound < comp.length) {
+        mode = comp[currentRound];
+      }
+    }
+
+    const ms = (mode && config?.[mode]) ?? 10000;
+    return Math.floor(ms / 1000);
+  }, [
+    gameState?.timerConfig,
+    gameState?.mode,
+    gameState?.composition,
+    gameState?.currentRound,
+    isTransitioning,
+  ]);
+
   const triggerFlash = (side: "left" | "right", type: "correct" | "wrong") => {
     if (side === "left") {
       if (flashLeftTimer.current) window.clearTimeout(flashLeftTimer.current);
@@ -588,7 +610,7 @@ export default function GamePage() {
 
   // Visual turn countdown
   useEffect(() => {
-    let remaining = 10;
+    let remaining = totalTurnSeconds;
     if (gameState?.turnDeadlineAt) {
       remaining = Math.max(0, Math.ceil((gameState.turnDeadlineAt - Date.now()) / 1000));
     }
@@ -601,7 +623,7 @@ export default function GamePage() {
       setTurnSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [gameState?.currentTurn, gameState?.turnDeadlineAt, isMatchOver]);
+  }, [gameState?.currentTurn, gameState?.turnDeadlineAt, isMatchOver, totalTurnSeconds]);
 
   useEffect(() => {
     if (isMatchOver) return;
@@ -612,13 +634,13 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!isTransitioning) return;
-    setTurnSecondsLeft(10);
+    setTurnSecondsLeft(totalTurnSeconds);
     if (transitionSecondsLeft <= 0) return;
     const id = window.setInterval(() => {
       setTransitionSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [isTransitioning, transitionSecondsLeft]);
+  }, [isTransitioning, transitionSecondsLeft, totalTurnSeconds]);
 
   useEffect(() => {
     if (!disconnectedUserId || isMatchOver) return;
@@ -724,8 +746,10 @@ export default function GamePage() {
   };
 
   const timerLabel = useMemo(() => {
-    const s = Math.max(0, Math.min(10, turnSecondsLeft));
-    return `0:${String(s).padStart(2, "0")}`;
+    const s = Math.max(0, turnSecondsLeft);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
   }, [turnSecondsLeft]);
 
   // ── Subcomponents ────────────────────────────────────────────────────────
@@ -1335,7 +1359,7 @@ export default function GamePage() {
                         stroke={turnSecondsLeft <= 3 ? "#ef4444" : "#3b82f6"}
                         strokeWidth="2"
                         strokeDasharray={`${2 * Math.PI * 10}`}
-                        strokeDashoffset={`${2 * Math.PI * 10 * (1 - turnSecondsLeft / 10)}`}
+                        strokeDashoffset={`${2 * Math.PI * 10 * (1 - turnSecondsLeft / totalTurnSeconds)}`}
                         strokeLinecap="round"
                         style={{
                           transition:

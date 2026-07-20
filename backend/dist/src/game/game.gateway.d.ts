@@ -63,7 +63,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     handleDisconnect(client: Socket): Promise<void>;
     handleJoinQueue(client: Socket, mode?: QueueMode): Promise<{
         status: string;
-        message: string;
+        message: string | undefined;
         mode?: undefined;
     } | {
         status: string;
@@ -72,25 +72,25 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     }>;
     handleCancelSearch(client: Socket): Promise<{
         status: string;
-        message: string;
+        message: string | undefined;
     } | {
         status: string;
         message?: undefined;
     }>;
     handleCancelPrivateRoom(client: Socket): Promise<{
         status: string;
-        message: string;
+        message: string | undefined;
     } | {
         status: string;
         message?: undefined;
     }>;
     handleCreatePrivateRoom(client: Socket): Promise<{
         status: string;
-        message: string;
+        message: string | undefined;
         roomCode?: undefined;
     } | {
         status: string;
-        roomCode: string;
+        roomCode: string | undefined;
         message?: undefined;
     }>;
     handleSendGameInvite(client: Socket, friendId: string, config?: {
@@ -98,11 +98,11 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         timerConfig: Record<string, number>;
     }): Promise<{
         status: string;
-        message: string;
+        message: string | undefined;
         roomCode?: undefined;
     } | {
         status: string;
-        roomCode: string;
+        roomCode: string | undefined;
         message?: undefined;
     }>;
     handleInviteFriendToGame(client: Socket, friendId: string, config?: {
@@ -110,11 +110,11 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         timerConfig: Record<string, number>;
     }): Promise<{
         status: string;
-        message: string;
+        message: string | undefined;
         roomCode?: undefined;
     } | {
         status: string;
-        roomCode: string;
+        roomCode: string | undefined;
         message?: undefined;
     }>;
     handleCancelGameInvite(client: Socket, friendId: string): Promise<{
@@ -127,10 +127,12 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     handleAcceptGameInvite(client: Socket, inviterId: string): Promise<{
         status: string;
         message: string;
-        gameSessionId?: undefined;
+        roomCode?: undefined;
+        roomData?: undefined;
     } | {
         status: string;
-        gameSessionId: `${string}-${string}-${string}-${string}-${string}`;
+        roomCode: string;
+        roomData: any;
         message?: undefined;
     }>;
     handleDeclineGameInvite(client: Socket, inviterId: string): Promise<{
@@ -141,16 +143,36 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         message?: undefined;
     }>;
     handleJoinPrivateRoom(client: Socket, roomCode: string): Promise<{
-        success: boolean;
-        error: string;
-        gameSessionId?: undefined;
-    } | {
-        success: boolean;
-        gameSessionId: `${string}-${string}-${string}-${string}-${string}`;
-        error?: undefined;
-    } | {
         status: string;
         message: string;
+        roomCode?: undefined;
+        roomData?: undefined;
+    } | {
+        status: string;
+        roomCode: string;
+        roomData: any;
+        message?: undefined;
+    }>;
+    handleToggleLobbyReady(client: Socket): Promise<{
+        status: string;
+        message: string | undefined;
+    } | {
+        status: string;
+        message?: undefined;
+    }>;
+    handleLeaveLobby(client: Socket): Promise<{
+        status: string;
+        message: string | undefined;
+    } | {
+        status: string;
+        message?: undefined;
+    }>;
+    handleStartLobbyMatch(client: Socket): Promise<{
+        status: string;
+        message: string | undefined;
+    } | {
+        status: string;
+        message?: undefined;
     }>;
     handleRequestRematch(client: Socket, gameSessionId: string): Promise<{
         status: string;

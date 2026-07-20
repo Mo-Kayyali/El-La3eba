@@ -900,12 +900,13 @@ export class GameGateway
       client.data?.user?.name ||
       client.data?.user?.email;
 
-    await this.matchmakingService.joinQueue(
+    const res = await this.matchmakingService.joinQueue(
       userId,
       client.id,
       username,
       resolvedMode,
     );
+    if (!res.success) return { status: 'error', message: res.error };
     return { status: 'queued', mode: resolvedMode };
   }
 
@@ -914,7 +915,8 @@ export class GameGateway
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
-    await this.matchmakingService.cancelSearch(userId);
+    const res = await this.matchmakingService.cancelSearch(userId);
+    if (!res.success) return { status: 'error', message: res.error };
     return { status: 'ok' };
   }
 
@@ -923,7 +925,8 @@ export class GameGateway
     const userId = client.data?.user?.sub || client.data?.user?.userId;
     if (!userId) return { status: 'error', message: 'Unauthorized' };
 
-    await this.matchmakingService.cancelPrivateRoom(userId);
+    const res = await this.matchmakingService.cancelPrivateRoom(userId);
+    if (!res.success) return { status: 'error', message: res.error };
     return { status: 'ok' };
   }
 
@@ -937,12 +940,13 @@ export class GameGateway
       client.data?.user?.name ||
       client.data?.user?.email;
 
-    const roomCode = await this.matchmakingService.createPrivateRoom(
+    const res = await this.matchmakingService.createPrivateRoom(
       userId,
       client.id,
       username,
     );
-    return { status: 'success', roomCode };
+    if (!res.success) return { status: 'error', message: res.error };
+    return { status: 'success', roomCode: res.roomCode };
   }
 
   @SubscribeMessage('sendGameInvite')
@@ -982,12 +986,16 @@ export class GameGateway
 
       await this.matchmakingService.cancelPrivateRoom(userId).catch(() => {});
 
-      const roomCode = await this.matchmakingService.createPrivateRoom(
+      const res = await this.matchmakingService.createPrivateRoom(
         userId,
         client.id,
         inviterUsername,
         config,
       );
+      if (!res.success) {
+        return { status: 'error', message: res.error };
+      }
+      const roomCode = res.roomCode;
 
       await this.redisClient
         .multi()
@@ -1122,7 +1130,7 @@ export class GameGateway
       username,
     );
 
-    if (!joinResult?.success || !joinResult.gameSessionId) {
+    if (!joinResult?.success) {
       this.server.to(inviterId).emit('inviteCancelledBySystem', {
         inviterId,
         inviteeId,
@@ -1134,13 +1142,29 @@ export class GameGateway
       };
     }
 
-    this.server.to(inviterId).emit('inviteAccepted', {
-      inviterId,
-      inviteeId,
-      gameSessionId: joinResult.gameSessionId,
-    });
+    // Invalidate other pending invites sent by this host
+    const otherInvitees = await this.redisClient.smembers(this.invitesSentKey(inviterId));
+    if (otherInvitees && otherInvitees.length > 0) {
+      const multi = this.redisClient.multi();
+      otherInvitees.forEach((otherId) => {
+        multi.del(this.inviteKey(inviterId, otherId));
+        this.clearInviteExpiryTimer(inviterId, otherId);
+        if (otherId !== inviteeId) {
+          this.server.to(otherId).emit('inviteCancelledBySystem', {
+            inviterId,
+            inviteeId: otherId,
+            reason: 'room_full',
+          });
+        }
+      });
+      multi.del(this.invitesSentKey(inviterId));
+      await multi.exec();
+    }
 
-    return { status: 'ok', gameSessionId: joinResult.gameSessionId };
+    this.server.to(inviterId).emit('lobbyStateUpdated', joinResult.roomData);
+    this.server.to(client.id).emit('lobbyStateUpdated', joinResult.roomData);
+
+    return { status: 'success', roomCode: invite.roomCode, roomData: joinResult.roomData };
   }
 
   @SubscribeMessage('declineGameInvite')
@@ -1195,7 +1219,92 @@ export class GameGateway
       client.id,
       username,
     );
-    return result;
+
+    if (!result.success) {
+      return { status: 'error', message: result.error || 'Room not found or expired' };
+    }
+
+    // Invalidate other pending invites sent by this host
+    const inviterId = result.roomData.hostId;
+    const otherInvitees = await this.redisClient.smembers(this.invitesSentKey(inviterId));
+    if (otherInvitees && otherInvitees.length > 0) {
+      const multi = this.redisClient.multi();
+      otherInvitees.forEach((otherId) => {
+        multi.del(this.inviteKey(inviterId, otherId));
+        this.clearInviteExpiryTimer(inviterId, otherId);
+        if (otherId !== userId) {
+          this.server.to(otherId).emit('inviteCancelledBySystem', {
+            inviterId,
+            inviteeId: otherId,
+            reason: 'room_full',
+          });
+        }
+      });
+      multi.del(this.invitesSentKey(inviterId));
+      await multi.exec();
+    }
+
+    this.server.to(inviterId).emit('lobbyStateUpdated', result.roomData);
+    this.server.to(userId).emit('lobbyStateUpdated', result.roomData);
+
+    return { status: 'success', roomCode, roomData: result.roomData };
+  }
+
+  @SubscribeMessage('toggleLobbyReady')
+  async handleToggleLobbyReady(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const res = await this.matchmakingService.toggleLobbyReady(userId);
+    if (!res.success) return { status: 'error', message: res.error };
+
+    this.server.to(res.roomData.hostId).emit('lobbyStateUpdated', res.roomData);
+    if (res.roomData.guestId) {
+      this.server.to(res.roomData.guestId).emit('lobbyStateUpdated', res.roomData);
+    }
+    return { status: 'success' };
+  }
+
+  @SubscribeMessage('leaveLobby')
+  async handleLeaveLobby(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const res = await this.matchmakingService.leaveLobby(userId);
+    if (!res.success) return { status: 'error', message: res.error };
+
+    if (res.isHost) {
+      if (res.roomData.guestId) {
+        this.server.to(res.roomData.guestId).emit('roomExpired', { roomCode: res.roomData.roomCode });
+      }
+    } else {
+      this.server.to(res.roomData.hostId).emit('lobbyStateUpdated', res.roomData);
+    }
+    return { status: 'success' };
+  }
+
+  @SubscribeMessage('startLobbyMatch')
+  async handleStartLobbyMatch(@ConnectedSocket() client: Socket) {
+    const userId = client.data?.user?.sub || client.data?.user?.userId;
+    if (!userId) return { status: 'error', message: 'Unauthorized' };
+
+    const res = await this.matchmakingService.startLobbyMatch(userId);
+    if (!res.success) return { status: 'error', message: res.error };
+
+    // Find all sockets for these users and join them to the gameSessionId
+    const hostSockets = await this.server.in(res.roomData.hostId).fetchSockets();
+    const guestSockets = await this.server.in(res.roomData.guestId).fetchSockets();
+    for (const s of [...hostSockets, ...guestSockets]) {
+      s.join(res.gameSessionId as string);
+    }
+
+    this.server.to(res.roomData.hostId).emit('matchFound', { gameSessionId: res.gameSessionId });
+    this.server.to(res.roomData.guestId).emit('matchFound', { gameSessionId: res.gameSessionId });
+    this.server.to(res.gameSessionId as string).emit('gameStateUpdated', { state: res.gameState });
+
+    this.startTurnTimer(res.gameSessionId as string);
+
+    return { status: 'success' };
   }
 
   @SubscribeMessage('requestRematch')

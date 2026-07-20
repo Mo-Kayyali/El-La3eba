@@ -53,7 +53,7 @@ export declare class FriendsController {
     }): Promise<{
         friends: {
             presence: {
-                status: "offline" | "online" | "in-game";
+                status: "online" | "offline" | "in-game";
                 gameSessionId: string | null;
             };
             friendshipId: string;
