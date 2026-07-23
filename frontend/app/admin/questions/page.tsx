@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, Plus, Search, Trash2, X, Check } from "lucide-react";
+import { AlertCircle, ArrowLeft, Plus, Search, Trash2, X, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { api, extractApiErrorMessage } from "@/lib/api";
 import { FilterSelect } from "@/components/filter-select";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -434,10 +434,16 @@ function AdminQuestionsContent() {
           setIsSubmitting(false);
           return;
         }
+
+        if (gameMode === "TOP_10" && answers.length !== 13) {
+          setFormError("TOP_10 questions must have exactly 13 answers");
+          setIsSubmitting(false);
+          return;
+        }
         
         // Basic frontend dup check
         const pIds = new Set();
-        const ranks = new Set();
+        const ranks = new Set<number>();
         const slots = new Set();
         for (const a of answers) {
           if (pIds.has(a.playerId)) {
@@ -448,15 +454,20 @@ function AdminQuestionsContent() {
           pIds.add(a.playerId);
           
           if (gameMode === "TOP_10") {
-            if (!a.rank) {
+            if (a.rank === undefined || a.rank === null || a.rank === ("" as any)) {
               setFormError("All TOP_10 answers need a rank");
               setIsSubmitting(false); return;
             }
-            if (ranks.has(a.rank)) {
-              setFormError("Duplicate rank found");
+            const rankNum = Number(a.rank);
+            if (isNaN(rankNum) || rankNum < 1 || rankNum > 13) {
+              setFormError(`Rank must be between 1 and 13 (received ${a.rank})`);
               setIsSubmitting(false); return;
             }
-            ranks.add(a.rank);
+            if (ranks.has(rankNum)) {
+              setFormError(`Duplicate rank ${rankNum} found`);
+              setIsSubmitting(false); return;
+            }
+            ranks.add(rankNum);
           }
           if (gameMode === "LINEUP") {
             if (!a.slotLabel) {
@@ -469,6 +480,12 @@ function AdminQuestionsContent() {
             }
             slots.add(a.slotLabel);
           }
+        }
+
+        if (gameMode === "TOP_10" && ranks.size !== 13) {
+          setFormError("TOP_10 questions must contain all ranks 1 through 13 without gaps");
+          setIsSubmitting(false);
+          return;
         }
         payload.answers = answers.map(a => ({
           playerId: a.playerId,
@@ -499,10 +516,29 @@ function AdminQuestionsContent() {
       setTimeout(() => setDuplicateError(null), 2000);
       return;
     }
-    setAnswers(prev => [...prev, {
-      playerId: p.id,
-      player: { name: p.name, aliases: [] }
-    }]);
+
+    let rank: number | undefined = undefined;
+    if (gameMode === "TOP_10") {
+      const usedRanks = new Set(answers.map(a => Number(a.rank)).filter(r => !isNaN(r)));
+      for (let r = 1; r <= 13; r++) {
+        if (!usedRanks.has(r)) {
+          rank = r;
+          break;
+        }
+      }
+    }
+
+    setAnswers(prev => {
+      const next = [...prev, {
+        playerId: p.id,
+        rank,
+        player: { name: p.name, aliases: [] }
+      }];
+      if (gameMode === "TOP_10") {
+        next.sort((a, b) => (Number(a.rank) || 999) - (Number(b.rank) || 999));
+      }
+      return next;
+    });
   };
 
   const removeAnswer = (idx: number) => {
@@ -512,7 +548,65 @@ function AdminQuestionsContent() {
   const updateAnswer = (idx: number, field: string, val: string | number) => {
     setAnswers(prev => {
       const copy = [...prev];
-      (copy[idx] as any)[field] = val;
+      if (field === "rank" && gameMode === "TOP_10") {
+        const parsed = val === "" ? "" : parseInt(String(val), 10);
+        copy[idx] = { ...copy[idx], rank: isNaN(parsed as any) ? (val as any) : parsed };
+        return copy;
+      } else {
+        (copy[idx] as any)[field] = val;
+        return copy;
+      }
+    });
+  };
+
+  const commitRank = (idx: number) => {
+    if (gameMode !== "TOP_10") return;
+    setAnswers(prev => {
+      if (!prev[idx]) return prev;
+      const copy = [...prev];
+      const currentRankVal = Number(copy[idx].rank);
+
+      if (!isNaN(currentRankVal) && currentRankVal >= 1 && currentRankVal <= 13) {
+        const otherIdx = copy.findIndex((a, i) => i !== idx && Number(a.rank) === currentRankVal);
+        if (otherIdx !== -1) {
+          const usedRanks = new Set(copy.map((a, i) => i === otherIdx ? null : Number(a.rank)).filter(r => r !== null && !isNaN(r as number)));
+          let missingRank = 13;
+          for (let r = 1; r <= 13; r++) {
+            if (!usedRanks.has(r)) {
+              missingRank = r;
+              break;
+            }
+          }
+          copy[otherIdx] = { ...copy[otherIdx], rank: missingRank };
+        }
+      }
+      copy.sort((a, b) => (Number(a.rank) || 999) - (Number(b.rank) || 999));
+      return copy;
+    });
+  };
+
+  const moveRankUp = (idx: number) => {
+    setAnswers(prev => {
+      if (idx <= 0) return prev;
+      const copy = [...prev];
+      const currentRank = copy[idx].rank;
+      const prevRank = copy[idx - 1].rank;
+      copy[idx] = { ...copy[idx], rank: prevRank };
+      copy[idx - 1] = { ...copy[idx - 1], rank: currentRank };
+      copy.sort((a, b) => (Number(a.rank) || 999) - (Number(b.rank) || 999));
+      return copy;
+    });
+  };
+
+  const moveRankDown = (idx: number) => {
+    setAnswers(prev => {
+      if (idx >= prev.length - 1) return prev;
+      const copy = [...prev];
+      const currentRank = copy[idx].rank;
+      const nextRank = copy[idx + 1].rank;
+      copy[idx] = { ...copy[idx], rank: nextRank };
+      copy[idx + 1] = { ...copy[idx + 1], rank: currentRank };
+      copy.sort((a, b) => (Number(a.rank) || 999) - (Number(b.rank) || 999));
       return copy;
     });
   };
@@ -934,7 +1028,7 @@ function AdminQuestionsContent() {
                         <thead className="bg-slate-800/50 text-xs font-semibold uppercase tracking-wider text-slate-400">
                           <tr>
                             <th className="px-4 py-3">Player</th>
-                            {gameMode === "TOP_10" && <th className="px-4 py-3 w-32">Rank (1-13)</th>}
+                            {gameMode === "TOP_10" && <th className="px-4 py-3 min-w-[220px] w-72">Rank (1-13)</th>}
                             {gameMode === "LINEUP" && <th className="px-4 py-3 w-40">Slot (e.g. GK)</th>}
                             <th className="px-4 py-3 w-16 text-right"></th>
                           </tr>
@@ -948,17 +1042,47 @@ function AdminQuestionsContent() {
                               {gameMode === "TOP_10" && (
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-2">
+                                    <div className="flex flex-col shrink-0">
+                                      <button
+                                        type="button"
+                                        disabled={idx === 0 || Number(ans.rank) === 1}
+                                        onClick={() => moveRankUp(idx)}
+                                        className="p-0.5 text-slate-400 hover:text-white disabled:opacity-20 disabled:hover:text-slate-400 transition"
+                                        title="Move Up"
+                                      >
+                                        <ChevronUp className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={idx === answers.length - 1 || Number(ans.rank) === 13}
+                                        onClick={() => moveRankDown(idx)}
+                                        className="p-0.5 text-slate-400 hover:text-white disabled:opacity-20 disabled:hover:text-slate-400 transition"
+                                        title="Move Down"
+                                      >
+                                        <ChevronDown className="h-4 w-4" />
+                                      </button>
+                                    </div>
                                     <input
                                       type="number"
                                       min="1"
                                       max="13"
-                                      value={ans.rank || ""}
-                                      onChange={(e) => updateAnswer(idx, "rank", parseInt(e.target.value) || "")}
-                                      className="w-full rounded-lg border border-white/10 bg-slate-800 p-2 text-white focus:border-emerald-500 outline-none"
+                                      value={ans.rank ?? ""}
+                                      onChange={(e) => updateAnswer(idx, "rank", e.target.value === "" ? "" : parseInt(e.target.value, 10))}
+                                      onBlur={() => commitRank(idx)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          (e.target as HTMLElement).blur();
+                                        }
+                                      }}
+                                      className="w-16 shrink-0 rounded-lg border border-white/10 bg-slate-800 p-2 text-center text-white focus:border-emerald-500 outline-none"
                                     />
-                                    {ans.rank && ans.rank > 10 ? (
-                                      <span className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 font-bold uppercase tracking-wider">Trap</span>
-                                    ) : null}
+                                    {ans.rank !== undefined && ans.rank !== null && ans.rank !== ("" as any) && (
+                                      Number(ans.rank) < 1 || Number(ans.rank) > 13 ? (
+                                        <span className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 font-bold uppercase tracking-wider shrink-0">{ans.rank} (Invalid)</span>
+                                      ) : Number(ans.rank) > 10 ? (
+                                        <span className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 font-bold uppercase tracking-wider shrink-0">{ans.rank} (Trap)</span>
+                                      ) : null
+                                    )}
                                   </div>
                                 </td>
                               )}

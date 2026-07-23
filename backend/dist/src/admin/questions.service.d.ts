@@ -37,17 +37,17 @@ export declare class AdminQuestionsService {
         clauses: QuestionFilterClauseDto[];
     }>;
     create(createDto: CreateQuestionDto, adminUserId: string): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
-        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        id: string;
+        text: string;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         isActive: boolean;
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
+        createdAt: Date;
+        updatedAt: Date;
         createdBy: string | null;
     }>;
     findAll(filters?: {
@@ -60,9 +60,6 @@ export declare class AdminQuestionsService {
         order?: string;
     }): Promise<{
         data: ({
-            _count: {
-                answers: number;
-            };
             clauses: {
                 id: string;
                 questionId: string;
@@ -70,18 +67,21 @@ export declare class AdminQuestionsService {
                 filterValue: string;
                 timeframe: import(".prisma/client").$Enums.Timeframe;
             }[];
+            _count: {
+                answers: number;
+            };
         } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            text: string;
             gameMode: import(".prisma/client").$Enums.GameMode;
             answerType: import(".prisma/client").$Enums.AnswerType;
-            scope: import(".prisma/client").$Enums.QuestionScope;
             logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
             photoPlayerId: string | null;
+            id: string;
+            text: string;
+            scope: import(".prisma/client").$Enums.QuestionScope;
             isActive: boolean;
             playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
+            createdAt: Date;
+            updatedAt: Date;
             createdBy: string | null;
         })[];
         meta: {
@@ -91,17 +91,6 @@ export declare class AdminQuestionsService {
         };
     }>;
     findOne(id: string): import(".prisma/client").Prisma.Prisma__QuestionClient<({
-        photoPlayer: {
-            name: string;
-            imageUrl: string | null;
-        } | null;
-        clauses: {
-            id: string;
-            questionId: string;
-            filterType: import(".prisma/client").$Enums.FilterType;
-            filterValue: string;
-            timeframe: import(".prisma/client").$Enums.Timeframe;
-        }[];
         answers: ({
             player: {
                 name: string;
@@ -111,36 +100,47 @@ export declare class AdminQuestionsService {
         } & {
             id: string;
             questionId: string;
-            playerId: string;
             rank: number | null;
+            playerId: string;
             slotLabel: string | null;
         })[];
+        clauses: {
+            id: string;
+            questionId: string;
+            filterType: import(".prisma/client").$Enums.FilterType;
+            filterValue: string;
+            timeframe: import(".prisma/client").$Enums.Timeframe;
+        }[];
+        photoPlayer: {
+            name: string;
+            imageUrl: string | null;
+        } | null;
     } & {
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
-        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        id: string;
+        text: string;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         isActive: boolean;
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
+        createdAt: Date;
+        updatedAt: Date;
         createdBy: string | null;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
     update(id: string, updateDto: PatchQuestionDto, adminUserId: string): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        text: string;
         gameMode: import(".prisma/client").$Enums.GameMode;
         answerType: import(".prisma/client").$Enums.AnswerType;
-        scope: import(".prisma/client").$Enums.QuestionScope;
         logicOperator: import(".prisma/client").$Enums.LogicOperator | null;
         photoPlayerId: string | null;
+        id: string;
+        text: string;
+        scope: import(".prisma/client").$Enums.QuestionScope;
         isActive: boolean;
         playerStatusFilter: import(".prisma/client").$Enums.PlayerStatusFilter;
+        createdAt: Date;
+        updatedAt: Date;
         createdBy: string | null;
     }>;
     remove(id: string): Promise<{

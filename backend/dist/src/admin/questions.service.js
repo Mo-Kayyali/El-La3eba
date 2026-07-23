@@ -147,8 +147,14 @@ let AdminQuestionsService = class AdminQuestionsService {
                 throw new common_1.BadRequestException('answers array must be empty for FILTER');
         }
         if (answerType === client_1.AnswerType.LIST && gameMode !== client_1.GameMode.PHOTO_GUESS) {
-            if (answers.length === 0)
-                throw new common_1.BadRequestException('at least 1 answer required for LIST');
+            if (gameMode === client_1.GameMode.TOP_10) {
+                if (answers.length !== 13)
+                    throw new common_1.BadRequestException('TOP_10 questions must have exactly 13 answers');
+            }
+            else {
+                if (answers.length === 0)
+                    throw new common_1.BadRequestException('at least 1 answer required for LIST');
+            }
             const playerIds = new Set();
             const ranks = new Set();
             const slots = new Set();
@@ -159,8 +165,11 @@ let AdminQuestionsService = class AdminQuestionsService {
                     throw new common_1.BadRequestException(`Duplicate playerId: ${a.playerId}`);
                 playerIds.add(a.playerId);
                 if (gameMode === client_1.GameMode.TOP_10) {
-                    if (!a.rank)
-                        throw new common_1.BadRequestException('rank is required for TOP_10 answers');
+                    if (a.rank === undefined || a.rank === null)
+                        throw new common_1.BadRequestException('All TOP_10 answers must have a rank assigned');
+                    if (typeof a.rank !== 'number' || !Number.isInteger(a.rank) || a.rank < 1 || a.rank > 13) {
+                        throw new common_1.BadRequestException(`Rank must be an integer between 1 and 13, received ${a.rank}`);
+                    }
                     if (ranks.has(a.rank))
                         throw new common_1.BadRequestException(`Duplicate rank: ${a.rank}`);
                     ranks.add(a.rank);
@@ -172,6 +181,9 @@ let AdminQuestionsService = class AdminQuestionsService {
                         throw new common_1.BadRequestException(`Duplicate slotLabel: ${a.slotLabel}`);
                     slots.add(a.slotLabel);
                 }
+            }
+            if (gameMode === client_1.GameMode.TOP_10 && ranks.size !== 13) {
+                throw new common_1.BadRequestException('TOP_10 questions must contain all ranks 1 through 13 without gaps');
             }
             const idsToCheck = [...playerIds];
             const foundPlayers = await this.prisma.player.count({ where: { id: { in: idsToCheck } } });

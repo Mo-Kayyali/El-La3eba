@@ -99,7 +99,11 @@ export class AdminQuestionsService {
     }
 
     if (answerType === AnswerType.LIST && gameMode !== GameMode.PHOTO_GUESS) {
-      if (answers.length === 0) throw new BadRequestException('at least 1 answer required for LIST');
+      if (gameMode === GameMode.TOP_10) {
+        if (answers.length !== 13) throw new BadRequestException('TOP_10 questions must have exactly 13 answers');
+      } else {
+        if (answers.length === 0) throw new BadRequestException('at least 1 answer required for LIST');
+      }
       
       const playerIds = new Set<string>();
       const ranks = new Set<number>();
@@ -111,7 +115,10 @@ export class AdminQuestionsService {
         playerIds.add(a.playerId);
 
         if (gameMode === GameMode.TOP_10) {
-          if (!a.rank) throw new BadRequestException('rank is required for TOP_10 answers');
+          if (a.rank === undefined || a.rank === null) throw new BadRequestException('All TOP_10 answers must have a rank assigned');
+          if (typeof a.rank !== 'number' || !Number.isInteger(a.rank) || a.rank < 1 || a.rank > 13) {
+            throw new BadRequestException(`Rank must be an integer between 1 and 13, received ${a.rank}`);
+          }
           if (ranks.has(a.rank)) throw new BadRequestException(`Duplicate rank: ${a.rank}`);
           ranks.add(a.rank);
         } else if (gameMode === GameMode.LINEUP) {
@@ -119,6 +126,10 @@ export class AdminQuestionsService {
           if (slots.has(a.slotLabel)) throw new BadRequestException(`Duplicate slotLabel: ${a.slotLabel}`);
           slots.add(a.slotLabel);
         }
+      }
+
+      if (gameMode === GameMode.TOP_10 && ranks.size !== 13) {
+        throw new BadRequestException('TOP_10 questions must contain all ranks 1 through 13 without gaps');
       }
       
       // FK existence check
