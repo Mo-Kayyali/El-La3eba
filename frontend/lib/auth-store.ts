@@ -30,6 +30,8 @@ type AuthState = {
   /** Apply ranked delta after a match so lobby MMR stays in sync without refetch. */
   applyMmrDelta: (delta: number) => void;
   setBootstrapped: (value: boolean) => void;
+  clearActiveLobby: () => void;
+  clearActiveGame: () => void;
   logout: () => void;
 };
 
@@ -53,6 +55,14 @@ export const useAuthStore = create<AuthState>()(
           return { user: { ...s.user, mmr: s.user.mmr + delta } };
         }),
       setBootstrapped: (bootstrapped) => set({ bootstrapped }),
+      clearActiveLobby: () =>
+        set((s) => ({
+          user: s.user ? { ...s.user, activeLobbyRoomCode: null } : null,
+        })),
+      clearActiveGame: () =>
+        set((s) => ({
+          user: s.user ? { ...s.user, activeGameSessionId: null } : null,
+        })),
       logout: () => {
         if (typeof document !== "undefined") {
           document.cookie =

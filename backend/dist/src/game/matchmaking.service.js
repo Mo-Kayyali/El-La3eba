@@ -547,7 +547,7 @@ return selected
         }
         await this.redisClient.unwatch().catch(() => { });
         const gameSessionId = (0, crypto_1.randomUUID)();
-        const gameState = await this.initializeGameState(gameSessionId, roomData.hostId, roomData.guestId, roomData.hostUsername, roomData.guestUsername, false, roomData.config?.composition, roomData.config?.timerConfig);
+        const gameState = await this.initializeGameState(gameSessionId, roomData.hostId, roomData.guestId, roomData.hostUsername, roomData.guestUsername, false, roomData.config?.composition, roomData.config?.timerConfig, true, roomCode);
         return { success: true, gameSessionId, roomData, gameState };
     }
     async handleMatchmakingInterval() {
@@ -584,7 +584,7 @@ return selected
         this.logger.log(`${isRanked ? 'Ranked' : 'Unrated'} match created: ${gameSessionId} ` +
             `[${p1.userId} vs ${p2.userId}]`);
     }
-    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false, composition = ['STRIKES', 'STRIKES', 'TOP_10'], timerConfig) {
+    async initializeGameState(gameSessionId, player1Id, player2Id, player1Username, player2Username, isRanked = false, composition = ['STRIKES', 'STRIKES', 'TOP_10'], timerConfig, isPrivateLobby = false, roomCode) {
         const [p1Result, p2Result] = await Promise.allSettled([
             this.prisma.user.findUnique({
                 where: { id: player1Id },
@@ -602,6 +602,8 @@ return selected
             status: 'in_progress',
             winner: null,
             isRanked,
+            isPrivateLobby,
+            roomCode: roomCode || null,
             composition,
             timerConfig: timerConfig || { STRIKES: 10_000, TOP_10: 10_000 },
             mode: composition[0],

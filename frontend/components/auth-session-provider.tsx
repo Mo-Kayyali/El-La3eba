@@ -215,11 +215,23 @@ export function AuthSessionProvider({
       }
     };
 
+    const onMatchFound = (payload: { gameSessionId?: string }) => {
+      useAuthStore.getState().clearActiveLobby();
+      if (payload?.gameSessionId) {
+        useAuthStore.getState().setUser({
+          ...useAuthStore.getState().user,
+          activeGameSessionId: payload.gameSessionId,
+          activeLobbyRoomCode: null,
+        });
+      }
+    };
+
     socket.on("friendRequestReceived", onFriendRequestReceived);
     socket.on("friendGameInvite", onFriendGameInvite);
     socket.on("inviteCancelledBySystem", onInviteCancelledBySystem);
     socket.on("inviteDeclined", onInviteDeclined);
     socket.on("inviteAccepted", onInviteAccepted);
+    socket.on("matchFound", onMatchFound);
 
     return () => {
       socket.off("friendRequestReceived", onFriendRequestReceived);
@@ -227,6 +239,7 @@ export function AuthSessionProvider({
       socket.off("inviteCancelledBySystem", onInviteCancelledBySystem);
       socket.off("inviteDeclined", onInviteDeclined);
       socket.off("inviteAccepted", onInviteAccepted);
+      socket.off("matchFound", onMatchFound);
     };
   }, [
     addIncomingGameInvite,
@@ -254,8 +267,6 @@ export function AuthSessionProvider({
     const gid =
       typeof user?.activeGameSessionId === "string" &&
       user.activeGameSessionId.trim().length > 0
-        ? user.activeGameSessionId
-        : null;
     if (!gid) return;
     const targetPath = `/game/${gid}`;
     if (pathname === targetPath) return;

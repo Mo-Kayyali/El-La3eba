@@ -76,8 +76,8 @@ let GameGateway = GameGateway_1 = class GameGateway {
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
-    inviteCooldownKey(inviterId) {
-        return `game_invite_cooldown:${inviterId}`;
+    inviteCooldownKey(inviterId, inviteeId) {
+        return `game_invite_cooldown:${inviterId}:${inviteeId}`;
     }
     inviteKey(inviterId, inviteeId) {
         return `game_invite:${inviterId}:${inviteeId}`;
@@ -292,6 +292,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             p1Ready: false,
             p2Ready: false,
             isRanked: !!state.isRanked,
+            isPrivateLobby: !!state.isPrivateLobby,
+            roomCode: state.roomCode || null,
+            composition: state.composition || ['STRIKES', 'STRIKES', 'TOP_10'],
+            timerConfig: state.timerConfig || { STRIKES: 10_000, TOP_10: 10_000 },
         });
         await this.redisClient.set(`rematch:${gameSessionId}`, rematchData, 'EX', 35);
         this.startRematchTimer(gameSessionId);
@@ -792,9 +796,10 @@ let GameGateway = GameGateway_1 = class GameGateway {
             client.data?.user?.email ||
             userId;
         try {
-            const cooldownSet = await this.redisClient.set(this.inviteCooldownKey(userId), '1', 'EX', this.INVITE_COOLDOWN_SECONDS, 'NX');
+            const cooldownKey = this.inviteCooldownKey(userId, friendId);
+            const cooldownSet = await this.redisClient.set(cooldownKey, '1', 'EX', this.INVITE_COOLDOWN_SECONDS, 'NX');
             if (cooldownSet !== 'OK') {
-                const ttl = await this.redisClient.ttl(this.inviteCooldownKey(userId));
+                const ttl = await this.redisClient.ttl(cooldownKey);
                 const remaining = Math.max(1, ttl);
                 return {
                     status: 'error',
@@ -1167,22 +1172,55 @@ let GameGateway = GameGateway_1 = class GameGateway {
             if (rematch.p1Ready && rematch.p2Ready) {
                 this.clearRematchTimer(gameSessionId);
                 await this.redisClient.del(rematchKey);
-                const newGameSessionId = (0, crypto_1.randomUUID)();
-                const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, rematch.isRanked === true);
-                this.server.in(gameSessionId).socketsJoin(newGameSessionId);
-                this.server.in(gameSessionId).socketsLeave(gameSessionId);
-                await Promise.all([
-                    this.setPresenceInGame(rematch.p1Id, newGameSessionId),
-                    this.setPresenceInGame(rematch.p2Id, newGameSessionId),
-                ]);
-                this.server
-                    .to(newGameSessionId)
-                    .emit('rematchStarting', { newGameSessionId });
-                this.server
-                    .to(newGameSessionId)
-                    .emit('gameStateUpdated', { state: newState });
-                this.startTurnTimer(newGameSessionId);
-                this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
+                if (rematch.isPrivateLobby) {
+                    const roomCode = rematch.roomCode || (0, crypto_1.randomBytes)(3).toString('hex').toUpperCase();
+                    const roomData = {
+                        roomCode,
+                        hostId: rematch.p1Id,
+                        hostUsername: rematch.p1Name,
+                        guestId: rematch.p2Id,
+                        guestUsername: rematch.p2Name,
+                        config: {
+                            composition: rematch.composition || ['STRIKES', 'STRIKES', 'TOP_10'],
+                            timerConfig: rematch.timerConfig || { STRIKES: 10_000, TOP_10: 10_000 },
+                        },
+                        hostReady: false,
+                        guestReady: false,
+                        status: 'waiting_for_ready',
+                    };
+                    const privateRoomKey = `private_room:${roomCode}`;
+                    const multiLobby = this.redisClient.multi();
+                    multiLobby.set(privateRoomKey, JSON.stringify(roomData), 'EX', 900);
+                    this.matchmakingService.setActiveLobbyRoomCodeInMulti(multiLobby, rematch.p1Id, roomCode, 900);
+                    this.matchmakingService.setActiveLobbyRoomCodeInMulti(multiLobby, rematch.p2Id, roomCode, 900);
+                    multiLobby.set(`user_room:${rematch.p1Id}`, roomCode, 'EX', 900);
+                    multiLobby.set(`user_room:${rematch.p2Id}`, roomCode, 'EX', 900);
+                    multiLobby.zadd('private_rooms_expiry', Date.now() + 900 * 1000, roomCode);
+                    await multiLobby.exec();
+                    this.server.in(gameSessionId).socketsJoin(roomCode);
+                    this.server.in(gameSessionId).socketsLeave(gameSessionId);
+                    this.server.to(roomCode).emit('rematchStarting', { roomCode });
+                    this.server.to(roomCode).emit('lobbyStateUpdated', roomData);
+                    this.logger.log(`Rematch into private lobby ${roomCode} started for users ${rematch.p1Id} and ${rematch.p2Id}`);
+                }
+                else {
+                    const newGameSessionId = (0, crypto_1.randomUUID)();
+                    const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, rematch.isRanked === true);
+                    this.server.in(gameSessionId).socketsJoin(newGameSessionId);
+                    this.server.in(gameSessionId).socketsLeave(gameSessionId);
+                    await Promise.all([
+                        this.setPresenceInGame(rematch.p1Id, newGameSessionId),
+                        this.setPresenceInGame(rematch.p2Id, newGameSessionId),
+                    ]);
+                    this.server
+                        .to(newGameSessionId)
+                        .emit('rematchStarting', { newGameSessionId });
+                    this.server
+                        .to(newGameSessionId)
+                        .emit('gameStateUpdated', { state: newState });
+                    this.startTurnTimer(newGameSessionId);
+                    this.logger.log(`Rematch started: ${newGameSessionId} (from ${gameSessionId})`);
+                }
             }
             return { status: 'ok' };
         }

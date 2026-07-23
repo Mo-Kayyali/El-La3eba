@@ -128,6 +128,7 @@ export default function LobbyPage() {
     if (!socket) return;
 
     const onMatchFound = (payload: { gameSessionId?: string }) => {
+      useAuthStore.getState().clearActiveLobby();
       const gameSessionId = payload?.gameSessionId;
       if (!gameSessionId) return;
       router.replace(`/game/${gameSessionId}`);

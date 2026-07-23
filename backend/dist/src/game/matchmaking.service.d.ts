@@ -94,11 +94,13 @@ export declare class MatchmakingService {
     }>;
     handleMatchmakingInterval(): Promise<void>;
     private processQueue;
-    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean, composition?: any[], timerConfig?: Record<string, number>): Promise<{
+    initializeGameState(gameSessionId: string, player1Id: string, player2Id: string, player1Username?: string, player2Username?: string, isRanked?: boolean, composition?: any[], timerConfig?: Record<string, number>, isPrivateLobby?: boolean, roomCode?: string): Promise<{
         players: string[];
         status: string;
         winner: null;
         isRanked: boolean;
+        isPrivateLobby: boolean;
+        roomCode: string | null;
         composition: any[];
         timerConfig: Record<string, number>;
         mode: any;

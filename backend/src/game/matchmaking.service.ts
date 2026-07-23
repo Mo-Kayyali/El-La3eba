@@ -789,6 +789,8 @@ return selected
       false, // private matches are unrated
       roomData.config?.composition,
       roomData.config?.timerConfig,
+      true, // isPrivateLobby
+      roomCode,
     );
 
     return { success: true, gameSessionId, roomData, gameState };
@@ -862,6 +864,8 @@ return selected
     isRanked = false,
     composition: any[] = ['STRIKES', 'STRIKES', 'TOP_10'],
     timerConfig?: Record<string, number>,
+    isPrivateLobby = false,
+    roomCode?: string,
   ) {
     // Fetch current MMR for rank badge display on the frontend.
     // Use Promise.allSettled so a missing user doesn't abort game creation.
@@ -886,6 +890,8 @@ return selected
       status: 'in_progress',
       winner: null,
       isRanked,
+      isPrivateLobby,
+      roomCode: roomCode || null,
       composition,
       timerConfig: timerConfig || { STRIKES: 10_000, TOP_10: 10_000 },
       mode: composition[0],

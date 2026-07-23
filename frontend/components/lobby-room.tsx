@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Play,
+  RefreshCw,
   Repeat2,
   Settings2,
   User,
@@ -32,8 +33,14 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
   const { user } = useAuthStore();
   const lobbyState = useLobbyStore((s) => s.lobbyData);
   const setLobbyState = useLobbyStore((s) => s.setLobbyData);
-  const { friendsData } = useFriendsList();
-  const friends = friendsData?.friends ?? [];
+  const { friendsData, refresh: refreshFriends, loading: friendsLoading } = useFriendsList();
+  const onlineFriends = useMemo(() => {
+    const raw = friendsData?.friends ?? [];
+    return raw.filter((f) => {
+      const status = f.presence?.status ?? "offline";
+      return status !== "offline";
+    });
+  }, [friendsData?.friends]);
   const outgoingInvites = useNotificationStore((s) => s.outgoingInvites);
   const setOutgoingInvite = useNotificationStore((s) => s.setOutgoingInvite);
   const clearOutgoingInvite = useNotificationStore(
@@ -43,23 +50,24 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
   const [isRestoringLobby, setIsRestoringLobby] = useState(!lobbyState);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-  const [guestDisconnectedId, setGuestDisconnectedId] = useState<string | null>(
-    null,
-  );
-  const [guestDisconnectSecondsLeft, setGuestDisconnectSecondsLeft] = useState<
+  const [disconnectedParticipantId, setDisconnectedParticipantId] =
+    useState<string | null>(null);
+  const [disconnectSecondsLeft, setDisconnectSecondsLeft] = useState<
     number | null
   >(null);
 
   const lobbyStateRef = useRef(lobbyState);
-  const guestDisconnectedIdRef = useRef<string | null>(guestDisconnectedId);
+  const disconnectedParticipantIdRef = useRef<string | null>(
+    disconnectedParticipantId,
+  );
 
   useEffect(() => {
     lobbyStateRef.current = lobbyState;
   }, [lobbyState]);
 
   useEffect(() => {
-    guestDisconnectedIdRef.current = guestDisconnectedId;
-  }, [guestDisconnectedId]);
+    disconnectedParticipantIdRef.current = disconnectedParticipantId;
+  }, [disconnectedParticipantId]);
 
   const isHost = user?.id === lobbyState?.hostId;
   const isGuest = user?.id === lobbyState?.guestId;
@@ -72,7 +80,13 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
 
   useEffect(() => {
     setIsRestoringLobby(!lobbyState);
-  }, [lobbyState]);
+    if (lobbyState?.guestId) {
+      clearOutgoingInvite(lobbyState.guestId);
+    }
+    if (lobbyState?.hostId) {
+      clearOutgoingInvite(lobbyState.hostId);
+    }
+  }, [clearOutgoingInvite, lobbyState]);
 
   useEffect(() => {
     if (!socket?.connected || !isConnected || !roomCode) return;
@@ -85,39 +99,42 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
     const onLobbyCancelledByHost = () => {
       toast.error("The host cancelled this lobby.");
       setLobbyState(null);
-      setGuestDisconnectedId(null);
-      setGuestDisconnectSecondsLeft(null);
+      setDisconnectedParticipantId(null);
+      setDisconnectSecondsLeft(null);
       router.replace("/lobby");
     };
 
     const onLobbyPlayerDisconnected = (payload: { userId?: string }) => {
       const droppedUserId = payload?.userId ? String(payload.userId) : "";
       if (!droppedUserId || droppedUserId === String(user?.id)) return;
-      if (droppedUserId !== String(lobbyStateRef.current?.guestId ?? ""))
-        return;
-      setGuestDisconnectedId(droppedUserId);
-      setGuestDisconnectSecondsLeft(30);
-      toast.message("Guest disconnected. Waiting for reconnect…");
+      setDisconnectedParticipantId(droppedUserId);
+      setDisconnectSecondsLeft(30);
+      const isDroppedHost =
+        droppedUserId === String(lobbyStateRef.current?.hostId ?? "");
+      toast.message(
+        `${isDroppedHost ? "Host" : "Guest"} disconnected. Waiting for reconnect…`,
+      );
     };
 
     const onLobbyPlayerReconnected = (payload: { userId?: string }) => {
       const reconnectedUserId = payload?.userId ? String(payload.userId) : "";
       if (!reconnectedUserId) return;
-      if (reconnectedUserId !== guestDisconnectedIdRef.current) return;
-      setGuestDisconnectedId(null);
-      setGuestDisconnectSecondsLeft(null);
-      toast.message("Guest reconnected.");
+      if (reconnectedUserId !== disconnectedParticipantIdRef.current) return;
+      setDisconnectedParticipantId(null);
+      setDisconnectSecondsLeft(null);
+      toast.message("Player reconnected.");
     };
 
     const onRoomExpired = () => {
       toast.error("Lobby expired after 15 minutes of inactivity.");
       setLobbyState(null);
-      setGuestDisconnectedId(null);
-      setGuestDisconnectSecondsLeft(null);
+      setDisconnectedParticipantId(null);
+      setDisconnectSecondsLeft(null);
       router.replace("/lobby");
     };
 
     const onMatchFound = (payload: { gameSessionId?: string }) => {
+      useAuthStore.getState().clearActiveLobby();
       if (payload?.gameSessionId) {
         router.replace(`/game/${payload.gameSessionId}`);
       }
@@ -151,11 +168,11 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
   }, [isConnected, roomCode, router, setLobbyState, socket, user?.id]);
 
   useEffect(() => {
-    if (!guestDisconnectedId || guestDisconnectSecondsLeft === null) return;
-    if (guestDisconnectSecondsLeft <= 0) return;
+    if (!disconnectedParticipantId || disconnectSecondsLeft === null) return;
+    if (disconnectSecondsLeft <= 0) return;
 
     const timer = window.setInterval(() => {
-      setGuestDisconnectSecondsLeft((current) => {
+      setDisconnectSecondsLeft((current) => {
         if (current === null) return current;
         if (current <= 1) {
           window.clearInterval(timer);
@@ -166,7 +183,7 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [guestDisconnectedId, guestDisconnectSecondsLeft]);
+  }, [disconnectedParticipantId, disconnectSecondsLeft]);
 
   useEffect(() => {
     if (!socket) return;
@@ -253,7 +270,8 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
   const handleInviteFriend = (friendId: string, friendName: string) => {
     if (!socket?.connected) return;
 
-    const pendingInvite = outgoingInvites[friendId];
+    const rawInvite = outgoingInvites[friendId];
+    const pendingInvite = rawInvite?.roomCode === roomCode ? rawInvite : null;
     if (pendingInvite) {
       socket.emit("cancelGameInvite", { friendId }, (response: any) => {
         if (response?.status === "ok") {
@@ -415,16 +433,18 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
           </div>
         </section>
 
-        {isHost && guestDisconnectedId && (
+        {disconnectedParticipantId && (
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             <div className="flex items-center gap-2 font-semibold">
               <Repeat2 className="h-4 w-4" />
-              Guest disconnected
+              {disconnectedParticipantId === String(lobbyState?.hostId)
+                ? "Host disconnected"
+                : "Guest disconnected"}
             </div>
             <p className="mt-1 text-amber-50/90">
               Waiting for reconnect
-              {guestDisconnectSecondsLeft !== null
-                ? ` · ${guestDisconnectSecondsLeft}s left`
+              {disconnectSecondsLeft !== null
+                ? ` · ${disconnectSecondsLeft}s left`
                 : ""}
               .
             </p>
@@ -527,25 +547,42 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
                 <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">
                   Invite Friends
                 </h2>
-                <button
-                  onClick={() => router.push("/friends")}
-                  className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300"
-                >
-                  <UserPlus className="h-3 w-3" />
-                  Add
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => void refreshFriends()}
+                    disabled={friendsLoading}
+                    className="flex items-center gap-1 text-xs text-slate-400 hover:text-white disabled:opacity-50 transition"
+                    title="Refresh friends list"
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${friendsLoading ? "animate-spin" : ""}`}
+                    />
+                  </button>
+                  <button
+                    onClick={() => router.push("/friends")}
+                    className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    Add
+                  </button>
+                </div>
               </div>
 
-              {friends.length === 0 ? (
+              {onlineFriends.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-500">
-                  You have no friends on your list.
+                  No online friends available.
                 </p>
               ) : (
                 <div className="custom-scrollbar max-h-[300px] space-y-2 overflow-y-auto pr-2">
-                  {friends.map((friend) => {
-                    const presenceStatus = friend.presence?.status ?? "offline";
-                    const isOnline = presenceStatus === "online";
-                    const pendingInvite = outgoingInvites[friend.userId];
+                  {onlineFriends.map((friend) => {
+                    const presenceStatus = friend.presence?.status ?? "online";
+                    const isOnline = presenceStatus !== "offline";
+                    const rawInvite = outgoingInvites[friend.userId];
+                    const pendingInvite =
+                      rawInvite?.roomCode === roomCode ? rawInvite : null;
+                    const isAlreadyInLobby =
+                      String(friend.userId) === String(lobbyState?.hostId) ||
+                      String(friend.userId) === String(lobbyState?.guestId);
 
                     return (
                       <div
@@ -565,21 +602,31 @@ export function LobbyRoom({ roomCode }: LobbyRoomProps) {
                             </p>
                           </div>
                         </div>
-                        <button
-                          onClick={() =>
-                            handleInviteFriend(friend.userId, friend.username)
-                          }
-                          disabled={!isOnline && !pendingInvite}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                            pendingInvite
-                              ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                              : isOnline
-                                ? "bg-sky-500 text-white hover:bg-sky-400"
-                                : "cursor-not-allowed bg-white/5 text-slate-500"
-                          }`}
-                        >
-                          {pendingInvite ? "Cancel" : "Invite"}
-                        </button>
+
+                        {isAlreadyInLobby ? (
+                          <button
+                            disabled
+                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-400 cursor-not-allowed"
+                          >
+                            Joined
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleInviteFriend(friend.userId, friend.username)
+                            }
+                            disabled={!isOnline && !pendingInvite}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                              pendingInvite
+                                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                                : isOnline
+                                  ? "bg-sky-500 text-white hover:bg-sky-400"
+                                  : "cursor-not-allowed bg-white/5 text-slate-500"
+                            }`}
+                          >
+                            {pendingInvite ? "Cancel" : "Invite"}
+                          </button>
+                        )}
                       </div>
                     );
                   })}

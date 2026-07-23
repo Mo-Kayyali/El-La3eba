@@ -414,8 +414,25 @@ export default function GamePage() {
       }
     };
 
-    const onRematchStarting = (payload: { newGameSessionId: string }) => {
-      if (payload?.newGameSessionId) {
+    const onRematchStarting = (payload: {
+      newGameSessionId?: string;
+      roomCode?: string;
+    }) => {
+      if (payload?.roomCode) {
+        // Clear activeGameSessionId FIRST — otherwise AuthSessionProvider's
+        // game-session redirect guard fires and bounces the client back to the
+        // game page before the lobby room can mount.
+        useAuthStore.getState().clearActiveGame();
+        useAuthStore.getState().clearActiveLobby();
+        const authState = useAuthStore.getState();
+        if (authState.user) {
+          authState.setUser({
+            ...authState.user,
+            activeLobbyRoomCode: payload.roomCode,
+          });
+        }
+        router.push(`/lobby/room/${payload.roomCode}`);
+      } else if (payload?.newGameSessionId) {
         router.push(`/game/${payload.newGameSessionId}`);
       }
     };

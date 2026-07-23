@@ -120,11 +120,9 @@ export default function AuthPage() {
   useEffect(() => {
     if (!bootstrapped || !isAuthenticated) return;
     if (activeGameSessionId) return;
-    if (activeLobbyRoomCode) return;
     router.replace(userRole === "ADMIN" ? "/admin" : "/lobby");
   }, [
     activeGameSessionId,
-    activeLobbyRoomCode,
     bootstrapped,
     isAuthenticated,
     router,
