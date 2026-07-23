@@ -433,6 +433,11 @@ export default function GamePage() {
         }
         router.push(`/lobby/room/${payload.roomCode}`);
       } else if (payload?.newGameSessionId) {
+        useAuthStore.getState().setUser({
+          ...useAuthStore.getState().user,
+          activeGameSessionId: payload.newGameSessionId,
+          activeLobbyRoomCode: null,
+        });
         router.push(`/game/${payload.newGameSessionId}`);
       }
     };
@@ -521,8 +526,8 @@ export default function GamePage() {
     if (userId === undefined) return [player1Id, player2Id] as const;
     if (player1Id === undefined && player2Id === undefined)
       return [undefined, undefined] as const;
-    if (userId === player1Id) return [player1Id, player2Id] as const;
-    if (userId === player2Id) return [player2Id, player1Id] as const;
+    if (String(userId) === String(player1Id)) return [player1Id, player2Id] as const;
+    if (String(userId) === String(player2Id)) return [player2Id, player1Id] as const;
     return [player1Id, player2Id] as const;
   }, [player1Id, player2Id, userId]);
 
@@ -536,20 +541,30 @@ export default function GamePage() {
   const rightId = coerceString(rightPlayerId);
 
   const currentTurnId = gameState?.currentTurn;
-  const isMyTurn = userId !== undefined && currentTurnId === userId;
+  const isMyTurn =
+    userId !== undefined &&
+    currentTurnId !== undefined &&
+    currentTurnId !== null &&
+    String(currentTurnId) === String(userId);
   const isMatchOver = gameState?.status === "match_completed";
 
   const leftIsActive =
     gameState?.currentTurn !== undefined && gameState?.currentTurn !== null
-      ? gameState?.currentTurn === leftPlayerId
+      ? String(gameState?.currentTurn) === String(leftPlayerId)
       : false;
   const rightIsActive =
     gameState?.currentTurn !== undefined && gameState?.currentTurn !== null
-      ? gameState?.currentTurn === rightPlayerId
+      ? String(gameState?.currentTurn) === String(rightPlayerId)
       : false;
 
-  const leftIsMe = userId !== undefined && leftPlayerId === userId;
-  const rightIsMe = userId !== undefined && rightPlayerId === userId;
+  const leftIsMe =
+    userId !== undefined &&
+    leftPlayerId !== undefined &&
+    String(leftPlayerId) === String(userId);
+  const rightIsMe =
+    userId !== undefined &&
+    rightPlayerId !== undefined &&
+    String(rightPlayerId) === String(userId);
 
   const winnerId = useMemo(() => {
     const w = gameState?.winner;
@@ -686,16 +701,62 @@ export default function GamePage() {
   const question = gameState?.currentQuestion?.text ?? "Waiting for question...";
   const guessedPlayers = (gameState?.guessedPlayers ?? []) as GuessEntry[];
 
+  const activeMode = useMemo(() => {
+    if (isTransitioning) {
+      const comp = gameState?.composition as string[] | undefined;
+      const round = gameState?.currentRound as number | undefined;
+      if (comp && round !== undefined && round < comp.length) {
+        return comp[round];
+      }
+    }
+    return (gameState?.mode as string) ?? "STRIKES";
+  }, [gameState?.composition, gameState?.currentRound, gameState?.mode, isTransitioning]);
+
+  const leftWrongCount = useMemo(() => {
+    if (activeMode === "TOP_10") {
+      if (isTransitioning) return 0;
+      return Math.min(
+        3,
+        Math.max(0, getByKeyOrIndex(gameState?.wrongGuesses as any, leftId, 0)),
+      );
+    }
+    if (isTransitioning && gameState?.mode !== activeMode) return 0;
+    return Math.min(
+      3,
+      Math.max(0, getByKeyOrIndex(gameState?.strikes as any, leftId, 0)),
+    );
+  }, [
+    activeMode,
+    gameState?.mode,
+    gameState?.strikes,
+    gameState?.wrongGuesses,
+    isTransitioning,
+    leftId,
+  ]);
+
+  const rightWrongCount = useMemo(() => {
+    if (activeMode === "TOP_10") {
+      if (isTransitioning) return 0;
+      return Math.min(
+        3,
+        Math.max(0, getByKeyOrIndex(gameState?.wrongGuesses as any, rightId, 1)),
+      );
+    }
+    if (isTransitioning && gameState?.mode !== activeMode) return 0;
+    return Math.min(
+      3,
+      Math.max(0, getByKeyOrIndex(gameState?.strikes as any, rightId, 1)),
+    );
+  }, [
+    activeMode,
+    gameState?.mode,
+    gameState?.strikes,
+    gameState?.wrongGuesses,
+    isTransitioning,
+    rightId,
+  ]);
   const leftRoundScore = getByKeyOrIndex(gameState?.scores, leftId, 0);
   const rightRoundScore = getByKeyOrIndex(gameState?.scores, rightId, 1);
-  const leftStrikes = Math.min(
-    3,
-    Math.max(0, getByKeyOrIndex(gameState?.strikes, leftId, 0)),
-  );
-  const rightStrikes = Math.min(
-    3,
-    Math.max(0, getByKeyOrIndex(gameState?.strikes, rightId, 1)),
-  );
   const leftOverall = getByKeyOrIndex(gameState?.overallScores, leftId, 0);
   const rightOverall = getByKeyOrIndex(gameState?.overallScores, rightId, 1);
 
@@ -779,6 +840,7 @@ export default function GamePage() {
     roundScore,
     overallScore,
     strikes,
+    mode,
     flash,
     mmr,
   }: {
@@ -789,6 +851,7 @@ export default function GamePage() {
     roundScore: number;
     overallScore: number;
     strikes: number;
+    mode?: string;
     flash: FlashState;
     mmr?: number;
   }) {
@@ -884,10 +947,10 @@ export default function GamePage() {
             </div>
           </div>
 
-          {/* Strikes */}
+          {/* Strikes / Wrong Guesses */}
           <div className="mt-5">
             <p className="text-[10px] font-bold tracking-[0.25em] text-slate-500">
-              STRIKES
+              {mode === "TOP_10" ? "WRONG GUESSES" : "STRIKES"}
             </p>
             <div className="mt-2 flex items-center gap-2">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -1091,6 +1154,8 @@ export default function GamePage() {
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400/30 border-t-slate-300" />
                       Waiting…
                     </span>
+                  ) : gameState?.isRanked ? (
+                    "Play Again (Unrated)"
                   ) : (
                     "Play Again"
                   )}
@@ -1305,7 +1370,8 @@ export default function GamePage() {
             isMe={leftIsMe}
             roundScore={leftRoundScore}
             overallScore={leftOverall}
-            strikes={leftStrikes}
+            strikes={leftWrongCount}
+            mode={activeMode}
             flash={flashLeft}
             mmr={
               leftId
@@ -1535,7 +1601,8 @@ export default function GamePage() {
             isMe={rightIsMe}
             roundScore={rightRoundScore}
             overallScore={rightOverall}
-            strikes={rightStrikes}
+            strikes={rightWrongCount}
+            mode={activeMode}
             flash={flashRight}
             mmr={
               rightId

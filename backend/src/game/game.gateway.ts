@@ -1763,7 +1763,7 @@ export class GameGateway
             rematch.p2Id,
             rematch.p1Name,
             rematch.p2Name,
-            rematch.isRanked === true,
+            false, // Ranked matches route to an UNRATED rematch (isRanked: false)
           );
 
           // Move all sockets still in the old room into the new one,

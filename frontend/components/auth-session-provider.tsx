@@ -215,12 +215,13 @@ export function AuthSessionProvider({
       }
     };
 
-    const onMatchFound = (payload: { gameSessionId?: string }) => {
+    const onMatchFound = (payload: { gameSessionId?: string; newGameSessionId?: string }) => {
       useAuthStore.getState().clearActiveLobby();
-      if (payload?.gameSessionId) {
+      const gid = payload?.gameSessionId || payload?.newGameSessionId;
+      if (gid) {
         useAuthStore.getState().setUser({
           ...useAuthStore.getState().user,
-          activeGameSessionId: payload.gameSessionId,
+          activeGameSessionId: gid,
           activeLobbyRoomCode: null,
         });
       }
@@ -232,6 +233,7 @@ export function AuthSessionProvider({
     socket.on("inviteDeclined", onInviteDeclined);
     socket.on("inviteAccepted", onInviteAccepted);
     socket.on("matchFound", onMatchFound);
+    socket.on("rematchStarting", onMatchFound);
 
     return () => {
       socket.off("friendRequestReceived", onFriendRequestReceived);
@@ -240,6 +242,7 @@ export function AuthSessionProvider({
       socket.off("inviteDeclined", onInviteDeclined);
       socket.off("inviteAccepted", onInviteAccepted);
       socket.off("matchFound", onMatchFound);
+      socket.off("rematchStarting", onMatchFound);
     };
   }, [
     addIncomingGameInvite,
@@ -264,9 +267,12 @@ export function AuthSessionProvider({
   useEffect(() => {
     if (!bootstrapped) return;
     if (!isAuthenticated) return;
+    if (pathname.startsWith("/game/")) return; // Do not bounce when user is already on a game route
     const gid =
       typeof user?.activeGameSessionId === "string" &&
       user.activeGameSessionId.trim().length > 0
+        ? user.activeGameSessionId.trim()
+        : null;
     if (!gid) return;
     const targetPath = `/game/${gid}`;
     if (pathname === targetPath) return;

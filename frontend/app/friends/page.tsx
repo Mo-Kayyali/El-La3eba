@@ -275,8 +275,17 @@ export default function FriendsPage() {
             status: "pending",
             expiresAt: Date.now() + 60_000,
           });
-          setActionMessage(`Invited ${friend.username} to a private room.`);
-          toast.success(`Invite sent to ${friend.username}.`);
+          useAuthStore.getState().clearActiveGame();
+          const authState = useAuthStore.getState();
+          if (authState.user) {
+            authState.setUser({
+              ...authState.user,
+              activeLobbyRoomCode: response.roomCode,
+              activeGameSessionId: null,
+            });
+          }
+          toast.success(`Invite sent to ${friend.username}. Redirecting to lobby...`);
+          router.push(`/lobby/room/${response.roomCode}`);
           return;
         }
         const message = response?.message ?? "Could not create invite.";

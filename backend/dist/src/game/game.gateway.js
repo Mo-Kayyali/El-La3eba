@@ -1205,7 +1205,7 @@ let GameGateway = GameGateway_1 = class GameGateway {
                 }
                 else {
                     const newGameSessionId = (0, crypto_1.randomUUID)();
-                    const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, rematch.isRanked === true);
+                    const newState = await this.matchmakingService.initializeGameState(newGameSessionId, rematch.p1Id, rematch.p2Id, rematch.p1Name, rematch.p2Name, false);
                     this.server.in(gameSessionId).socketsJoin(newGameSessionId);
                     this.server.in(gameSessionId).socketsLeave(gameSessionId);
                     await Promise.all([
