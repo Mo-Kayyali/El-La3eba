@@ -117,28 +117,25 @@ export class GameService {
       .slice(0, 10);
 
     if (validCandidates.length > 0) {
-      let isAmbiguous = false;
-      if (validCandidates.length > 1) {
-        const c0 = validCandidates[0];
-        const c1 = validCandidates[1];
-        const gap = c0.matchConfidence - c1.matchConfidence;
+      const AMBIGUITY_EPSILON = 0.001;
+      const topConf = validCandidates[0].matchConfidence;
 
-        // Tight ambiguity: only when both candidates are exact token matches with identical confidence and identical prominence tie-breaker metrics
-        if (
-          c0.bestReason === 'exact' &&
-          c1.bestReason === 'exact' &&
-          gap <= 0.001 &&
-          c0.aliasesCount === c1.aliasesCount &&
-          c0.clubsCount === c1.clubsCount
-        ) {
-          isAmbiguous = true;
-        }
-      }
+      // Count how many distinct candidates are tied at approximately the top confidence
+      // AND matched via an exact token hit (not prefix/typo/substring).
+      // This is computed purely from live query results — no hardcoded names.
+      const nearTopExactGroup = validCandidates.filter(
+        (c) =>
+          Math.abs(c.matchConfidence - topConf) <= AMBIGUITY_EPSILON &&
+          c.bestReason === 'exact',
+      );
+
+      // Group size 1 → clean single match, resolve normally.
+      // Group size 2 → two-way tie, use prominence tie-break (legitimate).
+      // Group size >= 3 → multiple genuinely distinct people share this name; require specificity.
+      const isAmbiguous = nearTopExactGroup.length >= 3;
 
       validCandidates[0].isAmbiguous = isAmbiguous;
     }
-
-    return validCandidates;
 
     return validCandidates;
   }

@@ -112,22 +112,13 @@ let GameService = class GameService {
         })
             .slice(0, 10);
         if (validCandidates.length > 0) {
-            let isAmbiguous = false;
-            if (validCandidates.length > 1) {
-                const c0 = validCandidates[0];
-                const c1 = validCandidates[1];
-                const gap = c0.matchConfidence - c1.matchConfidence;
-                if (c0.bestReason === 'exact' &&
-                    c1.bestReason === 'exact' &&
-                    gap <= 0.001 &&
-                    c0.aliasesCount === c1.aliasesCount &&
-                    c0.clubsCount === c1.clubsCount) {
-                    isAmbiguous = true;
-                }
-            }
+            const AMBIGUITY_EPSILON = 0.001;
+            const topConf = validCandidates[0].matchConfidence;
+            const nearTopExactGroup = validCandidates.filter((c) => Math.abs(c.matchConfidence - topConf) <= AMBIGUITY_EPSILON &&
+                c.bestReason === 'exact');
+            const isAmbiguous = nearTopExactGroup.length >= 3;
             validCandidates[0].isAmbiguous = isAmbiguous;
         }
-        return validCandidates;
         return validCandidates;
     }
     async getRandomQuestion(gameMode = 'STRIKES', excludeIds = []) {
