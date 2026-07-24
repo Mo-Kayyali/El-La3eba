@@ -9,4 +9,5 @@ export declare function evaluateMatch(guess: string, target: string): {
     score: number;
     penalty: number;
     confidence: number;
+    bestReason: string;
 };

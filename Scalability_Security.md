@@ -96,10 +96,9 @@ Explicitly in scope — these are not hypothetical:
   any future mode's timers) must be enforced by the server via
   `NodeJS.Timeout`/equivalent, never trusted from client-reported elapsed
   time.
-- **Rate limiting stays in place and gets extended.** The existing guess
-  rate limit (5 guesses/1s/user) is a pattern to replicate for any new
-  per-turn input in future game modes (e.g. numeric guesses in "Guess the
-  Number").
+- **Rate limiting stays in place and gets extended.** The existing guess rate limit (5 guesses/1s/user) is a pattern to replicate for any new per-turn input in future game modes (e.g. numeric guesses in "Guess the Number").
+- **Fuzzy Match Candidate Hijacking Prevention.** Server-side guess resolution enforces strict candidate locking to `matchedPlayers[0]`. The server will never iterate or auto-select lower-ranked candidate players to satisfy question criteria or bypass already-guessed restrictions, eliminating client-input hijacking exploits.
+
 - When adding a new game mode, write down (even briefly, in this file) what
   its specific cheat surface looks like before shipping it — e.g. for
   "Guess the Number," what stops a client from submitting a guess after

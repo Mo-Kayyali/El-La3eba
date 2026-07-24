@@ -56,23 +56,35 @@ let AdminQuestionsController = class AdminQuestionsController {
         if (!question)
             return { error: 'Question not found' };
         const matches = await this.gameService.guessPlayer(guessName);
-        if (!matches || matches.length === 0)
-            return { matchedPlayer: null, isCorrect: false };
-        let bestMatch = null;
-        let isCorrect = false;
-        for (const match of matches) {
-            const valid = await this.gameService.validateAnswer(question, match);
-            if (valid) {
-                bestMatch = match;
-                isCorrect = true;
-                break;
-            }
+        if (!matches || matches.length === 0) {
+            return { matchedPlayer: null, isCorrect: false, isAmbiguous: false, candidates: [] };
         }
-        if (!bestMatch)
-            bestMatch = matches[0];
+        const topCandidate = matches[0];
+        const isAmbiguous = topCandidate.isAmbiguous ?? false;
+        const matchedPlayer = isAmbiguous ? null : topCandidate;
+        let isCorrect = false;
+        if (matchedPlayer) {
+            isCorrect = await this.gameService.validateAnswer(question, matchedPlayer);
+        }
+        const detailedCandidates = await Promise.all(matches.slice(0, 5).map(async (c, index) => {
+            const candidateValid = await this.gameService.validateAnswer(question, c);
+            const isPicked = !isAmbiguous && index === 0;
+            return {
+                id: c.id,
+                name: c.name,
+                bestTarget: c.bestTarget || c.name,
+                matchConfidence: c.matchConfidence,
+                nationality: c.nationality,
+                currentClubName: c.currentClubName || null,
+                isPicked,
+                isCorrect: candidateValid,
+            };
+        }));
         return {
-            matchedPlayer: bestMatch,
+            matchedPlayer,
             isCorrect,
+            isAmbiguous,
+            candidates: detailedCandidates,
         };
     }
 };

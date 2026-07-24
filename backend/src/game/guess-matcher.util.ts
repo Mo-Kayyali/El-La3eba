@@ -33,44 +33,34 @@ export function getTokenCombinations(tokens: string[]): string[] {
 
 export function matchToken(gToken: string, tToken: string): { matches: boolean, penalty: number, reason: string } {
   // Exact match
-  if (gToken === tToken) return { matches: true, penalty: 0, reason: "exact" };
-  
+  if (gToken === tToken) return { matches: true, penalty: 0.0, reason: "exact" };
+
   // Prefix Match (Guess token is a prefix of target token, or vice versa)
   if (tToken.startsWith(gToken) || gToken.startsWith(tToken)) {
-      const minLength = Math.min(gToken.length, tToken.length);
-      // Guardrail 1: Prefix token must be at least 3 characters
-      if (minLength >= 3) {
-         return { matches: true, penalty: 0.5, reason: "prefix" };
-      }
+    const minLength = Math.min(gToken.length, tToken.length);
+    if (minLength >= 3) {
+      const lenDiff = Math.abs(gToken.length - tToken.length);
+      const prefixPenalty = 0.3 + Math.min(0.3, lenDiff * 0.05);
+      return { matches: true, penalty: prefixPenalty, reason: "prefix" };
+    }
   }
 
   // Levenshtein Typo match
   const dist = levenshtein(gToken, tToken);
-  const maxTypos = Math.max(1, Math.floor(Math.max(gToken.length, tToken.length) / 3)); // 1 for >=3, 2 for >=6, 3 for >=9
+  const maxTypos = Math.max(1, Math.floor(Math.max(gToken.length, tToken.length) / 3));
   if (dist <= maxTypos) {
-      return { matches: true, penalty: dist, reason: "typo" };
+    return { matches: true, penalty: 0.25 * dist, reason: "typo" };
   }
 
-  // Substring/Truncated Match with Typo (e.g., "kadr" matching "abdelkader")
-  // Guardrail 2: The guess token must be at least 4 characters long to match as a substring
+  // Substring Match
   if (tToken.includes(gToken) && gToken.length >= 4) {
-      return { matches: true, penalty: 1, reason: "substring" };
-  }
-
-  // Also check if they align as a prefix with 1 typo if length is solid
-  if (gToken.length >= 4 && tToken.length >= 4) {
-    const minLength = Math.min(gToken.length, tToken.length);
-    const gPrefix = gToken.substring(0, minLength);
-    const tPrefix = tToken.substring(0, minLength);
-    if (levenshtein(gPrefix, tPrefix) <= 1) {
-        return { matches: true, penalty: 1.5, reason: "prefix-typo" };
-    }
+    return { matches: true, penalty: 0.5, reason: "substring" };
   }
 
   return { matches: false, penalty: Infinity, reason: "none" };
 }
 
-export function evaluateMatch(guess: string, target: string): { score: number, penalty: number, confidence: number } {
+export function evaluateMatch(guess: string, target: string): { score: number, penalty: number, confidence: number, bestReason: string } {
   // Lowercase, normalize hyphens to spaces to preserve token boundaries
   const g = guess.toLowerCase().replace(/-/g, ' ');
   const t = target.toLowerCase().replace(/-/g, ' ');
@@ -85,7 +75,7 @@ export function evaluateMatch(guess: string, target: string): { score: number, p
         const gStr = gTokens.slice(i, i + gLen).join('');
         for (let tLen = 1; j + tLen <= tTokens.length; tLen++) {
           const tStr = tTokens.slice(j, j + tLen).join('');
-          
+
           const matchResult = matchToken(gStr, tStr);
           if (matchResult.matches) {
             matches.push({
@@ -101,7 +91,9 @@ export function evaluateMatch(guess: string, target: string): { score: number, p
     }
   }
 
-  // Sort matches by penalty ASC, then length DESC (prefer matching longer chunks)
+  if (matches.length === 0) return { score: Infinity, penalty: Infinity, confidence: 0, bestReason: 'none' };
+
+  // Sort matches by penalty ASC, then length DESC
   matches.sort((a, b) => {
     if (a.penalty !== b.penalty) return a.penalty - b.penalty;
     const lenA = a.gEnd - a.gStart + a.tEnd - a.tStart;
@@ -125,25 +117,21 @@ export function evaluateMatch(guess: string, target: string): { score: number, p
     }
   }
 
-  let matchedTChars = finalMatches.reduce((sum, m) => sum + m.tStr.length, 0);
-  let totalTChars = tTokens.join('').length;
-  let totalGChars = gTokens.join('').length;
-  let totalPenalty = finalMatches.reduce((sum, m) => sum + m.penalty, 0);
+  const matchedGChars = finalMatches.reduce((sum, m) => sum + m.gStr.length, 0);
+  const totalGChars = gTokens.join('').length;
 
-  if (matchedTChars === 0) return { score: Infinity, penalty: Infinity, confidence: 0 };
+  const matchedTTokensCount = new Set(finalMatches.map((m) => m.tStart)).size;
+  const totalTTokensCount = tTokens.length;
+  const unmatchedTTokensCount = totalTTokensCount - matchedTTokensCount;
 
-  let unmatchedGChars = totalGChars - finalMatches.reduce((sum, m) => sum + m.gStr.length, 0);
-  let unmatchedTChars = totalTChars - matchedTChars;
+  const totalMatchPenalty = finalMatches.reduce((sum, m) => sum + m.penalty, 0);
+  const unmatchedGCharsPenalty = (totalGChars - matchedGChars) * 0.3;
+  const unmatchedTTokensPenalty = unmatchedTTokensCount * 0.05; // 0.05 per unmatched token
 
-  // The final score logic:
-  // Penalty + unmatched characters penalty.
-  let finalScore = totalPenalty + unmatchedGChars * 0.5 + unmatchedTChars * 0.5;
-  
-  // Confidence is a metric from 0 to 1 representing how confident we are in this match.
-  // We matched `matchedTChars` characters. Max possible characters to match = totalTChars.
-  // E.g., if total penalty is 0, unmatched is 0, score is 0. Confidence should be 1.
-  let maxPossiblePenalty = totalTChars + totalGChars;
-  let confidence = Math.max(0, 1 - (finalScore / (matchedTChars + unmatchedTChars + unmatchedGChars + 1)));
+  const totalScore = totalMatchPenalty + unmatchedGCharsPenalty + unmatchedTTokensPenalty;
+  const confidence = Math.max(0, 1 - totalScore / 2.0);
 
-  return { score: finalScore, penalty: totalPenalty, confidence };
+  const bestReason = finalMatches[0]?.reason || 'none';
+
+  return { score: totalScore, penalty: totalMatchPenalty, confidence, bestReason };
 }

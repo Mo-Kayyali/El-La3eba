@@ -1381,38 +1381,31 @@ let GameGateway = GameGateway_1 = class GameGateway {
             let initialIsCorrect = false;
             let answerDetails = null;
             if (matchedPlayers.length > 0) {
-                const currentStateStr = await this.redisClient.get(key);
-                if (currentStateStr) {
-                    try {
-                        const currentState = JSON.parse(currentStateStr);
-                        if (currentState.modeState?.currentQuestion) {
-                            for (const p of matchedPlayers) {
-                                const alreadyGuessed = currentState.modeState.guessedPlayers?.some((g) => (typeof g === 'string' ? g : g?.name) === p.name);
-                                if (alreadyGuessed)
-                                    continue;
-                                const isCorrect = await this.gameService.validateAnswer(currentState.modeState.currentQuestion, p);
-                                if (isCorrect) {
-                                    answerDetails =
-                                        await this.gameService.validateAndGetAnswerDetails(currentState.modeState.currentQuestion.id, p.id);
+                const topCandidate = matchedPlayers[0];
+                if (topCandidate.isAmbiguous) {
+                    matchedPlayer = null;
+                    initialIsCorrect = false;
+                }
+                else {
+                    matchedPlayer = topCandidate;
+                    const currentStateStr = await this.redisClient.get(key);
+                    if (currentStateStr) {
+                        try {
+                            const currentState = JSON.parse(currentStateStr);
+                            if (currentState.modeState?.currentQuestion) {
+                                const alreadyGuessed = currentState.modeState.guessedPlayers?.some((g) => (typeof g === 'string' ? g : g?.name) === topCandidate.name);
+                                if (!alreadyGuessed) {
+                                    const isCorrect = await this.gameService.validateAnswer(currentState.modeState.currentQuestion, topCandidate);
+                                    if (isCorrect) {
+                                        answerDetails =
+                                            await this.gameService.validateAndGetAnswerDetails(currentState.modeState.currentQuestion.id, topCandidate.id);
+                                        initialIsCorrect = true;
+                                    }
                                 }
-                                if (isCorrect) {
-                                    matchedPlayer = p;
-                                    initialIsCorrect = true;
-                                    break;
-                                }
-                            }
-                            if (!matchedPlayer) {
-                                if (matchedPlayers[0].isAmbiguous) {
-                                    matchedPlayer = null;
-                                }
-                                else {
-                                    matchedPlayer = matchedPlayers[0];
-                                }
-                                initialIsCorrect = false;
                             }
                         }
+                        catch { }
                     }
-                    catch { }
                 }
             }
             let attempt = 0;

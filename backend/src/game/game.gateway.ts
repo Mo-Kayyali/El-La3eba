@@ -2014,49 +2014,41 @@ export class GameGateway
       } | null = null;
 
       if (matchedPlayers.length > 0) {
-        const currentStateStr = await this.redisClient.get(key);
-        if (currentStateStr) {
-          try {
-            const currentState = JSON.parse(currentStateStr);
-            if (currentState.modeState?.currentQuestion) {
-              for (const p of matchedPlayers) {
-                // Check if already guessed
+        const topCandidate = matchedPlayers[0];
+        if (topCandidate.isAmbiguous) {
+          // Ambiguous guess: do not resolve to any player
+          matchedPlayer = null;
+          initialIsCorrect = false;
+        } else {
+          matchedPlayer = topCandidate;
+          const currentStateStr = await this.redisClient.get(key);
+          if (currentStateStr) {
+            try {
+              const currentState = JSON.parse(currentStateStr);
+              if (currentState.modeState?.currentQuestion) {
                 const alreadyGuessed =
                   currentState.modeState.guessedPlayers?.some(
                     (g: any) =>
-                      (typeof g === 'string' ? g : g?.name) === p.name,
+                      (typeof g === 'string' ? g : g?.name) === topCandidate.name,
                   );
-                if (alreadyGuessed) continue; // Skip already taken candidates
 
-                const isCorrect = await this.gameService.validateAnswer(
-                  currentState.modeState.currentQuestion,
-                  p,
-                );
-                if (isCorrect) {
-                  answerDetails =
-                    await this.gameService.validateAndGetAnswerDetails(
-                      currentState.modeState.currentQuestion.id,
-                      p.id,
-                    );
-                }
-                if (isCorrect) {
-                  matchedPlayer = p;
-                  initialIsCorrect = true;
-                  break;
+                if (!alreadyGuessed) {
+                  const isCorrect = await this.gameService.validateAnswer(
+                    currentState.modeState.currentQuestion,
+                    topCandidate,
+                  );
+                  if (isCorrect) {
+                    answerDetails =
+                      await this.gameService.validateAndGetAnswerDetails(
+                        currentState.modeState.currentQuestion.id,
+                        topCandidate.id,
+                      );
+                    initialIsCorrect = true;
+                  }
                 }
               }
-              // If no candidate is both un-guessed and correct, fallback to the top match
-              // so the logic below registers it as either a wrong guess or an already-taken strike.
-              if (!matchedPlayer) {
-                if (matchedPlayers[0].isAmbiguous) {
-                  matchedPlayer = null;
-                } else {
-                  matchedPlayer = matchedPlayers[0];
-                }
-                initialIsCorrect = false;
-              }
-            }
-          } catch {}
+            } catch {}
+          }
         }
       }
 

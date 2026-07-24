@@ -1167,19 +1167,98 @@ function AdminQuestionsContent() {
                 </form>
 
                 {testGuessResult && (
-                  <div className={`mt-6 p-4 rounded-xl border ${testGuessResult.isCorrect ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`text-xl font-bold ${testGuessResult.isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {testGuessResult.isCorrect ? "✅ Correct!" : "❌ Incorrect"}
+                  <div className="mt-6 flex flex-col gap-4">
+                    {/* Status Banner */}
+                    <div
+                      className={`p-4 rounded-xl border flex items-center justify-between ${
+                        testGuessResult.isCorrect
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                          : testGuessResult.isAmbiguous
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                          : testGuessResult.matchedPlayer
+                          ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                          : 'bg-slate-800 border-white/10 text-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl font-bold">
+                          {testGuessResult.isCorrect
+                            ? '✅ Correct Answer'
+                            : testGuessResult.isAmbiguous
+                            ? '⚠️ Ambiguous Guess (Tied Top Candidates)'
+                            : testGuessResult.matchedPlayer
+                            ? '❌ Wrong Answer for Question'
+                            : '❓ No Player Found'}
+                        </span>
                       </div>
-                      <div className="text-sm text-slate-300">
-                        {testGuessResult.matchedPlayer ? (
-                          <span>Matched Player: <span className="font-semibold text-white">{testGuessResult.matchedPlayer.name}</span> ({testGuessResult.matchedPlayer.nationality})</span>
-                        ) : (
-                          <span>No player matched that name.</span>
-                        )}
-                      </div>
+                      {testGuessResult.matchedPlayer && (
+                        <div className="text-sm font-semibold text-white bg-white/10 px-3 py-1 rounded-lg">
+                          Picked: {testGuessResult.matchedPlayer.name} ({testGuessResult.matchedPlayer.nationality})
+                        </div>
+                      )}
                     </div>
+
+                    {/* Detailed Candidates Table */}
+                    {testGuessResult.candidates && testGuessResult.candidates.length > 0 && (
+                      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
+                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                          Fuzzy Search Match Diagnostics (Top 5 Candidates)
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs text-slate-300">
+                            <thead className="bg-white/5 text-slate-400 font-semibold border-b border-white/10">
+                              <tr>
+                                <th className="px-3 py-2">Rank / Status</th>
+                                <th className="px-3 py-2">Candidate Player</th>
+                                <th className="px-3 py-2">Matched Target</th>
+                                <th className="px-3 py-2 text-center">Confidence</th>
+                                <th className="px-3 py-2 text-right">Question Check</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {testGuessResult.candidates.map((c: any, i: number) => (
+                                <tr
+                                  key={c.id || i}
+                                  className={c.isPicked ? 'bg-violet-500/15 font-medium text-white' : 'hover:bg-white/[0.02]'}
+                                >
+                                  <td className="px-3 py-2">
+                                    {c.isPicked ? (
+                                      <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+                                        ★ Picked (#1)
+                                      </span>
+                                    ) : testGuessResult.isAmbiguous && i === 0 ? (
+                                      <span className="text-amber-400 font-bold">⚠️ Ambiguous</span>
+                                    ) : (
+                                      <span className="text-slate-500">#{i + 1}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 font-semibold text-white">
+                                    {c.name} {c.nationality ? `(${c.nationality})` : ''}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-400">
+                                    {c.bestTarget}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-mono text-violet-300">
+                                    {(c.matchConfidence * 100).toFixed(1)}%
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    {c.isCorrect ? (
+                                      <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2.5 py-0.5 font-bold text-emerald-300">
+                                        Valid Answer
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center rounded-full bg-red-500/20 px-2.5 py-0.5 font-semibold text-red-300">
+                                        Invalid Answer
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -35,28 +35,22 @@ function getTokenCombinations(tokens) {
 }
 function matchToken(gToken, tToken) {
     if (gToken === tToken)
-        return { matches: true, penalty: 0, reason: "exact" };
+        return { matches: true, penalty: 0.0, reason: "exact" };
     if (tToken.startsWith(gToken) || gToken.startsWith(tToken)) {
         const minLength = Math.min(gToken.length, tToken.length);
         if (minLength >= 3) {
-            return { matches: true, penalty: 0.5, reason: "prefix" };
+            const lenDiff = Math.abs(gToken.length - tToken.length);
+            const prefixPenalty = 0.3 + Math.min(0.3, lenDiff * 0.05);
+            return { matches: true, penalty: prefixPenalty, reason: "prefix" };
         }
     }
     const dist = levenshtein(gToken, tToken);
     const maxTypos = Math.max(1, Math.floor(Math.max(gToken.length, tToken.length) / 3));
     if (dist <= maxTypos) {
-        return { matches: true, penalty: dist, reason: "typo" };
+        return { matches: true, penalty: 0.25 * dist, reason: "typo" };
     }
     if (tToken.includes(gToken) && gToken.length >= 4) {
-        return { matches: true, penalty: 1, reason: "substring" };
-    }
-    if (gToken.length >= 4 && tToken.length >= 4) {
-        const minLength = Math.min(gToken.length, tToken.length);
-        const gPrefix = gToken.substring(0, minLength);
-        const tPrefix = tToken.substring(0, minLength);
-        if (levenshtein(gPrefix, tPrefix) <= 1) {
-            return { matches: true, penalty: 1.5, reason: "prefix-typo" };
-        }
+        return { matches: true, penalty: 0.5, reason: "substring" };
     }
     return { matches: false, penalty: Infinity, reason: "none" };
 }
@@ -86,6 +80,8 @@ function evaluateMatch(guess, target) {
             }
         }
     }
+    if (matches.length === 0)
+        return { score: Infinity, penalty: Infinity, confidence: 0, bestReason: 'none' };
     matches.sort((a, b) => {
         if (a.penalty !== b.penalty)
             return a.penalty - b.penalty;
@@ -112,17 +108,17 @@ function evaluateMatch(guess, target) {
                 tUsed.add(j);
         }
     }
-    let matchedTChars = finalMatches.reduce((sum, m) => sum + m.tStr.length, 0);
-    let totalTChars = tTokens.join('').length;
-    let totalGChars = gTokens.join('').length;
-    let totalPenalty = finalMatches.reduce((sum, m) => sum + m.penalty, 0);
-    if (matchedTChars === 0)
-        return { score: Infinity, penalty: Infinity, confidence: 0 };
-    let unmatchedGChars = totalGChars - finalMatches.reduce((sum, m) => sum + m.gStr.length, 0);
-    let unmatchedTChars = totalTChars - matchedTChars;
-    let finalScore = totalPenalty + unmatchedGChars * 0.5 + unmatchedTChars * 0.5;
-    let maxPossiblePenalty = totalTChars + totalGChars;
-    let confidence = Math.max(0, 1 - (finalScore / (matchedTChars + unmatchedTChars + unmatchedGChars + 1)));
-    return { score: finalScore, penalty: totalPenalty, confidence };
+    const matchedGChars = finalMatches.reduce((sum, m) => sum + m.gStr.length, 0);
+    const totalGChars = gTokens.join('').length;
+    const matchedTTokensCount = new Set(finalMatches.map((m) => m.tStart)).size;
+    const totalTTokensCount = tTokens.length;
+    const unmatchedTTokensCount = totalTTokensCount - matchedTTokensCount;
+    const totalMatchPenalty = finalMatches.reduce((sum, m) => sum + m.penalty, 0);
+    const unmatchedGCharsPenalty = (totalGChars - matchedGChars) * 0.3;
+    const unmatchedTTokensPenalty = unmatchedTTokensCount * 0.05;
+    const totalScore = totalMatchPenalty + unmatchedGCharsPenalty + unmatchedTTokensPenalty;
+    const confidence = Math.max(0, 1 - totalScore / 2.0);
+    const bestReason = finalMatches[0]?.reason || 'none';
+    return { score: totalScore, penalty: totalMatchPenalty, confidence, bestReason };
 }
 //# sourceMappingURL=guess-matcher.util.js.map

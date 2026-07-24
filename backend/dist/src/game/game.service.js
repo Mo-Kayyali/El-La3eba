@@ -23,8 +23,8 @@ let GameService = class GameService {
         const guessLen = normalizedGuess.length;
         if (guessLen < 3)
             return [];
-        const [_, candidates] = await this.prisma.$transaction([
-            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.2;`),
+        const [_, rawCandidates] = await this.prisma.$transaction([
+            this.prisma.$executeRawUnsafe(`SET LOCAL pg_trgm.word_similarity_threshold = 0.15;`),
             this.prisma.$queryRaw `
         WITH guess AS (
           SELECT lower(unaccent(${normalizedGuess})) AS val
@@ -43,44 +43,91 @@ let GameService = class GameService {
           LEFT JOIN "Club" c ON p."currentClubId" = c.id
           CROSS JOIN guess g
           WHERE
-            -- Generous prefilter to narrow candidates via GIN index
             (
               lower(unaccent_immutable(p.name)) %> g.val OR
-              lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> g.val
+              lower(unaccent_immutable(array_to_string_immutable(p.aliases, ' '))) %> g.val OR
+              similarity(lower(unaccent_immutable(p.name)), g.val) > 0.15
             )
         )
         SELECT *
         FROM player_metrics
         ORDER BY w_sim DESC
-        LIMIT 20;
+        LIMIT 25;
       `
         ]);
-        const scoredCandidates = candidates.map(c => {
+        const candidateMap = new Map();
+        for (const c of rawCandidates) {
+            if (!candidateMap.has(c.id)) {
+                candidateMap.set(c.id, c);
+            }
+        }
+        const uniqueCandidates = Array.from(candidateMap.values());
+        const scoredCandidates = uniqueCandidates.map(c => {
             let bestConfidence = 0;
-            const targets = [c.name, ...(c.aliases || [])];
-            for (const target of targets) {
-                const result = (0, guess_matcher_util_1.evaluateMatch)(normalizedGuess, target);
-                if (result.confidence > bestConfidence) {
-                    bestConfidence = result.confidence;
+            let bestTarget = c.name;
+            let bestReason = 'none';
+            let isMainNameMatch = false;
+            const mainResult = (0, guess_matcher_util_1.evaluateMatch)(normalizedGuess, c.name);
+            bestConfidence = mainResult.confidence;
+            bestTarget = c.name;
+            bestReason = mainResult.bestReason;
+            isMainNameMatch = true;
+            for (const alias of c.aliases || []) {
+                const aliasResult = (0, guess_matcher_util_1.evaluateMatch)(normalizedGuess, alias);
+                if (aliasResult.confidence > bestConfidence) {
+                    bestConfidence = aliasResult.confidence;
+                    bestTarget = alias;
+                    bestReason = aliasResult.bestReason;
+                    isMainNameMatch = false;
                 }
             }
-            return { ...c, matchConfidence: bestConfidence };
+            const clubsCount = (c.clubs || []).length;
+            const aliasesCount = (c.aliases || []).length;
+            return {
+                ...c,
+                matchConfidence: bestConfidence,
+                bestTarget,
+                bestReason,
+                isMainNameMatch,
+                clubsCount,
+                aliasesCount,
+            };
         });
         const validCandidates = scoredCandidates
             .filter(c => c.matchConfidence >= 0.3)
-            .sort((a, b) => b.matchConfidence - a.matchConfidence)
+            .sort((a, b) => {
+            if (Math.abs(b.matchConfidence - a.matchConfidence) > 0.001) {
+                return b.matchConfidence - a.matchConfidence;
+            }
+            if (a.aliasesCount !== b.aliasesCount) {
+                return b.aliasesCount - a.aliasesCount;
+            }
+            if (a.clubsCount !== b.clubsCount) {
+                return b.clubsCount - a.clubsCount;
+            }
+            if (a.isMainNameMatch !== b.isMainNameMatch) {
+                return a.isMainNameMatch ? -1 : 1;
+            }
+            return Number(b.w_sim) - Number(a.w_sim);
+        })
             .slice(0, 10);
         if (validCandidates.length > 0) {
-            const topScore = validCandidates[0].matchConfidence;
             let isAmbiguous = false;
-            if (topScore < 0.95 && validCandidates.length > 1) {
-                const gap = topScore - validCandidates[1].matchConfidence;
-                if (gap <= 0.05) {
+            if (validCandidates.length > 1) {
+                const c0 = validCandidates[0];
+                const c1 = validCandidates[1];
+                const gap = c0.matchConfidence - c1.matchConfidence;
+                if (c0.bestReason === 'exact' &&
+                    c1.bestReason === 'exact' &&
+                    gap <= 0.001 &&
+                    c0.aliasesCount === c1.aliasesCount &&
+                    c0.clubsCount === c1.clubsCount) {
                     isAmbiguous = true;
                 }
             }
             validCandidates[0].isAmbiguous = isAmbiguous;
         }
+        return validCandidates;
         return validCandidates;
     }
     async getRandomQuestion(gameMode = 'STRIKES', excludeIds = []) {
